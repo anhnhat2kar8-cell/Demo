@@ -70,6 +70,148 @@ healthLabel.TextSize = 18
 healthLabel.Text = "Boss: Không có"
 
 -- Trạng thái
+local running, aiming, clicking, visible,  = false, false, false, true
+
+-- Nút
+local framBtn = createButton("Đánh Boss", 10)
+local aimBtn = createButton("Auto Aim", 50)
+local clickBtn = createButton("Auto Đánh", 90)
+local toggleGUI = createButton("Ẩn Menu", 170)
+local toggleHitbox = createButton("Hiện Vùng Sát Thương", 210)
+
+-- Input
+local distanceBox = createInput("Khoảng cách", 20, 250)
+local speedBox = createInput("Tốc độ", 2, 300)
+
+-- Sự kiện nút
+framBtn.MouseButton1Click:Connect(function()
+	running = not running
+	framBtn.Text = "Đánh Boss [" .. (running and "ON" or "OFF") .. "]"
+end)
+aimBtn.MouseButton1Click:Connect(function()
+	aiming = not aiming
+	aimBtn.Text = "Auto Aim [" .. (aiming and "ON" or "OFF") .. "]"
+end)
+clickBtn.MouseButton1Click:Connect(function()
+	clicking = not clicking
+	clickBtn.Text = "Auto Đánh [" .. (clicking and "ON" or "OFF") .. "]"
+end)
+toggleGUI.MouseButton1Click:Connect(function()
+	visible = not visible
+	frame.Visible = visible
+end)
+toggleHitbox.MouseButton1Click:Connect(function()
+	showHitbox = not showHitbox
+	toggleHitbox.Text = "Hiện Vùng Sát Thương [" .. (showHitbox and "ON" or "OFF") .. "]"
+end)
+
+-- Tìm mục tiêu gần nhất
+local function getNearestEnemy()
+	local nearest, minDist = nil, math.huge
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v ~= char and v.Humanoid.Health > 0 then
+			local dist = (v.HumanoidRootPart.Position - hrp.Position).Magnitude
+			if dist < minDist then
+				nearest = v
+				minDist = dist
+			end
+		end
+	end
+	return nearest
+end
+
+-- Theo dõi máu
+task.spawn(function()
+	while true do task.wait(0.2)
+		local target = getNearestEnemy()
+		if target and target:FindFirstChild("Humanoid") then
+			healthLabel.Text = "Boss: " .. math.floor(target.Humanoid.Health)
+		else
+			healthLabel.Text = "Boss: Không có"
+		end
+	end
+end)
+
+-- Auto click
+local VirtualInputManager = game:GetService("VirtualInputManager")
+task.spawn(function()
+	while true do task.wait(0.15)
+		if clicking then
+			pcall(function()
+				VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+				task.wait(0.05)
+				VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+			end)
+		end
+	end
+end)
+
+-- Auto aim
+task.spawn(function()
+	while true do task.wait()
+		if aiming then
+			local target = getNearestEnemy()
+			if target and target:FindFirstChild("HumanoidRootPart") then
+				hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+			end
+		end
+	end
+end)
+
+-- Đánh Boss
+local TweenService = game:GetService("TweenService")
+task.spawn(function()
+	while true do task.wait(0.03)
+		if running then
+			local dist = tonumber(distanceBox.Text) or 10
+			local speed = tonumber(speedBox.Text) or 2
+			local target = getNearestEnemy()
+			if target and target:FindFirstChild("HumanoidRootPart") then
+				local angle = tick() * speed
+				local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * dist
+				local goalPos = target.HumanoidRootPart.Position + offset
+				goalPos = Vector3.new(goalPos.X, hrp.Position.Y, goalPos.Z)
+				local goalCF = CFrame.new(goalPos, target.HumanoidRootPart.Position)
+				TweenService:Create(hrp, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {CFrame = goalCF}):Play()
+			end
+		end
+	end
+end)	local box = Instance.new("TextBox", frame)
+	box.Size = UDim2.new(0, 220, 0, 30)
+	box.Position = UDim2.new(0, 10, 0, posY + 20)
+	box.Text = tostring(defaultValue)
+	box.TextColor3 = Color3.new(1, 1, 1)
+	box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	box.Font = Enum.Font.SourceSans
+	box.TextSize = 16
+	box.BorderSizePixel = 0
+	return box
+end
+
+local function createButton(text, posY)
+	local btn = Instance.new("TextButton", frame)
+	btn.Size = UDim2.new(0, 220, 0, 30)
+	btn.Position = UDim2.new(0, 10, 0, posY)
+	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Text = text .. " [OFF]"
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 16
+	btn.BorderSizePixel = 0
+	return btn
+end
+
+-- Nhãn máu
+local healthLabel = Instance.new("TextLabel", gui)
+healthLabel.Size = UDim2.new(0, 200, 0, 30)
+healthLabel.Position = UDim2.new(1, -210, 0.05, 0)
+healthLabel.BackgroundTransparency = 0.2
+healthLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+healthLabel.TextColor3 = Color3.new(1, 0, 0)
+healthLabel.TextSize = 18
+healthLabel.Text = "Boss: Không có"
+
+-- Trạng thái
 local running, aiming, clicking, noclip, visible, showHitbox = false, false, false, false, true, false
 
 -- Nút
