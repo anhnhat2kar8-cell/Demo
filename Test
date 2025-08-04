@@ -1,40 +1,36 @@
--- Khung GUI chính (gọn hơn)
-local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "Menu_TT"
-gui.Enabled = false
+-- (phần đầu script bạn giữ nguyên)
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 250, 0, 200)
-frame.Position = UDim2.new(0.5, -125, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true
+-- Quay vòng quanh mục tiêu + Auto Attack + Auto Heal
+RunService.Heartbeat:Connect(function()
+	if running then
+		local target = getTarget()
+		if target and target:FindFirstChild("HumanoidRootPart") then
+			local angle = tick() * speed
+			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+			local goalPos = target.HumanoidRootPart.Position + offset
+			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+			tween:Play()
+			hum.AutoRotate = false
+			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
 
--- Viền cầu vồng (nếu muốn)
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
-stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			if autoAttack then attack() end
 
-task.spawn(function()
-	local hue = 0
-	while true do
-		hue = (hue + 0.01) % 1
-		stroke.Color = Color3.fromHSV(hue, 1, 1)
-		wait(0.05)
+			hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
+		end
 	end
-end)
 
--- Nút Bật/Tắt Boss
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(1, -20, 0, 30)
-toggle.Position = UDim2.new(0, 10, 0, 10)
-toggle.Text = "BẬT: Đánh Boss"
-toggle.TextColor3 = Color3.new(1,1,1)
-toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
-
--- Input khoảng cách
-local disLabel = Instance.new("TextLabel", frame)
-disLabel.Text = "Khoảng cách:"
+	-- ✅ Auto hồi máu khi máu dưới 50%
+	if hum.Health < hum.MaxHealth * 0.5 then
+		for _, item in pairs(lp.Backpack:GetChildren()) do
+			if item:IsA("Tool") and item.Name:lower():find("băng gạc") then
+				lp.Character.Humanoid:EquipTool(item)
+				task.wait(0.1)
+				pcall(function() item:Activate() end)
+				break
+			end
+		end
+	end
+end)disLabel.Text = "Khoảng cách:"
 disLabel.Size = UDim2.new(0, 100, 0, 25)
 disLabel.Position = UDim2.new(0, 10, 0, 50)
 disLabel.TextColor3 = Color3.new(1,1,1)
