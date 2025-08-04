@@ -19,7 +19,7 @@ gui.Name = "Menu_TT"
 gui.Enabled = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 250, 0, 210)
+frame.Size = UDim2.new(0, 250, 0, 200)
 frame.Position = UDim2.new(0.5, -150, 0.5, -135)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
