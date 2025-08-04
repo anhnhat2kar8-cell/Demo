@@ -1,40 +1,159 @@
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
+-- Gui + Auto đánh boss + Auto heal (băng gạc)
 
--- Biến
-local radius = 20
-local speed = 2
-local running = false
+-- Biến điều khiển
 local autoAttack = false
-local guiVisible = false
+local autoHeal = false
 
--- GUI chính (ẩn trước)
-local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "Menu_TT"
-gui.Enabled = false
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Position = UDim2.new(0.3, 0, 0.3, 0)
+Frame.Size = UDim2.new(0, 320, 0, 260)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.BorderSizePixel = 0
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 250, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -135)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true
+local UICorner = Instance.new("UICorner", Frame)
+UICorner.CornerRadius = UDim.new(0, 6)
 
--- Nút bật/tắt đánh boss
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(1, 0, 0, 40)
-toggle.Position = UDim2.new(0, 0, 0, 0)
-toggle.Text = "BẬT: Đánh Boss"
-toggle.TextColor3 = Color3.new(1,1,1)
-toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+-- Các thành phần giao diện
+local function createButton(text, posY)
+	local btn = Instance.new("TextButton", Frame)
+	btn.Size = UDim2.new(1, -20, 0, 30)
+	btn.Position = UDim2.new(0, 10, 0, posY)
+	btn.Text = text
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 20
+	btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+	return btn
+end
 
--- Input khoảng cách
-local disLabel = Instance.new("TextLabel", frame)
+local attackBtn = createButton("BẬT: Đánh Boss", 10)
+local autoBtn = createButton("BẬT: Auto Đánh", 160)
+local healBtn = createButton("BẬT: Auto Hồi Máu", 200)
+
+-- Input khoảng cách & tốc độ
+local distanceLabel = Instance.new("TextLabel", Frame)
+distanceLabel.Text = "Khoảng cách:"
+distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+distanceLabel.Position = UDim2.new(0, 10, 0, 50)
+distanceLabel.Size = UDim2.new(0, 120, 0, 25)
+distanceLabel.BackgroundTransparency = 1
+distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local distanceBox = Instance.new("TextBox", Frame)
+distanceBox.Position = UDim2.new(0, 130, 0, 50)
+distanceBox.Size = UDim2.new(0, 50, 0, 25)
+distanceBox.Text = "20"
+distanceBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+distanceBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local speedLabel = Instance.new("TextLabel", Frame)
+speedLabel.Text = "Tốc độ quay:"
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.Position = UDim2.new(0, 10, 0, 80)
+speedLabel.Size = UDim2.new(0, 120, 0, 25)
+speedLabel.BackgroundTransparency = 1
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local speedBox = Instance.new("TextBox", Frame)
+speedBox.Position = UDim2.new(0, 130, 0, 80)
+speedBox.Size = UDim2.new(0, 50, 0, 25)
+speedBox.Text = "2"
+speedBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- Hiển thị máu mục tiêu
+local healthLabel = Instance.new("TextLabel", Frame)
+healthLabel.Text = "Máu mục tiêu: ..."
+healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+healthLabel.Position = UDim2.new(0, 10, 0, 110)
+healthLabel.Size = UDim2.new(1, -20, 0, 30)
+healthLabel.BackgroundTransparency = 1
+healthLabel.TextSize = 22
+
+-- Tên TT
+local statusText = Instance.new("TextLabel", Frame)
+statusText.Text = "TT:MatNhanThuc"
+statusText.TextColor3 = Color3.fromRGB(0, 255, 127)
+statusText.Position = UDim2.new(0, 10, 0, 230)
+statusText.Size = UDim2.new(1, -20, 0, 30)
+statusText.BackgroundTransparency = 1
+statusText.TextScaled = true
+
+-- Tìm boss
+local function getBoss()
+	for _, v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v.Name == "Boss" then
+			return v
+		end
+	end
+end
+
+-- Đánh boss
+local function attackBoss()
+	while autoAttack do
+		local boss = getBoss()
+		if boss and boss:FindFirstChild("HumanoidRootPart") then
+			local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local distance = tonumber(distanceBox.Text) or 20
+				local speed = tonumber(speedBox.Text) or 2
+				hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, -distance)
+				hrp.CFrame = CFrame.lookAt(hrp.Position, boss.HumanoidRootPart.Position)
+				healthLabel.Text = "Máu mục tiêu: " .. math.floor(boss.Humanoid.Health)
+			end
+		end
+		task.wait(1 / speed)
+	end
+end
+
+-- Auto Heal
+local function autoHealFunc()
+	while autoHeal do
+		local human = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+		if human and human.Health < 80 then
+			local tool = nil
+			for _, item in ipairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
+				if item.Name:lower():find("băng") then
+					tool = item
+					break
+				end
+			end
+			if tool then
+				tool.Parent = game.Players.LocalPlayer.Character
+				task.wait(0.2)
+			end
+		end
+		task.wait(2)
+	end
+end
+
+-- Nút bật/tắt
+attackBtn.MouseButton1Click:Connect(function()
+	autoAttack = not autoAttack
+	attackBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Đánh Boss"
+	if autoAttack then
+		task.spawn(attackBoss)
+	end
+end)
+
+autoBtn.MouseButton1Click:Connect(function()
+	autoAttack = not autoAttack
+	autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
+	if autoAttack then
+		task.spawn(attackBoss)
+	end
+end)
+
+healBtn.MouseButton1Click:Connect(function()
+	autoHeal = not autoHeal
+	healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Hồi Máu"
+	if autoHeal then
+		task.spawn(autoHealFunc)
+	end
+end)local disLabel = Instance.new("TextLabel", frame)
 disLabel.Text = "Khoảng cách:"
 disLabel.Size = UDim2.new(0, 150, 0, 30)
 disLabel.Position = UDim2.new(0, 10, 0, 50)
