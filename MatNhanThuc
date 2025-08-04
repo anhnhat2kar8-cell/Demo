@@ -24,6 +24,16 @@ frame.Position = UDim2.new(0.5, -150, 0.5, -135)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
+-- Hiệu ứng chạy 7 màu cho khung GUI
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue = (hue + 0.005) % 1
+		local color = Color3.fromHSV(hue, 1, 1)
+		frame.BackgroundColor3 = color
+		wait(0.05)
+	end
+end)
 
 -- Nút bật/tắt đánh boss
 local toggle = Instance.new("TextButton", frame)
