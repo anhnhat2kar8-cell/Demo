@@ -1,150 +1,226 @@
--- 📦 Biến chính
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local mouse = player:GetMouse()
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- ⚙️ Cài đặt
+-- Biến
+local radius = 20
+local speed = 2
+local running = false
 local autoAttack = false
-local autoHeal = true
-local healThreshold = 0.5
-local healCooldown = 3
-local distance = 22
-local rotateSpeed = 2
-local targetBoss = nil
+local autoHeal = false
 
--- 📊 GUI
-local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "BossControl"
+-- GUI chính
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "Menu_TT"
+gui.Enabled = false
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 220)
-frame.Position = UDim2.new(0, 100, 0.5, -100)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 280, 0, 260)
+frame.Position = UDim2.new(0.5, -140, 0.5, -130)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
-frame.Parent = screenGui
 
--- Tiêu đề
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "BẬT: Đánh Boss"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.SourceSansBold
-title.TextScaled = true
+-- Nút bật đánh boss
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(1, 0, 0, 40)
+toggle.Text = "BẬT: Đánh Boss"
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
 
--- Ô nhập khoảng cách
-local distanceBox = Instance.new("TextBox", frame)
-distanceBox.PlaceholderText = "Khoảng cách"
-distanceBox.Text = tostring(distance)
-distanceBox.Position = UDim2.new(0, 20, 0, 40)
-distanceBox.Size = UDim2.new(0, 100, 0, 30)
+-- Khoảng cách
+local disLabel = Instance.new("TextLabel", frame)
+disLabel.Text = "Khoảng cách:"
+disLabel.Size = UDim2.new(0, 120, 0, 25)
+disLabel.Position = UDim2.new(0, 10, 0, 50)
+disLabel.TextColor3 = Color3.new(1,1,1)
+disLabel.BackgroundTransparency = 1
 
--- Ô nhập tốc độ quay
-local rotateBox = Instance.new("TextBox", frame)
-rotateBox.PlaceholderText = "Tốc độ quay"
-rotateBox.Text = tostring(rotateSpeed)
-rotateBox.Position = UDim2.new(0, 140, 0, 40)
-rotateBox.Size = UDim2.new(0, 100, 0, 30)
+local disInput = Instance.new("TextBox", frame)
+disInput.Size = UDim2.new(0, 100, 0, 25)
+disInput.Position = UDim2.new(0, 150, 0, 50)
+disInput.Text = tostring(radius)
+disInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+disInput.TextColor3 = Color3.new(1,1,1)
 
--- Label hiển thị máu mục tiêu
+-- Tốc độ quay
+local spdLabel = Instance.new("TextLabel", frame)
+spdLabel.Text = "Tốc độ quay:"
+spdLabel.Size = UDim2.new(0, 120, 0, 25)
+spdLabel.Position = UDim2.new(0, 10, 0, 80)
+spdLabel.TextColor3 = Color3.new(1,1,1)
+spdLabel.BackgroundTransparency = 1
+
+local spdInput = Instance.new("TextBox", frame)
+spdInput.Size = UDim2.new(0, 100, 0, 25)
+spdInput.Position = UDim2.new(0, 150, 0, 80)
+spdInput.Text = tostring(speed)
+spdInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+spdInput.TextColor3 = Color3.new(1,1,1)
+
+-- Hiển thị máu mục tiêu
 local hpLabel = Instance.new("TextLabel", frame)
-hpLabel.Position = UDim2.new(0, 0, 0, 80)
-hpLabel.Size = UDim2.new(1, 0, 0, 30)
-hpLabel.Text = "Máu mục tiêu: ???"
-hpLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+hpLabel.Size = UDim2.new(1, -20, 0, 25)
+hpLabel.Position = UDim2.new(0, 10, 0, 110)
+hpLabel.Text = "Máu mục tiêu: ..."
+hpLabel.TextColor3 = Color3.new(1, 0, 0)
 hpLabel.BackgroundTransparency = 1
-hpLabel.Font = Enum.Font.SourceSansBold
 hpLabel.TextScaled = true
 
--- Nút auto đánh
+-- Hiển thị máu của bạn
+local myHpLabel = Instance.new("TextLabel", frame)
+myHpLabel.Size = UDim2.new(1, -20, 0, 25)
+myHpLabel.Position = UDim2.new(0, 10, 0, 135)
+myHpLabel.Text = "Máu bạn: ..."
+myHpLabel.TextColor3 = Color3.new(0, 1, 0)
+myHpLabel.BackgroundTransparency = 1
+myHpLabel.TextScaled = true
+
+-- Auto Đánh
 local autoBtn = Instance.new("TextButton", frame)
-autoBtn.Text = "TẮT: Auto Đánh"
-autoBtn.Position = UDim2.new(0.5, -100, 0, 120)
-autoBtn.Size = UDim2.new(0, 200, 0, 30)
-autoBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoBtn.Font = Enum.Font.SourceSansBold
-autoBtn.TextScaled = true
+autoBtn.Size = UDim2.new(1, 0, 0, 30)
+autoBtn.Position = UDim2.new(0, 0, 0, 165)
+autoBtn.Text = "BẬT: Auto Đánh"
+autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+autoBtn.TextColor3 = Color3.new(1,1,1)
 
--- Nút auto hồi máu
+-- Auto Băng Gạc
 local healBtn = Instance.new("TextButton", frame)
-healBtn.Text = "TẮT: Auto Hồi Máu"
-healBtn.Position = UDim2.new(0.5, -100, 0, 160)
-healBtn.Size = UDim2.new(0, 200, 0, 30)
-healBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-healBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-healBtn.Font = Enum.Font.SourceSansBold
-healBtn.TextScaled = true
+healBtn.Size = UDim2.new(1, 0, 0, 30)
+healBtn.Position = UDim2.new(0, 0, 0, 200)
+healBtn.Text = "BẬT: Auto Băng Gạc"
+healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+healBtn.TextColor3 = Color3.new(1,1,1)
 
--- 👊 Auto Attack Loop
-spawn(function()
+-- Hiệu ứng đổi màu tên
+local nameText = Instance.new("TextLabel", frame)
+nameText.Size = UDim2.new(1, 0, 0, 30)
+nameText.Position = UDim2.new(0, 0, 0, 230)
+nameText.Text = "TT:MatNhanThuc"
+nameText.BackgroundTransparency = 1
+nameText.TextScaled = true
+
+task.spawn(function()
+	local hue = 0
 	while true do
+		hue = (hue + 1) % 360
+		nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
 		wait(0.1)
-		if autoAttack and targetBoss and targetBoss:FindFirstChild("Humanoid") then
-			local bossHumanoid = targetBoss.Humanoid
-			hpLabel.Text = "Máu mục tiêu: " .. math.floor(bossHumanoid.Health)
-			if bossHumanoid.Health <= 0 then
-				hpLabel.Text = "Máu mục tiêu: Đã chết"
-				targetBoss = nil
-			else
-				-- Teleport & tấn công
-				character:MoveTo(targetBoss.HumanoidRootPart.Position + Vector3.new(0, 0, -distance))
-				character:SetPrimaryPartCFrame(CFrame.new(character.PrimaryPart.Position, targetBoss.HumanoidRootPart.Position))
-				local attackRemote = ReplicatedStorage:FindFirstChild("AttackRemote")
-				if attackRemote then
-					attackRemote:FireServer()
+	end
+end)
+
+-- GUI mật khẩu
+local passGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+passGui.Name = "PassCheck"
+
+local passFrame = Instance.new("Frame", passGui)
+passFrame.Size = UDim2.new(0, 250, 0, 130)
+passFrame.Position = UDim2.new(0.5, -125, 0.5, -65)
+passFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+local title = Instance.new("TextLabel", passFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 5)
+title.Text = "Nhập Mật Khẩu"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.TextScaled = true
+
+local input = Instance.new("TextBox", passFrame)
+input.Size = UDim2.new(0.9, 0, 0, 30)
+input.Position = UDim2.new(0.05, 0, 0, 45)
+input.PlaceholderText = "••••••••"
+input.BackgroundColor3 = Color3.fromRGB(50,50,50)
+input.TextColor3 = Color3.new(1,1,1)
+
+local btn = Instance.new("TextButton", passFrame)
+btn.Size = UDim2.new(0.5, 0, 0, 30)
+btn.Position = UDim2.new(0.25, 0, 0, 85)
+btn.Text = "Xác nhận"
+btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+btn.TextColor3 = Color3.new(1,1,1)
+
+btn.MouseButton1Click:Connect(function()
+	if input.Text == "vietnhat28" then
+		gui.Enabled = true
+		passGui:Destroy()
+	end
+end)
+
+-- Hàm tìm mục tiêu
+local function getTarget()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+			return v
+		end
+	end
+end
+
+-- Auto Heal
+task.spawn(function()
+	while true do
+		if autoHeal and hum.Health < 80 then
+			for _,tool in ipairs(lp.Backpack:GetChildren()) do
+				if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+					tool.Parent = lp.Character
+					wait(0.1)
+					tool:Activate()
+					wait(0.5)
+					break
 				end
 			end
 		end
+		wait(1)
 	end
 end)
 
--- ❤️ Auto Heal Loop
-spawn(function()
-	while wait(healCooldown) do
-		if autoHeal and humanoid.Health / humanoid.MaxHealth < healThreshold then
-			local bandageRemote = ReplicatedStorage:FindFirstChild("UseBandage")
-			if bandageRemote then
-				bandageRemote:FireServer()
-			end
+-- Auto Attack
+local function attack()
+	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+	if tool then pcall(function() tool:Activate() end) end
+end
+
+-- Điều khiển
+RunService.Heartbeat:Connect(function()
+	if running then
+		local target = getTarget()
+		if target and target:FindFirstChild("HumanoidRootPart") then
+			local angle = tick() * speed
+			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+			local goalPos = target.HumanoidRootPart.Position + offset
+			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+			tween:Play()
+			hum.AutoRotate = false
+			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+
+			if autoAttack then attack() end
+
+			hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
 		end
 	end
+	-- Cập nhật máu của bạn
+	myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
 end)
 
--- 📌 Kích hoạt các nút
+-- Nút bấm
+toggle.MouseButton1Click:Connect(function()
+	running = not running
+	toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
+end)
+
+disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
+spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
+
 autoBtn.MouseButton1Click:Connect(function()
 	autoAttack = not autoAttack
-	autoBtn.Text = (autoAttack and "TẮT: Auto Đánh" or "BẬT: Auto Đánh")
+	autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
 end)
 
 healBtn.MouseButton1Click:Connect(function()
 	autoHeal = not autoHeal
-	healBtn.Text = (autoHeal and "TẮT: Auto Hồi Máu" or "BẬT: Auto Hồi Máu")
-end)
-
--- 🧠 Cập nhật giá trị khoảng cách/tốc độ
-distanceBox.FocusLost:Connect(function()
-	local val = tonumber(distanceBox.Text)
-	if val then distance = val end
-end)
-
-rotateBox.FocusLost:Connect(function()
-	local val = tonumber(rotateBox.Text)
-	if val then rotateSpeed = val end
-end)
-
--- 🎯 Xác định boss khi nhấn chuột
-mouse.Button1Down:Connect(function()
-	local target = mouse.Target
-	if target and target:FindFirstAncestorWhichIsA("Model") then
-		local model = target:FindFirstAncestorWhichIsA("Model")
-		if model:FindFirstChild("Humanoid") then
-			targetBoss = model
-			hpLabel.Text = "Đã chọn Boss!"
-		end
-	end
+	healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
 end)
