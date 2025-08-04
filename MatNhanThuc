@@ -91,10 +91,11 @@ nameText.TextScaled = true
 -- Hiệu ứng nhấp nháy cho tên menu
 task.spawn(function()
 	while true do
+		nameText.TextColor3 = Color3.fromRGB(math.random(150,255), math.random(150,255), math.random(150,255))
 		nameText.TextTransparency = 0.2
-		wait(0.3)
-		nameText.TextTransparency = 0.8
-		wait(0.3)
+		wait(0.2)
+		nameText.TextTransparency = 0.7
+		wait(0.2)
 	end
 end)
 
