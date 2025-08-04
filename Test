@@ -1,0 +1,101 @@
+-- Khung GUI chính (gọn hơn)
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "Menu_TT"
+gui.Enabled = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 200)
+frame.Position = UDim2.new(0.5, -125, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+
+-- Viền cầu vồng (nếu muốn)
+local stroke = Instance.new("UIStroke", frame)
+stroke.Thickness = 3
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue = (hue + 0.01) % 1
+		stroke.Color = Color3.fromHSV(hue, 1, 1)
+		wait(0.05)
+	end
+end)
+
+-- Nút Bật/Tắt Boss
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(1, -20, 0, 30)
+toggle.Position = UDim2.new(0, 10, 0, 10)
+toggle.Text = "BẬT: Đánh Boss"
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+
+-- Input khoảng cách
+local disLabel = Instance.new("TextLabel", frame)
+disLabel.Text = "Khoảng cách:"
+disLabel.Size = UDim2.new(0, 100, 0, 25)
+disLabel.Position = UDim2.new(0, 10, 0, 50)
+disLabel.TextColor3 = Color3.new(1,1,1)
+disLabel.BackgroundTransparency = 1
+disLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local disInput = Instance.new("TextBox", frame)
+disInput.Size = UDim2.new(0, 100, 0, 25)
+disInput.Position = UDim2.new(0, 130, 0, 50)
+disInput.Text = tostring(radius)
+disInput.BackgroundColor3 = Color3.fromRGB(60,60,60)
+disInput.TextColor3 = Color3.new(1,1,1)
+
+-- Input tốc độ
+local spdLabel = Instance.new("TextLabel", frame)
+spdLabel.Text = "Tốc độ quay:"
+spdLabel.Size = UDim2.new(0, 100, 0, 25)
+spdLabel.Position = UDim2.new(0, 10, 0, 80)
+spdLabel.TextColor3 = Color3.new(1,1,1)
+spdLabel.BackgroundTransparency = 1
+spdLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local spdInput = Instance.new("TextBox", frame)
+spdInput.Size = UDim2.new(0, 100, 0, 25)
+spdInput.Position = UDim2.new(0, 130, 0, 80)
+spdInput.Text = tostring(speed)
+spdInput.BackgroundColor3 = Color3.fromRGB(60,60,60)
+spdInput.TextColor3 = Color3.new(1,1,1)
+
+-- Máu mục tiêu
+local hpLabel = Instance.new("TextLabel", frame)
+hpLabel.Size = UDim2.new(1, -20, 0, 25)
+hpLabel.Position = UDim2.new(0, 10, 0, 110)
+hpLabel.Text = "Máu mục tiêu: ..."
+hpLabel.TextColor3 = Color3.new(1, 0, 0)
+hpLabel.BackgroundTransparency = 1
+hpLabel.TextScaled = true
+
+-- Auto đánh
+local autoBtn = Instance.new("TextButton", frame)
+autoBtn.Size = UDim2.new(1, -20, 0, 25)
+autoBtn.Position = UDim2.new(0, 10, 0, 140)
+autoBtn.Text = "BẬT: Auto Đánh"
+autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+autoBtn.TextColor3 = Color3.new(1,1,1)
+
+-- Tên menu (7 màu nếu có)
+local nameText = Instance.new("TextLabel", frame)
+nameText.Size = UDim2.new(1, -20, 0, 25)
+nameText.Position = UDim2.new(0, 10, 0, 170)
+nameText.Text = "TT:MatNhanThuc"
+nameText.TextScaled = true
+nameText.BackgroundTransparency = 1
+nameText.TextColor3 = Color3.fromRGB(0, 170, 255)
+
+-- Hiệu ứng 7 màu cho tên menu
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue = (hue + 0.01) % 1
+		nameText.TextColor3 = Color3.fromHSV(hue, 1, 1)
+		wait(0.05)
+	end
+end)
