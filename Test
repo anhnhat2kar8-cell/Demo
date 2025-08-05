@@ -1,257 +1,204 @@
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
+--// Load Orion Library
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
--- Biến
-local radius = 20
-local speed = 2
-local running = false
-local autoAttack = false
-local autoHeal = false
-local autoLoot = false
+--// Cửa sổ chính
+local Window = OrionLib:MakeWindow({
+    Name = "🇻🇳 TestHub By VietNhat",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "TestHub"
+})
 
--- GUI chính
-local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "Menu_TT"
-gui.Enabled = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 280, 0, 300)
-frame.Position = UDim2.new(0.5, -140, 0.5, -150)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.Active = true
-frame.Draggable = true
-
--- Nút bật đánh boss
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(1, 0, 0, 40)
-toggle.Text = "BẬT: Đánh Boss"
-toggle.TextColor3 = Color3.new(1,1,1)
-toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
-
--- Khoảng cách
-local disLabel = Instance.new("TextLabel", frame)
-disLabel.Text = "Khoảng cách:"
-disLabel.Size = UDim2.new(0, 120, 0, 25)
-disLabel.Position = UDim2.new(0, 10, 0, 50)
-disLabel.TextColor3 = Color3.new(1,1,1)
-disLabel.BackgroundTransparency = 1
-
-local disInput = Instance.new("TextBox", frame)
-disInput.Size = UDim2.new(0, 100, 0, 25)
-disInput.Position = UDim2.new(0, 150, 0, 50)
-disInput.Text = tostring(radius)
-disInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-disInput.TextColor3 = Color3.new(1,1,1)
-
--- Tốc độ quay
-local spdLabel = Instance.new("TextLabel", frame)
-spdLabel.Text = "Tốc độ quay:"
-spdLabel.Size = UDim2.new(0, 120, 0, 25)
-spdLabel.Position = UDim2.new(0, 10, 0, 80)
-spdLabel.TextColor3 = Color3.new(1,1,1)
-spdLabel.BackgroundTransparency = 1
-
-local spdInput = Instance.new("TextBox", frame)
-spdInput.Size = UDim2.new(0, 100, 0, 25)
-spdInput.Position = UDim2.new(0, 150, 0, 80)
-spdInput.Text = tostring(speed)
-spdInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-spdInput.TextColor3 = Color3.new(1,1,1)
-
--- Hiển thị máu mục tiêu
-local hpLabel = Instance.new("TextLabel", frame)
-hpLabel.Size = UDim2.new(1, -20, 0, 25)
-hpLabel.Position = UDim2.new(0, 10, 0, 110)
-hpLabel.Text = "Máu mục tiêu: ..."
-hpLabel.TextColor3 = Color3.new(1, 0, 0)
-hpLabel.BackgroundTransparency = 1
-hpLabel.TextScaled = true
-
--- Hiển thị máu của bạn
-local myHpLabel = Instance.new("TextLabel", frame)
-myHpLabel.Size = UDim2.new(1, -20, 0, 25)
-myHpLabel.Position = UDim2.new(0, 10, 0, 135)
-myHpLabel.Text = "Máu bạn: ..."
-myHpLabel.TextColor3 = Color3.new(0, 1, 0)
-myHpLabel.BackgroundTransparency = 1
-myHpLabel.TextScaled = true
-
--- Auto Đánh
-local autoBtn = Instance.new("TextButton", frame)
-autoBtn.Size = UDim2.new(1, 0, 0, 30)
-autoBtn.Position = UDim2.new(0, 0, 0, 165)
-autoBtn.Text = "BẬT: Auto Đánh"
-autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-autoBtn.TextColor3 = Color3.new(1,1,1)
+--// ===== TAB MAIN =====
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
 -- Auto Băng Gạc
-local healBtn = Instance.new("TextButton", frame)
-healBtn.Size = UDim2.new(1, 0, 0, 30)
-healBtn.Position = UDim2.new(0, 0, 0, 200)
-healBtn.Text = "BẬT: Auto Băng Gạc"
-healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-healBtn.TextColor3 = Color3.new(1,1,1)
+MainTab:AddToggle({
+    Name = "Auto Băng Gạc",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoBangGac = Value
+        while getgenv().AutoBangGac do
+            task.wait(1)
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.Health = char.Humanoid.MaxHealth
+            end
+        end
+    end
+})
 
--- Auto Lụm
-local lootBtn = Instance.new("TextButton", frame)
-lootBtn.Size = UDim2.new(1, 0, 0, 30)
-lootBtn.Position = UDim2.new(0, 0, 0, 235)
-lootBtn.Text = "BẬT: Auto Lụm"
-lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-lootBtn.TextColor3 = Color3.new(1,1,1)
+-- Auto Buy Băng Gạc
+MainTab:AddToggle({
+    Name = "Auto Buy Băng Gạc",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoBuy = Value
+        while getgenv().AutoBuy do
+            task.wait(2)
+            print("Đang mua băng gạc...") 
+            -- Thêm code mua item shop nếu game hỗ trợ
+        end
+    end
+})
 
--- Hiệu ứng đổi màu tên
-local nameText = Instance.new("TextLabel", frame)
-nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 270)
-nameText.Text = "TT:MatNhanThuc"
-nameText.BackgroundTransparency = 1
-nameText.TextScaled = true
+--// ===== TAB FARM =====
+local FarmTab = Window:MakeTab({
+    Name = "Farm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
-task.spawn(function()
-	local hue = 0
-	while true do
-		hue = (hue + 1) % 360
-		nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
-		wait(0.1)
-	end
-end)
+-- Auto Farm Gỗ
+FarmTab:AddToggle({
+    Name = "Auto Farm Gỗ",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoFarm = Value
+        while getgenv().AutoFarm do
+            task.wait(2)
+            print("Đang farm gỗ...")
+        end
+    end
+})
 
--- GUI mật khẩu
-local passGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-passGui.Name = "PassCheck"
+-- Auto Lượm Đồ
+FarmTab:AddToggle({
+    Name = "Auto Lượm Đồ",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoLoot = Value
+        while getgenv().AutoLoot do
+            task.wait(1)
+            for _, item in pairs(workspace:GetChildren()) do
+                if item:IsA("Tool") or (item:IsA("Part") and item:FindFirstChild("TouchInterest")) then
+                    firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, item, 0)
+                    firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, item, 1)
+                    print("Lượm đồ: " .. item.Name)
+                end
+            end
+        end
+    end
+})
 
-local passFrame = Instance.new("Frame", passGui)
-passFrame.Size = UDim2.new(0, 250, 0, 130)
-passFrame.Position = UDim2.new(0.5, -125, 0.5, -65)
-passFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+--// ===== TAB COMBAT =====
+local CombatTab = Window:MakeTab({
+    Name = "Combat",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
-local title = Instance.new("TextLabel", passFrame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 5)
-title.Text = "Nhập Mật Khẩu"
-title.TextColor3 = Color3.new(1,1,1)
-title.BackgroundTransparency = 1
-title.TextScaled = true
+-- Auto Đánh Boss
+CombatTab:AddToggle({
+    Name = "Auto Đánh Boss",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoBoss = Value
+        while getgenv().AutoBoss do
+            task.wait(0.5)
+            local char = game.Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, mob in pairs(workspace:GetChildren()) do
+                    if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 and mob.Name:match("Boss") then
+                        hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+                        game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                        print("Đang đánh Boss: " .. mob.Name)
+                    end
+                end
+            end
+        end
+    end
+})
 
-local input = Instance.new("TextBox", passFrame)
-input.Size = UDim2.new(0.9, 0, 0, 30)
-input.Position = UDim2.new(0.05, 0, 0, 45)
-input.PlaceholderText = "••••••••"
-input.BackgroundColor3 = Color3.fromRGB(50,50,50)
-input.TextColor3 = Color3.new(1,1,1)
+-- Auto Đánh Quái
+CombatTab:AddToggle({
+    Name = "Auto Đánh Quái",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoMob = Value
+        while getgenv().AutoMob do
+            task.wait(0.5)
+            local char = game.Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                for _, mob in pairs(workspace:GetChildren()) do
+                    if mob:FindFirstChild("Humanoid") 
+                       and mob.Humanoid.Health > 0 
+                       and not mob.Name:match("Boss") 
+                       and mob ~= char then
+                        hrp.CFrame = mob.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+                        game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                        print("Đang đánh Quái: " .. mob.Name)
+                    end
+                end
+            end
+        end
+    end
+})
 
-local btn = Instance.new("TextButton", passFrame)
-btn.Size = UDim2.new(0.5, 0, 0, 30)
-btn.Position = UDim2.new(0.25, 0, 0, 85)
-btn.Text = "Xác nhận"
-btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-btn.TextColor3 = Color3.new(1,1,1)
+-- Auto Teleport tới quái gần nhất
+CombatTab:AddToggle({
+    Name = "Auto Teleport Quái gần nhất",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoTPMob = Value
+        while getgenv().AutoTPMob do
+            task.wait(1)
+            local char = game.Players.LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local nearest, dist = nil, math.huge
+                for _, mob in pairs(workspace:GetChildren()) do
+                    if mob:FindFirstChild("Humanoid") 
+                       and mob.Humanoid.Health > 0 
+                       and not mob.Name:match("Boss") 
+                       and mob ~= char then
+                        local d = (hrp.Position - mob.HumanoidRootPart.Position).Magnitude
+                        if d < dist then
+                            dist = d
+                            nearest = mob
+                        end
+                    end
+                end
+                if nearest then
+                    hrp.CFrame = nearest.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+                    game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                    print("Dịch chuyển & đánh quái: " .. nearest.Name)
+                end
+            end
+        end
+    end
+})
 
-btn.MouseButton1Click:Connect(function()
-	if input.Text == "vietnhat28" then
-		gui.Enabled = true
-		passGui:Destroy()
-	end
-end)
+--// ===== TAB SETTINGS =====
+local SettingsTab = Window:MakeTab({
+    Name = "Settings",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
--- Hàm tìm mục tiêu
-local function getTarget()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-			return v
-		end
-	end
-end
+-- Bật nhạc nền
+SettingsTab:AddToggle({
+    Name = "Bật nhạc nền",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            local Sound = Instance.new("Sound", game.Workspace)
+            Sound.SoundId = "rbxassetid://1837465145" -- đổi ID tuỳ thích
+            Sound.Looped = true
+            Sound:Play()
+        else
+            for _,v in pairs(game.Workspace:GetChildren()) do
+                if v:IsA("Sound") then v:Destroy() end
+            end
+        end
+    end
+})
 
--- Auto Heal
-task.spawn(function()
-	while true do
-		if autoHeal and hum.Health < 80 then
-			for _,tool in ipairs(lp.Backpack:GetChildren()) do
-				if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-					tool.Parent = lp.Character
-					wait(0.1)
-					tool:Activate()
-					wait(0.5)
-					break
-				end
-			end
-		end
-		wait(1)
-	end
-end)
-
--- Auto Loot
-task.spawn(function()
-	while true do
-		if autoLoot then
-			for _,prompt in pairs(workspace:GetDescendants()) do
-				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-					if dist < 15 then -- trong phạm vi 15 studs
-						fireproximityprompt(prompt)
-						wait(0.2)
-					end
-				end
-			end
-		end
-		wait(0.5)
-	end
-end)
-
--- Auto Attack
-local function attack()
-	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-	if tool then pcall(function() tool:Activate() end) end
-end
-
--- Điều khiển
-RunService.Heartbeat:Connect(function()
-	if running then
-		local target = getTarget()
-		if target and target:FindFirstChild("HumanoidRootPart") then
-			local angle = tick() * speed
-			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-			local goalPos = target.HumanoidRootPart.Position + offset
-			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
-			tween:Play()
-			hum.AutoRotate = false
-			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-
-			if autoAttack then attack() end
-
-			hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
-		end
-	end
-	myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
-
--- Nút bấm
-toggle.MouseButton1Click:Connect(function()
-	running = not running
-	toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
-end)
-
-disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
-spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
-
-autoBtn.MouseButton1Click:Connect(function()
-	autoAttack = not autoAttack
-	autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
-end)
-
-healBtn.MouseButton1Click:Connect(function()
-	autoHeal = not autoHeal
-	healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
-end)
-
-lootBtn.MouseButton1Click:Connect(function()
-	autoLoot = not autoLoot
-	lootBtn.Text = (autoLoot and "TẮT" or "BẬT") .. ": Auto Lụm"
-end)
+--// Khởi chạy
+OrionLib:Init()
