@@ -11,7 +11,8 @@ local radius = 20
 local speed = 2
 local running = false
 local autoAttack = false
-local guiVisible = false
+local autoHeal = false
+local autoLoot = false
 
 -- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
@@ -19,18 +20,20 @@ gui.Name = "Menu_TT"
 gui.Enabled = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 280, 0, 230)
-frame.Position = UDim2.new(0.5, -140, 0.5, -115)
+frame.Size = UDim2.new(0, 280, 0, 300)
+frame.Position = UDim2.new(0.5, -140, 0.5, -150)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
 
+-- Nút bật đánh boss
 local toggle = Instance.new("TextButton", frame)
 toggle.Size = UDim2.new(1, 0, 0, 40)
 toggle.Text = "BẬT: Đánh Boss"
 toggle.TextColor3 = Color3.new(1,1,1)
 toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
 
+-- Khoảng cách
 local disLabel = Instance.new("TextLabel", frame)
 disLabel.Text = "Khoảng cách:"
 disLabel.Size = UDim2.new(0, 120, 0, 25)
@@ -45,6 +48,7 @@ disInput.Text = tostring(radius)
 disInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 disInput.TextColor3 = Color3.new(1,1,1)
 
+-- Tốc độ quay
 local spdLabel = Instance.new("TextLabel", frame)
 spdLabel.Text = "Tốc độ quay:"
 spdLabel.Size = UDim2.new(0, 120, 0, 25)
@@ -59,30 +63,56 @@ spdInput.Text = tostring(speed)
 spdInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 spdInput.TextColor3 = Color3.new(1,1,1)
 
+-- Hiển thị máu mục tiêu
 local hpLabel = Instance.new("TextLabel", frame)
-hpLabel.Size = UDim2.new(1, -20, 0, 30)
+hpLabel.Size = UDim2.new(1, -20, 0, 25)
 hpLabel.Position = UDim2.new(0, 10, 0, 110)
 hpLabel.Text = "Máu mục tiêu: ..."
 hpLabel.TextColor3 = Color3.new(1, 0, 0)
 hpLabel.BackgroundTransparency = 1
 hpLabel.TextScaled = true
 
+-- Hiển thị máu của bạn
+local myHpLabel = Instance.new("TextLabel", frame)
+myHpLabel.Size = UDim2.new(1, -20, 0, 25)
+myHpLabel.Position = UDim2.new(0, 10, 0, 135)
+myHpLabel.Text = "Máu bạn: ..."
+myHpLabel.TextColor3 = Color3.new(0, 1, 0)
+myHpLabel.BackgroundTransparency = 1
+myHpLabel.TextScaled = true
+
+-- Auto Đánh
 local autoBtn = Instance.new("TextButton", frame)
 autoBtn.Size = UDim2.new(1, 0, 0, 30)
-autoBtn.Position = UDim2.new(0, 0, 0, 145)
+autoBtn.Position = UDim2.new(0, 0, 0, 165)
 autoBtn.Text = "BẬT: Auto Đánh"
 autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 autoBtn.TextColor3 = Color3.new(1,1,1)
 
+-- Auto Băng Gạc
+local healBtn = Instance.new("TextButton", frame)
+healBtn.Size = UDim2.new(1, 0, 0, 30)
+healBtn.Position = UDim2.new(0, 0, 0, 200)
+healBtn.Text = "BẬT: Auto Băng Gạc"
+healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+healBtn.TextColor3 = Color3.new(1,1,1)
+
+-- Auto Lụm
+local lootBtn = Instance.new("TextButton", frame)
+lootBtn.Size = UDim2.new(1, 0, 0, 30)
+lootBtn.Position = UDim2.new(0, 0, 0, 235)
+lootBtn.Text = "BẬT: Auto Lụm"
+lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+lootBtn.TextColor3 = Color3.new(1,1,1)
+
 -- Hiệu ứng đổi màu tên
 local nameText = Instance.new("TextLabel", frame)
 nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 185)
+nameText.Position = UDim2.new(0, 0, 0, 270)
 nameText.Text = "TT:MatNhanThuc"
 nameText.BackgroundTransparency = 1
 nameText.TextScaled = true
 
--- Hiệu ứng chạy màu liên tục
 task.spawn(function()
 	local hue = 0
 	while true do
@@ -92,7 +122,7 @@ task.spawn(function()
 	end
 end)
 
--- Giao diện nhập mật khẩu
+-- GUI mật khẩu
 local passGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 passGui.Name = "PassCheck"
 
@@ -130,7 +160,7 @@ btn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Tìm mục tiêu gần
+-- Hàm tìm mục tiêu
 local function getTarget()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
@@ -139,10 +169,10 @@ local function getTarget()
 	end
 end
 
--- Auto dùng băng gạc khi máu thấp
+-- Auto Heal
 task.spawn(function()
 	while true do
-		if hum.Health < 80 then
+		if autoHeal and hum.Health < 80 then
 			for _,tool in ipairs(lp.Backpack:GetChildren()) do
 				if tool:IsA("Tool") and tool.Name:lower():find("băng") then
 					tool.Parent = lp.Character
@@ -157,13 +187,31 @@ task.spawn(function()
 	end
 end)
 
--- Auto Đánh
+-- Auto Loot
+task.spawn(function()
+	while true do
+		if autoLoot then
+			for _,prompt in pairs(workspace:GetDescendants()) do
+				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+					if dist < 15 then -- trong phạm vi 15 studs
+						fireproximityprompt(prompt)
+						wait(0.2)
+					end
+				end
+			end
+		end
+		wait(0.5)
+	end
+end)
+
+-- Auto Attack
 local function attack()
 	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
 	if tool then pcall(function() tool:Activate() end) end
 end
 
--- Quay vòng và đánh
+-- Điều khiển
 RunService.Heartbeat:Connect(function()
 	if running then
 		local target = getTarget()
@@ -175,12 +223,16 @@ RunService.Heartbeat:Connect(function()
 			tween:Play()
 			hum.AutoRotate = false
 			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+
 			if autoAttack then attack() end
+
 			hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
 		end
 	end
+	myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
 end)
 
+-- Nút bấm
 toggle.MouseButton1Click:Connect(function()
 	running = not running
 	toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
@@ -192,4 +244,14 @@ spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed e
 autoBtn.MouseButton1Click:Connect(function()
 	autoAttack = not autoAttack
 	autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
+end)
+
+healBtn.MouseButton1Click:Connect(function()
+	autoHeal = not autoHeal
+	healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
+end)
+
+lootBtn.MouseButton1Click:Connect(function()
+	autoLoot = not autoLoot
+	lootBtn.Text = (autoLoot and "TẮT" or "BẬT") .. ": Auto Lụm"
 end)
