@@ -42,7 +42,7 @@ end)
 -- Nút bật đánh boss
 local toggle = Instance.new("TextButton", frame)
 toggle.Size = UDim2.new(1, 0, 0, 40)
-toggle.Text = "✅: Đánh Boss"
+toggle.Text = "BẬT: Đánh Boss"
 toggle.TextColor3 = Color3.new(1,1,1)
 toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
 
@@ -98,7 +98,7 @@ myHpLabel.TextScaled = true
 local autoBtn = Instance.new("TextButton", frame)
 autoBtn.Size = UDim2.new(1, 0, 0, 30)
 autoBtn.Position = UDim2.new(0, 0, 0, 165)
-autoBtn.Text = "✅: Auto Đánh"
+autoBtn.Text = "BẬT: Auto Đánh"
 autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 autoBtn.TextColor3 = Color3.new(1,1,1)
 
@@ -106,7 +106,7 @@ autoBtn.TextColor3 = Color3.new(1,1,1)
 local healBtn = Instance.new("TextButton", frame)
 healBtn.Size = UDim2.new(1, 0, 0, 30)
 healBtn.Position = UDim2.new(0, 0, 0, 200)
-healBtn.Text = "✅: Auto Băng Gạc"
+healBtn.Text = "BẬT: Auto Băng Gạc"
 healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 healBtn.TextColor3 = Color3.new(1,1,1)
 
@@ -114,7 +114,7 @@ healBtn.TextColor3 = Color3.new(1,1,1)
 local lootBtn = Instance.new("TextButton", frame)
 lootBtn.Size = UDim2.new(1, 0, 0, 30)
 lootBtn.Position = UDim2.new(0, 0, 0, 235)
-lootBtn.Text = "✅: Auto Lụm"
+lootBtn.Text = "BẬT: Auto Lụm"
 lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 lootBtn.TextColor3 = Color3.new(1,1,1)
 
