@@ -1,42 +1,173 @@
--- Tên hiệu ứng đổi màu (nằm trên cùng)
-local nameText = Instance.new("TextLabel", frame)
-nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 0)
-nameText.Text = "TT:MatNhanThuc"
-nameText.BackgroundTransparency = 1
-nameText.TextScaled = true
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
+-- Biến
+local radius = 20
+local speed = 2
+local autoAttack = false
+local autoHeal = false
+local autoLoot = false
+
+-- GUI chính (ẩn ban đầu, chỉ mở khi đúng mật khẩu)
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "Menu_TT"
+gui.Enabled = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 280, 0, 300)
+frame.Position = UDim2.new(0.5, -140, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+frame.BorderSizePixel = 4
+
+-- Viền 7 màu
 task.spawn(function()
     local hue = 0
-    while true do
+    while frame.Parent do
         hue = (hue + 1) % 360
-        nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
-        wait(0.1)
+        frame.BorderColor3 = Color3.fromHSV(hue/360,1,1)
+        task.wait(0.05)
     end
 end)
 
--- Khoảng cách
-local disLabel = Instance.new("TextLabel", frame)
-disLabel.Text = "Khoảng cách:"
-disLabel.Size = UDim2.new(0, 120, 0, 25)
-disLabel.Position = UDim2.new(0, 10, 0, 40)
-disLabel.TextColor3 = Color3.new(1,1,1)
-disLabel.BackgroundTransparency = 1
+-- Auto Đánh
+local autoBtn = Instance.new("TextButton", frame)
+autoBtn.Size = UDim2.new(1, 0, 0, 30)
+autoBtn.Position = UDim2.new(0, 0, 0, 40)
+autoBtn.Text = "BẬT: Auto Đánh"
+autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+autoBtn.TextColor3 = Color3.new(1,1,1)
+autoBtn.MouseButton1Click:Connect(function()
+    autoAttack = not autoAttack
+    autoBtn.Text = (autoAttack and "TẮT: Auto Đánh" or "BẬT: Auto Đánh")
+end)
 
-local disInput = Instance.new("TextBox", frame)
-disInput.Size = UDim2.new(0, 100, 0, 25)
-disInput.Position = UDim2.new(0, 150, 0, 40)
-disInput.Text = tostring(radius)
-disInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-disInput.TextColor3 = Color3.new(1,1,1)
+-- Auto Heal
+local healBtn = Instance.new("TextButton", frame)
+healBtn.Size = UDim2.new(1, 0, 0, 30)
+healBtn.Position = UDim2.new(0, 0, 0, 80)
+healBtn.Text = "BẬT: Auto Heal"
+healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+healBtn.TextColor3 = Color3.new(1,1,1)
+healBtn.MouseButton1Click:Connect(function()
+    autoHeal = not autoHeal
+    healBtn.Text = (autoHeal and "TẮT: Auto Heal" or "BẬT: Auto Heal")
+end)
 
--- Tốc độ quay
-local spdLabel = Instance.new("TextLabel", frame)
-spdLabel.Text = "Tốc độ quay:"
-spdLabel.Size = UDim2.new(0, 120, 0, 25)
-spdLabel.Position = UDim2.new(0, 10, 0, 70)
-spdLabel.TextColor3 = Color3.new(1,1,1)
-spdLabel.BackgroundTransparency = 1
+-- Auto Loot
+local lootBtn = Instance.new("TextButton", frame)
+lootBtn.Size = UDim2.new(1, 0, 0, 30)
+lootBtn.Position = UDim2.new(0, 0, 0, 120)
+lootBtn.Text = "BẬT: Auto Lụm"
+lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+lootBtn.TextColor3 = Color3.new(1,1,1)
+lootBtn.MouseButton1Click:Connect(function()
+    autoLoot = not autoLoot
+    lootBtn.Text = (autoLoot and "TẮT: Auto Lụm" or "BẬT: Auto Lụm")
+end)
 
-local spdInput = Instance.new("TextBox", frame)
-spdInput.Size = UDim2.new(0
+-- Nút đóng
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 5)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+closeBtn.BorderSizePixel = 0
+closeBtn.MouseButton1Click:Connect(function()
+    gui.Enabled = false
+end)
+
+-- GUI mật khẩu
+local passGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+passGui.Name = "PassCheck"
+
+local passFrame = Instance.new("Frame", passGui)
+passFrame.Size = UDim2.new(0, 250, 0, 130)
+passFrame.Position = UDim2.new(0.5, -125, 0.5, -65)
+passFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+local title = Instance.new("TextLabel", passFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 5)
+title.Text = "Nhập mật khẩu"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.TextScaled = true
+
+local passBox = Instance.new("TextBox", passFrame)
+passBox.Size = UDim2.new(1, -20, 0, 30)
+passBox.Position = UDim2.new(0, 10, 0, 45)
+passBox.PlaceholderText = "Mật khẩu..."
+passBox.Text = ""
+passBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+passBox.TextColor3 = Color3.new(1,1,1)
+
+local okBtn = Instance.new("TextButton", passFrame)
+okBtn.Size = UDim2.new(1, -20, 0, 30)
+okBtn.Position = UDim2.new(0, 10, 0, 85)
+okBtn.Text = "Xác nhận"
+okBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+okBtn.TextColor3 = Color3.new(1,1,1)
+
+-- Đặt mật khẩu
+local password = "12345"
+
+okBtn.MouseButton1Click:Connect(function()
+    if passBox.Text == password then
+        gui.Enabled = true
+        passGui:Destroy()
+    else
+        passBox.Text = ""
+        passBox.PlaceholderText = "Sai mật khẩu!"
+        passBox.PlaceholderColor3 = Color3.fromRGB(255,0,0)
+    end
+end)
+
+------------------------------------------------------
+-- Xử lý chức năng
+------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    if autoAttack then
+        -- ví dụ: tìm quái gần nhất và tấn công
+        for _, mob in ipairs(workspace:GetChildren()) do
+            if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
+                local dist = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < radius then
+                    -- giả sử có RemoteEvent "Attack" để đánh
+                    if game.ReplicatedStorage:FindFirstChild("Attack") then
+                        game.ReplicatedStorage.Attack:FireServer(mob)
+                    end
+                end
+            end
+        end
+    end
+
+    if autoHeal then
+        if hum.Health < hum.MaxHealth * 0.5 then
+            -- giả sử có RemoteEvent "UseItem" để dùng băng gạc
+            if game.ReplicatedStorage:FindFirstChild("UseItem") then
+                game.ReplicatedStorage.UseItem:FireServer("Bandage")
+            end
+        end
+    end
+
+    if autoLoot then
+        for _, drop in ipairs(workspace:GetChildren()) do
+            if drop:IsA("Tool") or drop.Name == "Loot" then
+                local dist = (drop.Position - hrp.Position).Magnitude
+                if dist < 15 then
+                    firetouchinterest(hrp, drop, 0)
+                    task.wait()
+                    firetouchinterest(hrp, drop, 1)
+                end
+            end
+        end
+    end
+end)
