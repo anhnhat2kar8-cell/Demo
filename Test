@@ -39,6 +39,23 @@ task.spawn(function()
     end
 end)
 
+-- Hiệu ứng đổi màu tên
+local nameText = Instance.new("TextLabel", frame)
+nameText.Size = UDim2.new(1, 0, 0, 30)
+nameText.Position = UDim2.new(0, 0, 0, 270)
+nameText.Text = "TT:MatNhanThuc"
+nameText.BackgroundTransparency = 1
+nameText.TextScaled = true
+
+task.spawn(function()
+    local hue = 0
+    while true do
+        hue = (hue + 1) % 360
+        nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
+        wait(0.1)
+    end
+end)
+
 -- Nút bật đánh boss
 local toggle = Instance.new("TextButton", frame)
 toggle.Size = UDim2.new(1, 0, 0, 40)
@@ -118,61 +135,6 @@ lootBtn.Text = "BẬT: Auto Lụm"
 lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 lootBtn.TextColor3 = Color3.new(1,1,1)
 
--- Auto Teleport Boss
-local tpBoss = false
-local tpBtn = Instance.new("TextButton", frame)
-tpBtn.Size = UDim2.new(1, 0, 0, 30)
-tpBtn.Position = UDim2.new(0, 0, 0, 270) -- dưới Auto Lụm
-tpBtn.Text = "BẬT: Teleport Boss"
-tpBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-tpBtn.TextColor3 = Color3.new(1,1,1)
-
-tpBtn.MouseButton1Click:Connect(function()
-    tpBoss = not tpBoss
-    tpBtn.Text = (tpBoss and "TẮT: Teleport Boss" or "BẬT: Teleport Boss")
-    
-    if tpBoss then
-        task.spawn(function()
-            while tpBoss and task.wait(1) do
-                -- tìm boss gần nhất
-                local nearest = nil
-                local dist = math.huge
-                for _, mob in pairs(workspace:GetChildren()) do
-                    if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") then
-                        if mob.Humanoid.Health > 0 then
-                            local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
-                            if d < dist then
-                                dist = d
-                                nearest = mob
-                            end
-                        end
-                    end
-                end
-                
-                if nearest then
-                    hrp.CFrame = nearest.HumanoidRootPart.CFrame * CFrame.new(0,0,-3) -- dịch sau boss 3 studs
-                end
-            end
-        end)
-    end
-end)
-
--- Hiệu ứng đổi màu tên
-local nameText = Instance.new("TextLabel", frame)
-nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 270)
-nameText.Text = "TT:MatNhanThuc"
-nameText.BackgroundTransparency = 1
-nameText.TextScaled = true
-
-task.spawn(function()
-    local hue = 0
-    while true do
-        hue = (hue + 1) % 360
-        nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
-        wait(0.1)
-    end
-end)
 
 -- Nút tắt menu (góc phải trên)
 local closeBtn = Instance.new("TextButton", frame)
