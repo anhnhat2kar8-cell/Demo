@@ -206,4 +206,108 @@ task.spawn(function()
         if autoHeal and hum.Health < 80 then
             if lp.Character then
                 local tool = lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("
+                if tool and not tool.Name:lower():find("băng") then
+                    lastWeapon = tool
+                end
+            end
+            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
+            if not bandage or not bandage.Name:lower():find("băng") then
+                for _,tool in ipairs(lp.Backpack:GetChildren()) do
+                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+                        tool.Parent = lp.Character
+                        wait(0.2)
+                        break
+                    end
+                end
+            end
+            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+            if healTool and healTool.Name:lower():find("băng") then
+                healTool:Activate()
+                wait(1)
+                if lastWeapon and lastWeapon.Parent == lp.Backpack then
+                    lastWeapon.Parent = lp.Character
+                end
+            end
+        end
+        wait(0.5)
+    end
+end)
+
+-- Auto Loot
+task.spawn(function()
+    while true do
+        if autoLoot then
+            for _,prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+                    if dist < 15 then
+                        fireproximityprompt(prompt)
+                        wait(0.2)
+                    end
+                end
+            end
+        end
+        wait(0.5)
+    end
+end)
+
+-- Auto Attack
+local function attack()
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then pcall(function() tool:Activate() end) end
+end
+
+-- Điều khiển
+RunService.Heartbeat:Connect(function()
+    if running then
+        local target = getTarget()
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            local angle = tick() * speed
+            local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+            local goalPos = target.HumanoidRootPart.Position + offset
+            local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+            tween:Play()
+            hum.AutoRotate = false
+            hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+            if autoAttack then attack() end
+            hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
+        end
+    end
+    myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
+end)
+
+-- Nút bấm
+toggle.MouseButton1Click:Connect(function()
+    running = not running
+    toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
+end)
+
+disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
+spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
+
+autoBtn.MouseButton1Click:Connect(function()
+    autoAttack = not autoAttack
+    autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
+end)
+
+healBtn.MouseButton1Click:Connect(function()
+    autoHeal = not autoHeal
+    healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
+end)
+
+lootBtn.MouseButton1Click:Connect(function()
+    autoLoot = not autoLoot
+    lootBtn.Text = (autoLoot and "TẮT" or "BẬT") .. ": Auto Lụm"
+end)
+
+tpBtn.MouseButton1Click:Connect(function()
+    local target = getTarget()
+    if target and target:FindFirstChild("HumanoidRootPart") then
+        hrp.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0,0,-5)
+    else
+        tpBtn.Text = "Không tìm thấy Boss!"
+        task.delay(1.5, function()
+            tpBtn.Text = "Tele đến Boss"
+        end)
+    end
+end)
