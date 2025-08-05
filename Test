@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
@@ -22,8 +21,8 @@ gui.Name = "Menu_TT"
 gui.Enabled = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 280, 0, 300)
-frame.Position = UDim2.new(0.5, -140, 0.5, -150)
+frame.Size = UDim2.new(0, 280, 0, 340)
+frame.Position = UDim2.new(0.5, -140, 0.5, -170)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
@@ -37,6 +36,17 @@ task.spawn(function()
         frame.BorderColor3 = Color3.fromHSV(hue / 360, 1, 1)
         wait(0.05)
     end
+end)
+
+-- Nút tắt menu
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -30, 0, 5)
+closeBtn.Text = "X"
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.MouseButton1Click:Connect(function()
+    gui.Enabled = false
 end)
 
 -- Nút bật đánh boss
@@ -118,10 +128,18 @@ lootBtn.Text = "BẬT: Auto Lụm"
 lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 lootBtn.TextColor3 = Color3.new(1,1,1)
 
+-- Teleport Boss
+local tpBtn = Instance.new("TextButton", frame)
+tpBtn.Size = UDim2.new(1, 0, 0, 30)
+tpBtn.Position = UDim2.new(0, 0, 0, 270)
+tpBtn.Text = "Tele đến Boss"
+tpBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+tpBtn.TextColor3 = Color3.new(1,1,1)
+
 -- Hiệu ứng đổi màu tên
 local nameText = Instance.new("TextLabel", frame)
 nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 270)
+nameText.Position = UDim2.new(0, 0, 0, 305)
 nameText.Text = "TT:MatNhanThuc"
 nameText.BackgroundTransparency = 1
 nameText.TextScaled = true
@@ -133,19 +151,6 @@ task.spawn(function()
         nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
         wait(0.1)
     end
-end)
-
--- Nút tắt menu (góc phải trên)
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 25, 0, 25)
-closeBtn.Position = UDim2.new(1, -30, 0, 5)
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.new(1,1,1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-closeBtn.BorderSizePixel = 0
-closeBtn.AutoButtonColor = true
-closeBtn.MouseButton1Click:Connect(function()
-    gui.Enabled = false
 end)
 
 -- GUI mật khẩu
@@ -178,6 +183,7 @@ btn.Position = UDim2.new(0.25, 0, 0, 85)
 btn.Text = "Xác nhận"
 btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
 btn.TextColor3 = Color3.new(1,1,1)
+
 btn.MouseButton1Click:Connect(function()
     if input.Text == "vietnhat28" then
         gui.Enabled = true
@@ -200,103 +206,4 @@ task.spawn(function()
         if autoHeal and hum.Health < 80 then
             if lp.Character then
                 local tool = lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("băng") then
-                    lastWeapon = tool
-                end
-            end
-            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
-            if not bandage or not bandage.Name:lower():find("băng") then
-                for _,tool in ipairs(lp.Backpack:GetChildren()) do
-                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-                        tool.Parent = lp.Character
-                        wait(0.2)
-                        break
-                    end
-                end
-            end
-            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-            if healTool and healTool.Name:lower():find("băng") then
-                healTool:Activate()
-                wait(1)
-                if lastWeapon and lastWeapon.Parent == lp.Backpack then
-                    lastWeapon.Parent = lp.Character
-                end
-            end
-        end
-        wait(0.5)
-    end
-end)
-
--- Auto Loot
-task.spawn(function()
-    while true do
-        if autoLoot then
-            for _,prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-                    if dist < 15 then
-                        fireproximityprompt(prompt)
-                        wait(0.2)
-                    end
-                end
-            end
-        end
-        wait(0.5)
-    end
-end)
-
--- Auto Attack
-local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Activate() end) end
-end
-
--- Điều khiển
-RunService.Heartbeat:Connect(function()
-    if running then
-        local target = getTarget()
-        if target and target:FindFirstChild("HumanoidRootPart") then
-            local angle = tick() * speed
-            local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-            local goalPos = target.HumanoidRootPart.Position + offset
-            local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
-            tween:Play()
-            hum.AutoRotate = false
-            hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-            if autoAttack then attack() end
-            hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
-        end
-    end
-    myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
-
--- Nút bấm
-toggle.MouseButton1Click:Connect(function()
-    running = not running
-    toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
-end)
-
-disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
-spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
-
-autoBtn.MouseButton1Click:Connect(function()
-    autoAttack = not autoAttack
-    autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
-end)
-
-healBtn.MouseButton1Click:Connect(function()
-    autoHeal = not autoHeal
-    healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
-end)
-
-lootBtn.MouseButton1Click:Connect(function()
-    autoLoot = not autoLoot
-    lootBtn.Text = (autoLoot and "TẮT" or "BẬT") .. ": Auto Lụm"
-end)
-
--- Phím tắt M để mở/tắt menu
-UIS.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.M then
-        gui.Enabled = not gui.Enabled
-    end
-end)
+                if tool and not tool.Name:lower():find("
