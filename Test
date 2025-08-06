@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
@@ -15,113 +16,171 @@ local autoLoot = false
 local autoWood = false
 local speed = 2
 local radius = 15
+local healThreshold = 50
+local woodRange = 25
 local lastWeapon = nil
+local currentTab = "Boss"
 
 -- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "FramBossGui"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 420, 0, 400)
-frame.Position = UDim2.new(0.5, -210, 0.5, -200)
+frame.Size = UDim2.new(0, 420, 0, 460)
+frame.Position = UDim2.new(0.5, -210, 0.5, -230)
 frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.BackgroundTransparency = 0.2
 frame.Active = true
 frame.Draggable = true
-frame.BorderSizePixel = 0
-frame.ClipsDescendants = true
+frame.BorderSizePixel = 4
 
--- Tiêu đề
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -40, 0, 35)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.Text = "Fram Boss Tool"
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 20
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.BackgroundTransparency = 1
-title.TextXAlignment = Enum.TextXAlignment.Left
+-- Bo tròn
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0,15)
 
--- Nút tắt
-local closeBtn = Instance.new("TextButton", frame)
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -35, 0, 5)
-closeBtn.Text = "X"
-closeBtn.Font = Enum.Font.SourceSansBold
-closeBtn.TextSize = 20
-closeBtn.TextColor3 = Color3.new(1,1,1)
-closeBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)
-closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
-
--- Thanh trượt tốc độ
-local spdLabel = Instance.new("TextLabel", frame)
-spdLabel.Size = UDim2.new(1, -20, 0, 30)
-spdLabel.Position = UDim2.new(0, 10, 0, 50)
-spdLabel.Text = "Tốc độ góc quay (radian/s)"
-spdLabel.TextColor3 = Color3.new(1,1,1)
-spdLabel.BackgroundTransparency = 1
-spdLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local sliderBack = Instance.new("Frame", frame)
-sliderBack.Size = UDim2.new(0.9, 0, 0, 8)
-sliderBack.Position = UDim2.new(0.05, 0, 0, 80)
-sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
-
-local sliderFill = Instance.new("Frame", sliderBack)
-sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
-
-local dragging = false
-sliderBack.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
-end)
-sliderBack.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local rel = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
-        sliderFill.Size = UDim2.new(rel,0,1,0)
-        speed = math.floor(rel*10)
-        if speed < 1 then speed = 1 end
+-- Viền 7 màu
+task.spawn(function()
+    local hue = 0
+    while frame.Parent do
+        hue = (hue + 2) % 360
+        frame.BorderColor3 = Color3.fromHSV(hue/360,1,1)
+        wait(0.05)
     end
 end)
 
--- Hàm tạo toggle
-local function makeToggle(text, order, callback)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(0.9, 0, 0, 30)
-    btn.Position = UDim2.new(0.05, 0, 0, 110 + (order*40))
+-- Thanh Tab
+local tabBar = Instance.new("Frame", frame)
+tabBar.Size = UDim2.new(1, 0, 0, 40)
+tabBar.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Instance.new("UICorner", tabBar).CornerRadius = UDim.new(0,12)
+
+local pages = {}
+
+-- Tạo trang
+local function makePage(name)
+    local page = Instance.new("Frame", frame)
+    page.Name = name.."Page"
+    page.Size = UDim2.new(1, 0, 1, -40)
+    page.Position = UDim2.new(0,0,0,40)
+    page.BackgroundTransparency = 1
+    page.Visible = (name == "Boss")
+    pages[name] = page
+    return page
+end
+
+local bossPage = makePage("Boss")
+local farmPage = makePage("Farm")
+local miscPage = makePage("Misc")
+
+-- Nút Tab
+local function makeTabButton(name, posX)
+    local btn = Instance.new("TextButton", tabBar)
+    btn.Size = UDim2.new(0, 130, 1, 0)
+    btn.Position = UDim2.new(0, posX, 0, 0)
+    btn.Text = name
+    btn.TextSize = 18
+    btn.BackgroundColor3 = (name=="Boss") and Color3.fromRGB(80,120,255) or Color3.fromRGB(60,60,60)
+    btn.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
+    btn.MouseButton1Click:Connect(function()
+        currentTab = name
+        for n,p in pairs(pages) do p.Visible = (n==name) end
+        for _,b in pairs(tabBar:GetChildren()) do
+            if b:IsA("TextButton") then
+                b.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            end
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(80,120,255)
+    end)
+end
+
+makeTabButton("Boss",0)
+makeTabButton("Farm",130)
+makeTabButton("Misc",260)
+
+----------------------------------------------------------------
+-- 📌 Hàm tạo Toggle
+local function makeToggle(parent, text, order, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = UDim2.new(0.05, 0, 0, 20 + order*45)
     btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
     btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextSize = 16
     btn.Text = "TẮT: "..text
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
     btn.MouseButton1Click:Connect(function()
         local state = not (btn.Text:find("BẬT"))
         btn.Text = (state and "BẬT" or "TẮT")..": "..text
         callback(state)
     end)
-    return btn
 end
 
--- Toggles
-makeToggle("Fram Boss 🌪️",0,function(state) framBoss=state end)
-makeToggle("Hiển thị máu Boss ❤️",1,function(state) showHp=state end)
-makeToggle("Tự đánh khi cầm vũ khí 🗡️",2,function(state) autoAttack=state end)
-makeToggle("Auto Heal 🩹",3,function(state) autoHeal=state end)
-makeToggle("Auto Lụm 💎",4,function(state) autoLoot=state end)
-makeToggle("Auto Chặt Gỗ 🌲",5,function(state) autoWood=state end)
+-- 📌 Hàm tạo Slider
+local function makeSlider(parent,text, order, min, max, default, callback)
+    local label = Instance.new("TextLabel", parent)
+    label.Size = UDim2.new(1, -20, 0, 25)
+    label.Position = UDim2.new(0, 10, 0, 20 + order*70)
+    label.Text = text..": "..default
+    label.TextSize = 16
+    label.TextColor3 = Color3.new(1,1,1)
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
 
--- Nút PLAY
-local playBtn = Instance.new("TextButton", frame)
-playBtn.Size = UDim2.new(0.6, 0, 0, 40)
-playBtn.Position = UDim2.new(0.2, 0, 1, -50)
-playBtn.Text = "PLAY"
-playBtn.BackgroundColor3 = Color3.fromRGB(255,200,0)
-playBtn.TextColor3 = Color3.fromRGB(0,0,0)
-playBtn.Font = Enum.Font.SourceSansBold
-playBtn.TextSize = 22
+    local sliderBack = Instance.new("Frame", parent)
+    sliderBack.Size = UDim2.new(0.9, 0, 0, 10)
+    sliderBack.Position = UDim2.new(0.05, 0, 0, 50 + order*70)
+    sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    Instance.new("UICorner", sliderBack).CornerRadius = UDim.new(0,8)
 
--- Hàm tìm boss
+    local sliderFill = Instance.new("Frame", sliderBack)
+    sliderFill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
+    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0,8)
+
+    local dragging = false
+    sliderBack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    end)
+    sliderBack.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local rel = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
+            sliderFill.Size = UDim2.new(rel,0,1,0)
+            local value = math.floor(min + rel*(max-min))
+            label.Text = text..": "..value
+            callback(value)
+        end
+    end)
+end
+
+----------------------------------------------------------------
+-- 📌 Các nút trong từng Tab
+
+-- Tab Boss
+makeToggle(bossPage,"Fram Boss 🌪️",0,function(s) framBoss=s end)
+makeToggle(bossPage,"Hiển thị máu Boss ❤️",1,function(s) showHp=s end)
+makeToggle(bossPage,"Auto Attack 🗡️",2,function(s) autoAttack=s end)
+makeSlider(bossPage,"Tốc độ quay",0,1,10,2,function(v) speed=v end)
+
+-- Tab Farm
+makeToggle(farmPage,"Auto Heal 🩹",0,function(s) autoHeal=s end)
+makeSlider(farmPage,"Ngưỡng máu Heal (%)",0,10,100,50,function(v) healThreshold=v end)
+makeToggle(farmPage,"Auto Lụm 💎",1,function(s) autoLoot=s end)
+makeToggle(farmPage,"Auto Chặt Gỗ 🌲",2,function(s) autoWood=s end)
+makeSlider(farmPage,"Khoảng cách Chặt Gỗ",1,10,50,25,function(v) woodRange=v end)
+
+-- Tab Misc
+local note = Instance.new("TextLabel", miscPage)
+note.Size = UDim2.new(1,0,1,0)
+note.Text = "Tab Misc (chưa có chức năng)"
+note.TextColor3 = Color3.new(1,1,1)
+note.BackgroundTransparency = 1
+note.TextScaled = true
+
+----------------------------------------------------------------
+-- 📌 Logic chức năng
 local function getBoss()
     for _,v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health>0 then
@@ -130,7 +189,6 @@ local function getBoss()
     end
 end
 
--- Auto Attack
 local function attack()
     local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
     if tool then pcall(function() tool:Activate() end) end
@@ -139,7 +197,7 @@ end
 -- Auto Heal
 task.spawn(function()
     while true do
-        if autoHeal and hum.Health < 80 then
+        if autoHeal and (hum.Health/hum.MaxHealth*100) < healThreshold then
             if lp.Character then
                 local tool = lp.Character:FindFirstChildOfClass("Tool")
                 if tool and not tool.Name:lower():find("băng") then
@@ -192,8 +250,8 @@ task.spawn(function()
     while true do
         if autoWood then
             for _,tree in pairs(workspace:GetDescendants()) do
-                if tree:IsA("Model") and tree.Name:lower():find("tree") and tree:FindFirstChild("Humanoid") then
-                    if (hrp.Position - tree.HumanoidRootPart.Position).Magnitude < 20 then
+                if tree:IsA("Model") and tree.Name:lower():find("tree") and tree:FindFirstChild("HumanoidRootPart") then
+                    if (hrp.Position - tree.HumanoidRootPart.Position).Magnitude < woodRange then
                         hrp.CFrame = CFrame.new(hrp.Position, tree.HumanoidRootPart.Position)
                         attack()
                         wait(0.2)
@@ -205,7 +263,7 @@ task.spawn(function()
     end
 end)
 
--- Run Fram Boss
+-- Fram Boss
 RunService.Heartbeat:Connect(function()
     if framBoss then
         local boss = getBoss()
@@ -215,11 +273,6 @@ RunService.Heartbeat:Connect(function()
             local pos = boss.HumanoidRootPart.Position + offset
             hrp.CFrame = CFrame.new(pos,boss.HumanoidRootPart.Position)
             if autoAttack then attack() end
-            if showHp then
-                title.Text = "Fram Boss Tool | Máu Boss: "..math.floor(boss.Humanoid.Health)
-            else
-                title.Text = "Fram Boss Tool"
-            end
         end
     end
 end)
