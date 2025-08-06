@@ -1,208 +1,241 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Biến
-local framBoss = false
-local autoLoot = false
-local autoHeal = false
-local radius = 15
-local speed = 2
-local lootRange = 50
-local healThreshold = 50
-local currentWeapon = "None"
-local lastWeapon = nil
+--// Variables
+local FramBoss = false
+local ShowBossHealth = false
+local AutoAttack = false
+local AutoLoot = false
+local SpinSpeed = 2
+local SelectedWeapon = nil
 
--- GUI chính
+--// GUI
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "FramBossUI"
+gui.Name = "FramBossTool"
 
-local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 420, 0, 460)
-mainFrame.Position = UDim2.new(0.5, -210, 0.5, -230)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.BorderSizePixel = 4
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,15)
-
--- Viền 7 màu
-task.spawn(function()
-    local hue=0
-    while mainFrame.Parent do
-        hue=(hue+2)%360
-        mainFrame.BorderColor3=Color3.fromHSV(hue/360,1,1)
-        wait(0.05)
-    end
-end)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 500, 0, 400)
+frame.Position = UDim2.new(0.5, -250, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
 
 -- Tiêu đề
-local title = Instance.new("TextLabel", mainFrame)
-title.Size = UDim2.new(1,0,0,40)
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "framboss"
+title.Text = "Fram Boss Tool"
 title.TextColor3 = Color3.new(1,1,1)
 title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Dòng chọn vũ khí
-local wepLabel = Instance.new("TextLabel", mainFrame)
-wepLabel.Size = UDim2.new(1,-20,0,30)
-wepLabel.Position = UDim2.new(0,10,0,50)
-wepLabel.Text = "Vũ Khí Hiện Tại : None"
-wepLabel.TextColor3 = Color3.new(1,1,1)
-wepLabel.BackgroundTransparency = 1
-wepLabel.TextXAlignment = Enum.TextXAlignment.Left
+-- Dropdown chọn vũ khí
+local weaponBtn = Instance.new("TextButton", frame)
+weaponBtn.Size = UDim2.new(0.9,0,0,35)
+weaponBtn.Position = UDim2.new(0.05,0,0,50)
+weaponBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+weaponBtn.Text = "Chọn Vũ Khí (Hiện Tại: None)"
+weaponBtn.TextColor3 = Color3.new(1,1,1)
+weaponBtn.TextScaled = true
+Instance.new("UICorner", weaponBtn).CornerRadius = UDim.new(0,6)
 
--- Update vũ khí
-task.spawn(function()
-    while true do
-        local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-        if tool then
-            currentWeapon = tool.Name
-        else
-            currentWeapon = "None"
+local dropFrame = Instance.new("Frame", frame)
+dropFrame.Size = UDim2.new(0.9,0,0,120)
+dropFrame.Position = UDim2.new(0.05,0,0,85)
+dropFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+dropFrame.Visible = false
+Instance.new("UICorner", dropFrame).CornerRadius = UDim.new(0,6)
+
+local UIList = Instance.new("UIListLayout", dropFrame)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function refreshWeapons()
+    dropFrame:ClearAllChildren()
+    local layout = Instance.new("UIListLayout", dropFrame)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    for _,tool in ipairs(lp.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local btn = Instance.new("TextButton", dropFrame)
+            btn.Size = UDim2.new(1,0,0,30)
+            btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            btn.Text = tool.Name
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.TextScaled = true
+            btn.MouseButton1Click:Connect(function()
+                SelectedWeapon = tool.Name
+                weaponBtn.Text = "Chọn Vũ Khí (Hiện Tại: " .. tool.Name .. ")"
+                dropFrame.Visible = false
+            end)
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
         end
-        wepLabel.Text = "Vũ Khí Hiện Tại : "..currentWeapon
-        wait(0.5)
+    end
+end
+
+weaponBtn.MouseButton1Click:Connect(function()
+    if dropFrame.Visible then
+        dropFrame.Visible = false
+    else
+        refreshWeapons()
+        dropFrame.Visible = true
     end
 end)
 
---------------------------------------------------
--- 📌 Hàm tiện ích
-local function makeToggle(text,posY,callback)
-    local btn = Instance.new("TextButton", mainFrame)
-    btn.Size = UDim2.new(0.9,0,0,30)
-    btn.Position = UDim2.new(0.05,0,0,posY)
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Text = "TẮT: "..text
-    btn.TextScaled = true
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
-    btn.MouseButton1Click:Connect(function()
-        local state = not btn.Text:find("BẬT")
-        btn.Text = (state and "BẬT" or "TẮT")..": "..text
+-- Thanh slider tốc độ
+local sliderLabel = Instance.new("TextLabel", frame)
+sliderLabel.Size = UDim2.new(1, -20, 0, 25)
+sliderLabel.Position = UDim2.new(0, 10, 0, 210)
+sliderLabel.Text = "Tốc độ góc quay (radian/s)"
+sliderLabel.TextColor3 = Color3.new(1,1,1)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local sliderBack = Instance.new("Frame", frame)
+sliderBack.Size = UDim2.new(0.9,0,0,8)
+sliderBack.Position = UDim2.new(0.05,0,0,240)
+sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
+Instance.new("UICorner", sliderBack).CornerRadius = UDim.new(0,5)
+
+local sliderFill = Instance.new("Frame", sliderBack)
+sliderFill.Size = UDim2.new(0.2,0,1,0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
+Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0,5)
+
+local dragging = false
+sliderBack.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true end end)
+sliderBack.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
+UIS.InputChanged:Connect(function(i)
+    if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
+        local rel = math.clamp((i.Position.X - sliderBack.AbsolutePosition.X)/sliderBack.AbsoluteSize.X,0,1)
+        sliderFill.Size = UDim2.new(rel,0,1,0)
+        SpinSpeed = math.floor(rel*10)
+    end
+end)
+
+-- Hàm tạo toggle công tắc
+local function makeSwitch(text,posY,callback)
+    local holder = Instance.new("Frame", frame)
+    holder.Size = UDim2.new(0.9,0,0,35)
+    holder.Position = UDim2.new(0.05,0,0,posY)
+    holder.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel", holder)
+    label.Size = UDim2.new(0.7,0,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.new(1,1,1)
+    label.TextScaled = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local switch = Instance.new("TextButton", holder)
+    switch.Size = UDim2.new(0,50,0,25)
+    switch.Position = UDim2.new(1,-60,0.5,-12)
+    switch.BackgroundColor3 = Color3.fromRGB(100,100,100)
+    switch.Text = ""
+    switch.AutoButtonColor = false
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1,0)
+
+    local knob = Instance.new("Frame", switch)
+    knob.Size = UDim2.new(0.5,0,1,0)
+    knob.Position = UDim2.new(0,0,0,0)
+    knob.BackgroundColor3 = Color3.fromRGB(200,200,200)
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
+
+    local state = false
+    switch.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            switch.BackgroundColor3 = Color3.fromRGB(0,170,255)
+            knob:TweenPosition(UDim2.new(0.5,0,0,0),"Out","Quad",0.2,true)
+        else
+            switch.BackgroundColor3 = Color3.fromRGB(100,100,100)
+            knob:TweenPosition(UDim2.new(0,0,0,0),"Out","Quad",0.2,true)
+        end
         callback(state)
     end)
 end
 
-local function makeSlider(text,posY,min,max,default,callback)
-    local label = Instance.new("TextLabel", mainFrame)
-    label.Size = UDim2.new(0.9,0,0,25)
-    label.Position = UDim2.new(0.05,0,0,posY)
-    label.Text = text..": "..default
-    label.TextColor3 = Color3.new(1,1,1)
-    label.BackgroundTransparency = 1
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextScaled = true
+-- Các công tắc toggle
+makeSwitch("Bật Fram Boss 🌪️", 270, function(v) FramBoss = v end)
+makeSwitch("Hiển thị máu Boss ❤️", 305, function(v) ShowBossHealth = v end)
+makeSwitch("Tự đánh khi cầm vũ khí 🗡️", 340, function(v) AutoAttack = v end)
+makeSwitch("Tự động nhặt đồ 🎁", 375, function(v) AutoLoot = v end)
 
-    local back = Instance.new("Frame", mainFrame)
-    back.Size = UDim2.new(0.9,0,0,10)
-    back.Position = UDim2.new(0.05,0,0,posY+30)
-    back.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    Instance.new("UICorner", back).CornerRadius = UDim.new(0,8)
-
-    local fill = Instance.new("Frame", back)
-    fill.Size = UDim2.new((default-min)/(max-min),0,1,0)
-    fill.BackgroundColor3 = Color3.fromRGB(0,170,255)
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(0,8)
-
-    local dragging=false
-    back.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true end end)
-    back.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
-    UIS.InputChanged:Connect(function(i)
-        if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
-            local rel=math.clamp((i.Position.X-back.AbsolutePosition.X)/back.AbsoluteSize.X,0,1)
-            fill.Size=UDim2.new(rel,0,1,0)
-            local val=math.floor(min+rel*(max-min))
-            label.Text=text..": "..val
-            callback(val)
-        end
-    end)
-end
-
---------------------------------------------------
--- 📌 Các chức năng
-makeToggle("Farm Boss 🌪️",90,function(s) framBoss=s end)
-makeToggle("Auto Nhặt (teleport) 💎",130,function(s) autoLoot=s end)
-makeSlider("Tầm nhặt",170,10,100,50,function(v) lootRange=v end)
-makeToggle("Auto Heal (băng gạc) 🩹",230,function(s) autoHeal=s end)
-
---------------------------------------------------
--- 📌 Logic Fram Boss
+-------------------------------------------------
+-- 📌 Chức năng
 local function getBoss()
     for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health>0 then
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
             return v
         end
     end
 end
 
 local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Activate() end) end
+    if SelectedWeapon then
+        if not lp.Character:FindFirstChild(SelectedWeapon) then
+            local tool = lp.Backpack:FindFirstChild(SelectedWeapon)
+            if tool then tool.Parent = lp.Character end
+        end
+        local tool = lp.Character:FindFirstChild(SelectedWeapon)
+        if tool then pcall(function() tool:Activate() end) end
+    else
+        local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+        if tool then pcall(function() tool:Activate() end) end
+    end
+end
+
+local function lootItems()
+    for _,v in pairs(workspace:GetChildren()) do
+        if v:IsA("Tool") or v:IsA("Part") and v.Name:lower():find("drop") then
+            if (v.Position - hrp.Position).Magnitude < 20 then
+                hrp.CFrame = CFrame.new(v.Position)
+                wait(0.1)
+            end
+        end
+    end
 end
 
 RunService.Heartbeat:Connect(function()
-    if framBoss then
+    if FramBoss then
         local boss = getBoss()
         if boss then
-            local angle = tick() * speed
-            local offset = Vector3.new(math.cos(angle)*radius,0,math.sin(angle)*radius)
+            local angle = tick() * SpinSpeed
+            local offset = Vector3.new(math.cos(angle)*10,0,math.sin(angle)*10)
             hrp.CFrame = CFrame.new(boss.HumanoidRootPart.Position+offset,boss.HumanoidRootPart.Position)
-            attack()
+            if AutoAttack then attack() end
         end
     end
+    if AutoLoot then lootItems() end
 end)
 
--- Auto Loot
-task.spawn(function()
-    while true do
-        if autoLoot then
-            for _,prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-                    if dist < lootRange then
-                        fireproximityprompt(prompt)
-                        wait(0.2)
-                    end
-                end
-            end
-        end
-        wait(0.5)
-    end
-end)
+-- Hiển thị máu boss
+local healthGui = Instance.new("TextLabel", gui)
+healthGui.Size = UDim2.new(0,300,0,30)
+healthGui.Position = UDim2.new(0.5,-150,0,20)
+healthGui.TextColor3 = Color3.new(1,0,0)
+healthGui.TextScaled = true
+healthGui.BackgroundTransparency = 1
+healthGui.Visible = false
 
--- Auto Heal
-task.spawn(function()
-    while true do
-        if autoHeal and (hum.Health/hum.MaxHealth*100) < healThreshold then
-            if lp.Character then
-                local tool = lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("băng") then
-                    lastWeapon=tool
-                end
-            end
-            for _,tool in ipairs(lp.Backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-                    tool.Parent=lp.Character
-                    wait(0.2)
-                    break
-                end
-            end
-            local healTool=lp.Character:FindFirstChildWhichIsA("Tool")
-            if healTool and healTool.Name:lower():find("băng") then
-                healTool:Activate()
-                wait(1)
-                if lastWeapon and lastWeapon.Parent==lp.Backpack then
-                    lastWeapon.Parent=lp.Character
-                end
-            end
+RunService.RenderStepped:Connect(function()
+    if ShowBossHealth then
+        local boss = getBoss()
+        if boss then
+            healthGui.Visible = true
+            healthGui.Text = "Boss HP: "..math.floor(boss.Humanoid.Health).."/"..boss.Humanoid.MaxHealth
+        else
+            healthGui.Visible = false
         end
-        wait(0.5)
+    else
+        healthGui.Visible = false
     end
 end)
