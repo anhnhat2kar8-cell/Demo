@@ -1,206 +1,188 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
-
--- Biến trạng thái
-local running = false
-local autoAttack = false
-local autoHeal = false
-local autoLoot = false
-local autoWood = false
-local radius, speed = 20, 2
-local lastWeapon = nil
 
 --// GUI
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "MatNhanThucMenu"
+gui.Name = "MNH_GUI"
+gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 300, 0, 400)
-frame.Position = UDim2.new(0.3, 0, 0.3, 0)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.BorderSizePixel = 0
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 600, 0, 400)
+mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(120,0,60)
+mainFrame.BackgroundTransparency = 0.2
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,12)
 
--- Thanh tiêu đề
-local titleBar = Instance.new("Frame", frame)
-titleBar.Size = UDim2.new(1, 0, 0, 35)
-titleBar.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0,10)
-
--- Chữ tiêu đề
-local titleText = Instance.new("TextLabel", titleBar)
-titleText.Size = UDim2.new(0.8, 0, 1, 0)
-titleText.Position = UDim2.new(0, 10, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.Text = "🌀 Mất Nhận Thức"
-titleText.TextColor3 = Color3.new(1,1,1)
-titleText.TextScaled = true
-titleText.Font = Enum.Font.SourceSansBold
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-
--- Hiệu ứng cầu vồng
-task.spawn(function()
-    local hue = 0
-    while titleText do
-        hue = (hue + 1) % 360
-        titleText.TextColor3 = Color3.fromHSV(hue/360,1,1)
-        task.wait(0.05)
-    end
-end)
-
--- Nút thu nhỏ
-local toggleBtn = Instance.new("TextButton", titleBar)
-toggleBtn.Size = UDim2.new(0.2, -10, 1, -6)
-toggleBtn.Position = UDim2.new(0.8, 5, 0, 3)
-toggleBtn.Text = "🔽"
-toggleBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-toggleBtn.TextScaled = true
-toggleBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,8)
-
--- Cho phép kéo Frame bằng titleBar
-local dragging, dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-titleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+-- Di chuyển frame
+local dragging, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
 end)
 
--- ScrollingFrame chứa các nút
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -20, 1, -45)
-scroll.Position = UDim2.new(0,10,0,40)
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.ScrollBarThickness = 5
-scroll.BackgroundTransparency = 1
+-- Sidebar
+local sidebar = Instance.new("Frame", mainFrame)
+sidebar.Size = UDim2.new(0, 150, 1, 0)
+sidebar.BackgroundColor3 = Color3.fromRGB(90,0,50)
+sidebar.BackgroundTransparency = 0.3
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0,10)
 
-local list = Instance.new("UIListLayout", scroll)
+local list = Instance.new("UIListLayout", sidebar)
 list.SortOrder = Enum.SortOrder.LayoutOrder
 list.Padding = UDim.new(0,5)
-list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	scroll.CanvasSize = UDim2.new(0,0,0,list.AbsoluteContentSize.Y+10)
-end)
 
--- Ẩn/hiện nội dung khi bấm nút thu nhỏ
-local minimized = false
-toggleBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    if minimized then
-        scroll.Visible = false
-        frame.Size = UDim2.new(0,300,0,40)
-        toggleBtn.Text = "🔼"
-    else
-        scroll.Visible = true
-        frame.Size = UDim2.new(0,300,0,400)
-        toggleBtn.Text = "🔽"
-    end
-end)
+-- Tabs
+local tabs, pages = {}, {}
+local function createTab(name)
+	local btn = Instance.new("TextButton", sidebar)
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.Text = name
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.TextScaled = true
+	btn.BackgroundColor3 = Color3.fromRGB(120,0,70)
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
--- Label máu Boss
-local hpLabel = Instance.new("TextLabel", scroll)
-hpLabel.Size = UDim2.new(1,0,0,30)
-hpLabel.Text = "Máu Boss: ..."
-hpLabel.TextColor3 = Color3.new(1,0,0)
-hpLabel.BackgroundTransparency = 1
-hpLabel.TextScaled = true
+	local page = Instance.new("ScrollingFrame", mainFrame)
+	page.Size = UDim2.new(1, -160, 1, -20)
+	page.Position = UDim2.new(0,160,0,10)
+	page.BackgroundTransparency = 1
+	page.CanvasSize = UDim2.new(0,0,0,0)
+	page.Visible = false
+	page.ScrollBarThickness = 6
 
--- Label máu bạn
-local myHpLabel = Instance.new("TextLabel", scroll)
-myHpLabel.Size = UDim2.new(1,0,0,30)
-myHpLabel.Text = "Máu bạn: ..."
-myHpLabel.TextColor3 = Color3.new(0,1,0)
-myHpLabel.BackgroundTransparency = 1
-myHpLabel.TextScaled = true
+	local layout = Instance.new("UIListLayout", page)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0,5)
 
--- Hàm tạo nút bật/tắt
-local function makeSwitch(text, callback)
-    local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(1,0,0,35)
-    btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    btn.Text = "⏹ "..text
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.SourceSansBold
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+	tabs[name] = btn
+	pages[name] = page
 
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        if state then
-            btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-            btn.Text = "✅ "..text
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-            btn.Text = "⏹ "..text
-        end
-        callback(state)
-    end)
+	btn.MouseButton1Click:Connect(function()
+		for _,p in pairs(pages) do p.Visible = false end
+		for _,b in pairs(tabs) do b.BackgroundColor3 = Color3.fromRGB(120,0,70) end
+		page.Visible = true
+		btn.BackgroundColor3 = Color3.fromRGB(180,0,90)
+	end)
 end
 
--- Hàm nhập số
-local function makeInput(labelText, default, callback)
-    local container = Instance.new("Frame", scroll)
-    container.Size = UDim2.new(1,0,0,30)
-    container.BackgroundTransparency = 1
+-- Tạo Tabs
+createTab("Main")
+createTab("Farm Gỗ")
+createTab("Fram Boss")
+createTab("Settings")
 
-    local label = Instance.new("TextLabel", container)
-    label.Size = UDim2.new(0.5, -5, 1, 0)
-    label.Text = labelText
-    label.TextColor3 = Color3.new(1,1,1)
-    label.BackgroundTransparency = 1
-    label.TextScaled = true
+pages["Main"].Visible = true
+tabs["Main"].BackgroundColor3 = Color3.fromRGB(180,0,90)
 
-    local box = Instance.new("TextBox", container)
-    box.Size = UDim2.new(0.5, -5, 1, 0)
-    box.Position = UDim2.new(0.5,5,0,0)
-    box.Text = tostring(default)
-    box.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    box.TextColor3 = Color3.new(1,1,1)
-    box.TextScaled = true
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0,6)
+-- Toggle Helper
+local function makeToggle(parent, text, callback)
+	local btn = Instance.new("TextButton", parent)
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.Text = "⏹ "..text
+	btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.TextScaled = true
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
-    box.FocusLost:Connect(function()
-        local num = tonumber(box.Text)
-        if num then callback(num) else box.Text = tostring(default) end
-    end)
+	local state = false
+	btn.MouseButton1Click:Connect(function()
+		state = not state
+		if state then
+			btn.Text = "✅ "..text
+			btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+		else
+			btn.Text = "⏹ "..text
+			btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+		end
+		callback(state)
+	end)
 end
 
--- Các toggle
-makeSwitch("Fram Boss", function(v) running = v end)
-makeSwitch("Auto Attack", function(v) autoAttack = v end)
-makeSwitch("Auto Heal", function(v) autoHeal = v end)
-makeSwitch("Auto Loot", function(v) autoLoot = v end)
-makeSwitch("Chặt Gỗ", function(v) autoWood = v end)
+------------------------------------------------------
+-- Main Tab chức năng
+------------------------------------------------------
+makeToggle(pages["Main"], "Auto Băng Gạc", function(state)
+	if state then
+		print("Auto Heal On")
+		-- ví dụ logic heal
+		RunService.Heartbeat:Connect(function()
+			if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+				if lp.Character.Humanoid.Health < lp.Character.Humanoid.MaxHealth * 0.5 then
+					-- Gọi remote dùng băng gạc (ví dụ)
+					print("Dùng băng gạc")
+				end
+			end
+		end)
+	end
+end)
 
--- Input chỉnh Radius/Speed
-makeInput("Khoảng cách", radius, function(v) radius = v end)
-makeInput("Tốc độ quay", speed, function(v) speed = v end)
+makeToggle(pages["Main"], "Bật balo và ẩn đây", function(state)
+	print("Ẩn balo:",state)
+end)
 
--- ==== Các phần Auto Heal / Loot / Wood / Fram Boss giống code trước (không đổi) ====
+makeToggle(pages["Main"], "Auto Buy Băng Gạc", function(state)
+	print("Auto Buy:",state)
+end)
+
+------------------------------------------------------
+-- Farm Gỗ Tab
+------------------------------------------------------
+local woodCount = 0
+makeToggle(pages["Farm Gỗ"], "Auto Chặt Gỗ", function(state)
+	print("Farm Gỗ:",state)
+	if state then
+		-- ví dụ auto tăng số gỗ
+		task.spawn(function()
+			while state do
+				woodCount += 1
+				print("Nhặt gỗ: "..woodCount)
+				task.wait(2)
+			end
+		end)
+	end
+end)
+
+makeToggle(pages["Farm Gỗ"], "Auto Nhặt Gỗ", function(state)
+	print("Auto Nhặt:",state)
+end)
+
+------------------------------------------------------
+-- Fram Boss Tab
+------------------------------------------------------
+makeToggle(pages["Fram Boss"], "Bật Fram Boss", function(state)
+	print("Farm Boss:",state)
+end)
+
+makeToggle(pages["Fram Boss"], "Hiện máu Boss", function(state)
+	print("Hiện máu:",state)
+end)
+
+makeToggle(pages["Fram Boss"], "Tự đánh khi cầm vũ khí", function(state)
+	print("Auto Attack:",state)
+end)
+
+------------------------------------------------------
+-- Settings Tab
+------------------------------------------------------
+makeToggle(pages["Settings"], "Tốc độ xoay nhanh", function(state)
+	print("Tốc độ xoay:",state)
+end)
+
+makeToggle(pages["Settings"], "Ẩn/Hiện Menu", function(state)
+	mainFrame.Visible = state
+end)
