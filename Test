@@ -1,188 +1,114 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local lp = Players.LocalPlayer
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
---// GUI
-local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "MNH_GUI"
-gui.ResetOnSpawn = false
+local Window = Fluent:CreateWindow({
+    Title = "Mj Contega's Hax",
+    SubTitle = "Fluent "..Fluent.Version,
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark"
+})
 
-local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 600, 0, 400)
-mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(120,0,60)
-mainFrame.BackgroundTransparency = 0.2
-Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,12)
+local Tabs = {
+    Main = Window:AddTab({Title = "Player", Icon = "user"}),
+    Teleport = Window:AddTab({Title = "Teleport", Icon = "map-pin"}),
+    Settings = Window:AddTab({Title = "Settings", Icon = "settings"})
+}
 
--- Di chuyển frame
-local dragging, dragStart, startPos
-mainFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then dragging = false end
-		end)
-	end
-end)
-UserInputService.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
+local PlayerSection = Tabs.Main:AddSection("Movement")
 
--- Sidebar
-local sidebar = Instance.new("Frame", mainFrame)
-sidebar.Size = UDim2.new(0, 150, 1, 0)
-sidebar.BackgroundColor3 = Color3.fromRGB(90,0,50)
-sidebar.BackgroundTransparency = 0.3
-Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0,10)
+local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeed", {
+    Title = "Walk Speed",
+    Default = 16,
+    Min = 16,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        if game.Players.LocalPlayer.Character then
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+        end
+    end
+})
 
-local list = Instance.new("UIListLayout", sidebar)
-list.SortOrder = Enum.SortOrder.LayoutOrder
-list.Padding = UDim.new(0,5)
+local JumpPowerSlider = Tabs.Main:AddSlider("JumpPower", {
+    Title = "Jump Power",
+    Default = 50,
+    Min = 0,
+    Max = 500,
+    Rounding = 1,
+    Callback = function(Value)
+        if game.Players.LocalPlayer.Character then
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
+        end
+    end
+})
 
--- Tabs
-local tabs, pages = {}, {}
-local function createTab(name)
-	local btn = Instance.new("TextButton", sidebar)
-	btn.Size = UDim2.new(1, -10, 0, 40)
-	btn.Text = name
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.TextScaled = true
-	btn.BackgroundColor3 = Color3.fromRGB(120,0,70)
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+local NoClipToggle = Tabs.Main:AddToggle("NoClip", {
+    Title = "No Clip",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            Noclipping = game:GetService('RunService').Stepped:Connect(function()
+                if game.Players.LocalPlayer.Character then
+                    for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                        if v:IsA("BasePart") then
+                            v.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            if Noclipping then
+                Noclipping:Disconnect()
+            end
+        end
+    end
+})
 
-	local page = Instance.new("ScrollingFrame", mainFrame)
-	page.Size = UDim2.new(1, -160, 1, -20)
-	page.Position = UDim2.new(0,160,0,10)
-	page.BackgroundTransparency = 1
-	page.CanvasSize = UDim2.new(0,0,0,0)
-	page.Visible = false
-	page.ScrollBarThickness = 6
+local TeleportSection = Tabs.Teleport:AddSection("Checkpoints")
 
-	local layout = Instance.new("UIListLayout", page)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0,5)
+local AutoCheckpointToggle = Tabs.Teleport:AddToggle("AutoCheckpoint", {
+    Title = "Auto Checkpoint",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            AutoCheckpoint = game:GetService('RunService').Heartbeat:Connect(function()
+                local stage = game:GetService("Players").LocalPlayer.leaderstats.Stage.Value
+                local nextCheckpoint = workspace.Checkpoints[tostring(stage + 1)]
+                if nextCheckpoint then
+                    game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = nextCheckpoint.CFrame
+                end
+            end)
+        else
+            if AutoCheckpoint then
+                AutoCheckpoint:Disconnect()
+            end
+        end
+    end
+})
 
-	tabs[name] = btn
-	pages[name] = page
+local ManualCheckpointButton = Tabs.Teleport:AddButton({
+    Title = "Next Checkpoint",
+    Callback = function()
+        local stage = game:GetService("Players").LocalPlayer.leaderstats.Stage.Value
+        local nextCheckpoint = workspace.Checkpoints[tostring(stage + 1)]
+        if nextCheckpoint then
+            game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = nextCheckpoint.CFrame
+        end
+    end
+})
 
-	btn.MouseButton1Click:Connect(function()
-		for _,p in pairs(pages) do p.Visible = false end
-		for _,b in pairs(tabs) do b.BackgroundColor3 = Color3.fromRGB(120,0,70) end
-		page.Visible = true
-		btn.BackgroundColor3 = Color3.fromRGB(180,0,90)
-	end)
-end
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Tạo Tabs
-createTab("Main")
-createTab("Farm Gỗ")
-createTab("Fram Boss")
-createTab("Settings")
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
 
-pages["Main"].Visible = true
-tabs["Main"].BackgroundColor3 = Color3.fromRGB(180,0,90)
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
 
--- Toggle Helper
-local function makeToggle(parent, text, callback)
-	local btn = Instance.new("TextButton", parent)
-	btn.Size = UDim2.new(1, -10, 0, 40)
-	btn.Text = "⏹ "..text
-	btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.TextScaled = true
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
-
-	local state = false
-	btn.MouseButton1Click:Connect(function()
-		state = not state
-		if state then
-			btn.Text = "✅ "..text
-			btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-		else
-			btn.Text = "⏹ "..text
-			btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
-		end
-		callback(state)
-	end)
-end
-
-------------------------------------------------------
--- Main Tab chức năng
-------------------------------------------------------
-makeToggle(pages["Main"], "Auto Băng Gạc", function(state)
-	if state then
-		print("Auto Heal On")
-		-- ví dụ logic heal
-		RunService.Heartbeat:Connect(function()
-			if lp.Character and lp.Character:FindFirstChild("Humanoid") then
-				if lp.Character.Humanoid.Health < lp.Character.Humanoid.MaxHealth * 0.5 then
-					-- Gọi remote dùng băng gạc (ví dụ)
-					print("Dùng băng gạc")
-				end
-			end
-		end)
-	end
-end)
-
-makeToggle(pages["Main"], "Bật balo và ẩn đây", function(state)
-	print("Ẩn balo:",state)
-end)
-
-makeToggle(pages["Main"], "Auto Buy Băng Gạc", function(state)
-	print("Auto Buy:",state)
-end)
-
-------------------------------------------------------
--- Farm Gỗ Tab
-------------------------------------------------------
-local woodCount = 0
-makeToggle(pages["Farm Gỗ"], "Auto Chặt Gỗ", function(state)
-	print("Farm Gỗ:",state)
-	if state then
-		-- ví dụ auto tăng số gỗ
-		task.spawn(function()
-			while state do
-				woodCount += 1
-				print("Nhặt gỗ: "..woodCount)
-				task.wait(2)
-			end
-		end)
-	end
-end)
-
-makeToggle(pages["Farm Gỗ"], "Auto Nhặt Gỗ", function(state)
-	print("Auto Nhặt:",state)
-end)
-
-------------------------------------------------------
--- Fram Boss Tab
-------------------------------------------------------
-makeToggle(pages["Fram Boss"], "Bật Fram Boss", function(state)
-	print("Farm Boss:",state)
-end)
-
-makeToggle(pages["Fram Boss"], "Hiện máu Boss", function(state)
-	print("Hiện máu:",state)
-end)
-
-makeToggle(pages["Fram Boss"], "Tự đánh khi cầm vũ khí", function(state)
-	print("Auto Attack:",state)
-end)
-
-------------------------------------------------------
--- Settings Tab
-------------------------------------------------------
-makeToggle(pages["Settings"], "Tốc độ xoay nhanh", function(state)
-	print("Tốc độ xoay:",state)
-end)
-
-makeToggle(pages["Settings"], "Ẩn/Hiện Menu", function(state)
-	mainFrame.Visible = state
-end)
+Fluent:Notify({
+    Title = "Mj Contega Hax",
+    Content = "Script loaded successfully!",
+    Duration = 5
+})
