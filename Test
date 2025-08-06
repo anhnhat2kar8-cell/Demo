@@ -20,15 +20,19 @@ local Tabs = {
 ----------------------------------------
 local FramBossSection = Tabs.FramBoss:AddSection("Fram Boss")
 
-local SpeedSlider = Tabs.FramBoss:AddSlider("SpinSpeed", {
-    Title = "Tốc độ góc quay (radian/s)",
-    Default = 5,
-    Min = 1,
-    Max = 20,
-    Rounding = 1,
-    Callback = function(Value)
-        SpinSpeed = Value
-    end
+local SpinSpeed = 5
+local Radius = 10
+
+Tabs.FramBoss:AddSlider("SpinSpeed", {
+    Title = "Tốc độ góc quay (rad/s)",
+    Default = 5, Min = 1, Max = 20,
+    Callback = function(v) SpinSpeed = v end
+})
+
+Tabs.FramBoss:AddSlider("Radius", {
+    Title = "Khoảng cách tới Boss",
+    Default = 10, Min = 5, Max = 30,
+    Callback = function(v) Radius = v end
 })
 
 Tabs.FramBoss:AddToggle("FramBoss", {
@@ -41,10 +45,13 @@ Tabs.FramBoss:AddToggle("FramBoss", {
                 while FramBoss do
                     task.wait()
                     local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
-                    if boss and boss:FindFirstChild("HumanoidRootPart") and game.Players.LocalPlayer.Character then
-                        local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    local player = game.Players.LocalPlayer
+                    if boss and boss:FindFirstChild("HumanoidRootPart") and player.Character then
+                        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
                         if hrp then
-                            hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5) * CFrame.Angles(0, tick()*SpinSpeed, 0)
+                            local angle = tick() * SpinSpeed
+                            local offset = Vector3.new(math.cos(angle)*Radius, 0, math.sin(angle)*Radius)
+                            hrp.CFrame = CFrame.new(boss.HumanoidRootPart.Position + offset, boss.HumanoidRootPart.Position)
                         end
                     end
                 end
@@ -62,11 +69,11 @@ Tabs.FramBoss:AddToggle("ShowBossHP", {
             task.spawn(function()
                 while ShowBossHP do
                     task.wait(1)
-                    local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
+                    local boss = workspace:FindFirstChild("Boss")
                     if boss and boss:FindFirstChildOfClass("Humanoid") then
                         Fluent:Notify({
                             Title = "Boss HP",
-                            Content = tostring(boss.Humanoid.Health).." / "..tostring(boss.Humanoid.MaxHealth),
+                            Content = tostring(math.floor(boss.Humanoid.Health)).." / "..tostring(boss.Humanoid.MaxHealth),
                             Duration = 2
                         })
                     end
@@ -86,8 +93,9 @@ Tabs.FramBoss:AddToggle("AutoAttack", {
                 while AutoAttack do
                     task.wait(0.2)
                     local char = game.Players.LocalPlayer.Character
-                    if char and char:FindFirstChildOfClass("Tool") then
-                        game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                    if char then
+                        local tool = char:FindFirstChildOfClass("Tool")
+                        if tool then tool:Activate() end
                     end
                 end
             end)
@@ -100,8 +108,19 @@ Tabs.FramBoss:AddToggle("AutoAttack", {
 ----------------------------------------
 local AutoSection = Tabs.Auto:AddSection("Tự động")
 
+local HealHP = 50
+Tabs.Auto:AddInput("HealValue", {
+    Title = "Heal khi máu dưới",
+    Default = "50",
+    Placeholder = "Nhập số HP",
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num then HealHP = num end
+    end
+})
+
 Tabs.Auto:AddToggle("AutoHeal", {
-    Title = "Auto Heal +50 HP 🩸",
+    Title = "Auto Heal 🩸",
     Default = false,
     Callback = function(Value)
         AutoHeal = Value
@@ -113,17 +132,14 @@ Tabs.Auto:AddToggle("AutoHeal", {
                     local char = player.Character
                     if char and char:FindFirstChildOfClass("Humanoid") then
                         local hp = char.Humanoid.Health
-                        if hp < 50 then
+                        if hp < HealHP then
                             local oldTool = char:FindFirstChildOfClass("Tool")
-                            -- ⚠️ thay "Bandage" thành đúng tên item hồi máu
-                            local bandage = player.Backpack:FindFirstChild("Bandage")
+                            local bandage = player.Backpack:FindFirstChild("Bandage") -- ⚠️ đổi tên item
                             if bandage then
                                 bandage.Parent = char
                                 bandage:Activate()
                                 task.wait(1)
-                                if oldTool then
-                                    oldTool.Parent = char
-                                end
+                                if oldTool then oldTool.Parent = char end
                             end
                         end
                     end
@@ -142,9 +158,12 @@ Tabs.Auto:AddToggle("AutoPickup", {
             task.spawn(function()
                 while AutoPickup do
                     task.wait(0.5)
-                    for _,item in pairs(workspace.Drops:GetChildren()) do -- ⚠️ thay đúng folder
-                        if item:IsA("Part") or item:IsA("Tool") then
-                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = item.CFrame
+                    for _,obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("ProximityPrompt") then
+                            local dist = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - obj.Parent.Position).Magnitude
+                            if dist < 15 then
+                                pcall(fireproximityprompt, obj)
+                            end
                         end
                     end
                 end
@@ -162,10 +181,18 @@ Tabs.Auto:AddToggle("AutoWood", {
             task.spawn(function()
                 while AutoWood do
                     task.wait(1)
-                    for _,tree in pairs(workspace.Wood:GetChildren()) do -- ⚠️ thay đúng folder
-                        if tree:FindFirstChild("Hitbox") then
-                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tree.Hitbox.CFrame
-                            game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                    local player = game.Players.LocalPlayer
+                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        for _,tree in pairs(workspace.Wood:GetChildren()) do -- ⚠️ thay đúng folder
+                            if tree:FindFirstChild("Hitbox") then
+                                local dist = (hrp.Position - tree.Hitbox.Position).Magnitude
+                                if dist < 20 then
+                                    hrp.CFrame = tree.Hitbox.CFrame
+                                    local tool = player.Character:FindFirstChildOfClass("Tool")
+                                    if tool then tool:Activate() end
+                                end
+                            end
                         end
                     end
                 end
@@ -173,3 +200,21 @@ Tabs.Auto:AddToggle("AutoWood", {
         end
     end
 })
+
+----------------------------------------
+-- Settings
+----------------------------------------
+local SettingsSection = Tabs.Settings:AddSection("Cài đặt")
+
+Tabs.Settings:AddButton({
+    Title = "Ẩn/Hiện Menu (K)",
+    Callback = function()
+        Window:Toggle()
+    end
+})
+
+game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.K then
+        Window:Toggle()
+    end
+end)
