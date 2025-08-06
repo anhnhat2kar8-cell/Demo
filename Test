@@ -2,113 +2,174 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 
 local Window = Fluent:CreateWindow({
     Title = "Cộng Đồng Việt Nam",
-    SubTitle = "Fluent "..Fluent.Version,
+    SubTitle = "Fram Boss Tool",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(520, 420),
     Acrylic = true,
     Theme = "Dark"
 })
 
 local Tabs = {
-    Main = Window:AddTab({Title = "Player", Icon = "user"}),
-    Teleport = Window:AddTab({Title = "Teleport", Icon = "map-pin"}),
-    Settings = Window:AddTab({Title = "Settings", Icon = "settings"})
+    FramBoss = Window:AddTab({Title = "Fram Boss", Icon = "swords"}),
+    Auto = Window:AddTab({Title = "Auto", Icon = "zap"}),
+    Settings = Window:AddTab({Title = "Cài đặt", Icon = "settings"})
 }
 
-local PlayerSection = Tabs.Main:AddSection("Movement")
+----------------------------------------
+-- Fram Boss
+----------------------------------------
+local FramBossSection = Tabs.FramBoss:AddSection("Fram Boss")
 
-local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeed", {
-    Title = "Walk Speed",
-    Default = 16,
-    Min = 16,
-    Max = 200,
+local SpeedSlider = Tabs.FramBoss:AddSlider("SpinSpeed", {
+    Title = "Tốc độ góc quay (radian/s)",
+    Default = 5,
+    Min = 1,
+    Max = 20,
     Rounding = 1,
     Callback = function(Value)
-        if game.Players.LocalPlayer.Character then
-            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
-        end
+        SpinSpeed = Value
     end
 })
 
-local JumpPowerSlider = Tabs.Main:AddSlider("JumpPower", {
-    Title = "Jump Power",
-    Default = 50,
-    Min = 0,
-    Max = 500,
-    Rounding = 1,
-    Callback = function(Value)
-        if game.Players.LocalPlayer.Character then
-            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
-        end
-    end
-})
-
-local NoClipToggle = Tabs.Main:AddToggle("NoClip", {
-    Title = "No Clip",
+Tabs.FramBoss:AddToggle("FramBoss", {
+    Title = "Bật Fram Boss 🔄",
     Default = false,
     Callback = function(Value)
-        if Value then
-            Noclipping = game:GetService('RunService').Stepped:Connect(function()
-                if game.Players.LocalPlayer.Character then
-                    for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-                        if v:IsA("BasePart") then
-                            v.CanCollide = false
+        FramBoss = Value
+        if FramBoss then
+            task.spawn(function()
+                while FramBoss do
+                    task.wait()
+                    local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
+                    if boss and boss:FindFirstChild("HumanoidRootPart") and game.Players.LocalPlayer.Character then
+                        local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5) * CFrame.Angles(0, tick()*SpinSpeed, 0)
                         end
                     end
                 end
             end)
-        else
-            if Noclipping then
-                Noclipping:Disconnect()
-            end
         end
     end
 })
 
-local TeleportSection = Tabs.Teleport:AddSection("Checkpoints")
-
-local AutoCheckpointToggle = Tabs.Teleport:AddToggle("AutoCheckpoint", {
-    Title = "Auto Checkpoint",
+Tabs.FramBoss:AddToggle("ShowBossHP", {
+    Title = "Hiển thị máu Boss ❤️",
     Default = false,
     Callback = function(Value)
+        ShowBossHP = Value
         if Value then
-            AutoCheckpoint = game:GetService('RunService').Heartbeat:Connect(function()
-                local stage = game:GetService("Players").LocalPlayer.leaderstats.Stage.Value
-                local nextCheckpoint = workspace.Checkpoints[tostring(stage + 1)]
-                if nextCheckpoint then
-                    game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = nextCheckpoint.CFrame
+            task.spawn(function()
+                while ShowBossHP do
+                    task.wait(1)
+                    local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
+                    if boss and boss:FindFirstChildOfClass("Humanoid") then
+                        Fluent:Notify({
+                            Title = "Boss HP",
+                            Content = tostring(boss.Humanoid.Health).." / "..tostring(boss.Humanoid.MaxHealth),
+                            Duration = 2
+                        })
+                    end
                 end
             end)
-        else
-            if AutoCheckpoint then
-                AutoCheckpoint:Disconnect()
-            end
         end
     end
 })
 
-local ManualCheckpointButton = Tabs.Teleport:AddButton({
-    Title = "Next Checkpoint",
-    Callback = function()
-        local stage = game:GetService("Players").LocalPlayer.leaderstats.Stage.Value
-        local nextCheckpoint = workspace.Checkpoints[tostring(stage + 1)]
-        if nextCheckpoint then
-            game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = nextCheckpoint.CFrame
+Tabs.FramBoss:AddToggle("AutoAttack", {
+    Title = "Tự đánh khi cầm vũ khí ⚔️",
+    Default = false,
+    Callback = function(Value)
+        AutoAttack = Value
+        if AutoAttack then
+            task.spawn(function()
+                while AutoAttack do
+                    task.wait(0.2)
+                    local char = game.Players.LocalPlayer.Character
+                    if char and char:FindFirstChildOfClass("Tool") then
+                        game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                    end
+                end
+            end)
         end
     end
 })
 
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+----------------------------------------
+-- Auto Heal / Item / Wood
+----------------------------------------
+local AutoSection = Tabs.Auto:AddSection("Tự động")
 
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
+Tabs.Auto:AddToggle("AutoHeal", {
+    Title = "Auto Heal +50 HP 🩸",
+    Default = false,
+    Callback = function(Value)
+        AutoHeal = Value
+        if AutoHeal then
+            task.spawn(function()
+                while AutoHeal do
+                    task.wait(1)
+                    local player = game.Players.LocalPlayer
+                    local char = player.Character
+                    if char and char:FindFirstChildOfClass("Humanoid") then
+                        local hp = char.Humanoid.Health
+                        if hp < 50 then
+                            local oldTool = char:FindFirstChildOfClass("Tool")
+                            -- ⚠️ thay "Bandage" thành đúng tên item hồi máu
+                            local bandage = player.Backpack:FindFirstChild("Bandage")
+                            if bandage then
+                                bandage.Parent = char
+                                bandage:Activate()
+                                task.wait(1)
+                                if oldTool then
+                                    oldTool.Parent = char
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
 
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
+Tabs.Auto:AddToggle("AutoPickup", {
+    Title = "Auto nhặt vật phẩm 🎒",
+    Default = false,
+    Callback = function(Value)
+        AutoPickup = Value
+        if AutoPickup then
+            task.spawn(function()
+                while AutoPickup do
+                    task.wait(0.5)
+                    for _,item in pairs(workspace.Drops:GetChildren()) do -- ⚠️ thay đúng folder
+                        if item:IsA("Part") or item:IsA("Tool") then
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = item.CFrame
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
 
-Fluent:Notify({
-    Title = "Mj Contega Hax",
-    Content = "Script loaded successfully!",
-    Duration = 5
+Tabs.Auto:AddToggle("AutoWood", {
+    Title = "Auto Farm Gỗ 🌲",
+    Default = false,
+    Callback = function(Value)
+        AutoWood = Value
+        if AutoWood then
+            task.spawn(function()
+                while AutoWood do
+                    task.wait(1)
+                    for _,tree in pairs(workspace.Wood:GetChildren()) do -- ⚠️ thay đúng folder
+                        if tree:FindFirstChild("Hitbox") then
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = tree.Hitbox.CFrame
+                            game:GetService("VirtualUser"):ClickButton1(Vector2.new())
+                        end
+                    end
+                end
+            end)
+        end
+    end
 })
