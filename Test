@@ -35,6 +35,11 @@ Tabs.FramBoss:AddSlider("Radius", {
     Callback = function(v) Radius = v end
 })
 
+local BossHpLabel = Tabs.FramBoss:AddParagraph({
+    Title = "Máu Boss ❤️",
+    Content = "Chưa phát hiện"
+})
+
 Tabs.FramBoss:AddToggle("FramBoss", {
     Title = "Bật Fram Boss 🔄",
     Default = false,
@@ -44,7 +49,7 @@ Tabs.FramBoss:AddToggle("FramBoss", {
             task.spawn(function()
                 while FramBoss do
                     task.wait()
-                    local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
+                    local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên Boss
                     local player = game.Players.LocalPlayer
                     if boss and boss:FindFirstChild("HumanoidRootPart") and player.Character then
                         local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -53,29 +58,6 @@ Tabs.FramBoss:AddToggle("FramBoss", {
                             local offset = Vector3.new(math.cos(angle)*Radius, 0, math.sin(angle)*Radius)
                             hrp.CFrame = CFrame.new(boss.HumanoidRootPart.Position + offset, boss.HumanoidRootPart.Position)
                         end
-                    end
-                end
-            end)
-        end
-    end
-})
-
-Tabs.FramBoss:AddToggle("ShowBossHP", {
-    Title = "Hiển thị máu Boss ❤️",
-    Default = false,
-    Callback = function(Value)
-        ShowBossHP = Value
-        if Value then
-            task.spawn(function()
-                while ShowBossHP do
-                    task.wait(1)
-                    local boss = workspace:FindFirstChild("Boss")
-                    if boss and boss:FindFirstChildOfClass("Humanoid") then
-                        Fluent:Notify({
-                            Title = "Boss HP",
-                            Content = tostring(math.floor(boss.Humanoid.Health)).." / "..tostring(boss.Humanoid.MaxHealth),
-                            Duration = 2
-                        })
                     end
                 end
             end)
@@ -102,6 +84,19 @@ Tabs.FramBoss:AddToggle("AutoAttack", {
         end
     end
 })
+
+-- Cập nhật máu Boss realtime
+task.spawn(function()
+    while task.wait(1) do
+        local boss = workspace:FindFirstChild("Boss") -- ⚠️ thay đúng tên
+        if boss and boss:FindFirstChildOfClass("Humanoid") then
+            local hum = boss:FindFirstChildOfClass("Humanoid")
+            BossHpLabel:SetDesc(math.floor(hum.Health).." / "..math.floor(hum.MaxHealth))
+        else
+            BossHpLabel:SetDesc("Chưa phát hiện")
+        end
+    end
+end)
 
 ----------------------------------------
 -- Auto Heal / Item / Wood
@@ -131,10 +126,10 @@ Tabs.Auto:AddToggle("AutoHeal", {
                     local player = game.Players.LocalPlayer
                     local char = player.Character
                     if char and char:FindFirstChildOfClass("Humanoid") then
-                        local hp = char.Humanoid.Health
-                        if hp < HealHP then
+                        local hum = char.Humanoid
+                        if hum.Health < HealHP then
                             local oldTool = char:FindFirstChildOfClass("Tool")
-                            local bandage = player.Backpack:FindFirstChild("Bandage") -- ⚠️ đổi tên item
+                            local bandage = player.Backpack:FindFirstChild("Bandage") -- ⚠️ đổi tên item heal
                             if bandage then
                                 bandage.Parent = char
                                 bandage:Activate()
@@ -149,6 +144,24 @@ Tabs.Auto:AddToggle("AutoHeal", {
     end
 })
 
+local MyHpLabel = Tabs.Auto:AddParagraph({
+    Title = "Máu của bạn 💚",
+    Content = "Đang tải..."
+})
+
+task.spawn(function()
+    while task.wait(1) do
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            MyHpLabel:SetDesc("HP: "..math.floor(hum.Health).." / "..math.floor(hum.MaxHealth))
+        else
+            MyHpLabel:SetDesc("Không tìm thấy nhân vật")
+        end
+    end
+end)
+
 Tabs.Auto:AddToggle("AutoPickup", {
     Title = "Auto nhặt vật phẩm 🎒",
     Default = false,
@@ -160,9 +173,12 @@ Tabs.Auto:AddToggle("AutoPickup", {
                     task.wait(0.5)
                     for _,obj in pairs(workspace:GetDescendants()) do
                         if obj:IsA("ProximityPrompt") then
-                            local dist = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - obj.Parent.Position).Magnitude
-                            if dist < 15 then
-                                pcall(fireproximityprompt, obj)
+                            local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                local dist = (hrp.Position - obj.Parent.Position).Magnitude
+                                if dist < 15 then
+                                    pcall(fireproximityprompt, obj)
+                                end
                             end
                         end
                     end
