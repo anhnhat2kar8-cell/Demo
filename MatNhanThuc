@@ -279,7 +279,7 @@ end)
 -- Nút bấm
 toggle.MouseButton1Click:Connect(function()
     running = not running
-    toggle.Text = (running and "TẮT" or "BẬT") .. ": Đánh Boss"
+    toggle.Text = (running and "TẮT" or "✅") .. ": Đánh Boss"
 end)
 
 disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
@@ -287,17 +287,17 @@ spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed e
 
 autoBtn.MouseButton1Click:Connect(function()
     autoAttack = not autoAttack
-    autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
+    autoBtn.Text = (autoAttack and "TẮT" or "✅") .. ": Auto Đánh"
 end)
 
 healBtn.MouseButton1Click:Connect(function()
     autoHeal = not autoHeal
-    healBtn.Text = (autoHeal and "TẮT" or "BẬT") .. ": Auto Băng Gạc"
+    healBtn.Text = (autoHeal and "TẮT" or "✅") .. ": Auto Băng Gạc"
 end)
 
 lootBtn.MouseButton1Click:Connect(function()
     autoLoot = not autoLoot
-    lootBtn.Text = (autoLoot and "TẮT" or "BẬT") .. ": Auto Lụm"
+    lootBtn.Text = (autoLoot and "👹" or "✅") .. ": Auto Lụm"
 end)
 
 tpBtn.MouseButton1Click:Connect(function()
