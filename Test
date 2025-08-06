@@ -97,7 +97,7 @@ myHpLabel.TextScaled = true
 local autoBtn = Instance.new("TextButton", frame)
 autoBtn.Size = UDim2.new(1, 0, 0, 30)
 autoBtn.Position = UDim2.new(0, 0, 0, 165)
-autoBtn.Text = "BẬT: Auto Đánh"
+autoBtn.Text = "⚔️Auto Đánh"
 autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 autoBtn.TextColor3 = Color3.new(1,1,1)
 
@@ -109,11 +109,11 @@ healBtn.Text = "BẬT: Auto Băng Gạc"
 healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 healBtn.TextColor3 = Color3.new(1,1,1)
 
--- Auto Lụm
+-- Tự Động Vật Phẩm Rơi
 local lootBtn = Instance.new("TextButton", frame)
 lootBtn.Size = UDim2.new(1, 0, 0, 30)
 lootBtn.Position = UDim2.new(0, 0, 0, 235)
-lootBtn.Text = "BẬT: Auto Lụm"
+lootBtn.Text = "🎁: Auto Lụm"
 lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 lootBtn.TextColor3 = Color3.new(1,1,1)
 
@@ -121,7 +121,7 @@ lootBtn.TextColor3 = Color3.new(1,1,1)
 local nameText = Instance.new("TextLabel", frame)
 nameText.Size = UDim2.new(1, 0, 0, 30)
 nameText.Position = UDim2.new(0, 0, 0, 270)
-nameText.Text = "TT:MatNhanThuc"
+nameText.Text = "MatNhanThuc"
 nameText.BackgroundTransparency = 1
 nameText.TextScaled = true
 
@@ -277,15 +277,15 @@ spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed e
 
 autoBtn.MouseButton1Click:Connect(function()
 	autoAttack = not autoAttack
-	autoBtn.Text = (autoAttack and "TẮT" or "BẬT") .. ": Auto Đánh"
+	autoBtn.Text = (autoAttack and "TẮT" or "✅") .. "Auto Đánh"
 end)
 
 healBtn.MouseButton1Click:Connect(function()
 	autoHeal = not autoHeal
-	healBtn.Text = (autoHeal and "TẮT" or "✅") .. ": Auto Băng Gạc"
+	healBtn.Text = (autoHeal and "TẮT" or "✅") .. "Auto Băng Gạc"
 end)
 
 lootBtn.MouseButton1Click:Connect(function()
 	autoLoot = not autoLoot
-	lootBtn.Text = (autoLoot and "🎁" or "✅") .. ": Auto Lụm"
+	lootBtn.Text = (autoLoot and "🎁" or "✅") .. "Tự Động Vật Phẩm Rơi"
 end)
