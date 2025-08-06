@@ -1,94 +1,95 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-
 local Window = Fluent:CreateWindow({
-    Title = "Cộng Đồng Việt Nam: TestHub  |  By DuyVel",
-    SubTitle = "Fluent "..Fluent.Version,
+    Title = "Cộng Đồng Việt Nam",
+    SubTitle = "Farm Boss Tool",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(520, 420),
     Acrylic = true,
-    Theme = "Rose"
+    Theme = "Dark"
 })
 
-local Tabs = {
-    Main = Window:AddTab({Title = "Main", Icon = "home"}),
-    FarmWood = Window:AddTab({Title = "Farm Gỗ", Icon = "tree"}),
-    Settings = Window:AddTab({Title = "Settings", Icon = "settings"})
-}
+-- Tạo tab
+local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
 
---// Tab Main
-local WeaponDropdown = Tabs.Main:AddDropdown("SelectWeapon", {
+-- Chọn vũ khí
+local weaponDropdown = Tab:AddDropdown("Select Weapon", {
     Title = "Select Weapon",
-    Values = {"None", "Sword", "Gun", "Fist"},
+    Values = {"Katana", "Gun", "Punch"},
     Multi = false,
-    Default = 1,
-    Callback = function(Value)
-        Fluent:Notify({
-            Title = "Weapon Selected",
-            Content = "Bạn đã chọn: "..Value,
-            Duration = 3
-        })
-    end
+    Default = "Katana"
 })
 
-Tabs.Main:AddToggle("AutoMob", {
-    Title = "Auto Quái",
-    Default = false,
-    Callback = function(Value)
-        print("Auto Quái:", Value)
-    end
-})
+local AutoQuai = false
+local FarmBoss = false
+local AutoLoot = false
+local TeleBoss = false
+local SelectedWeapon = nil
 
-Tabs.Main:AddToggle("FarmBoss", {
-    Title = "Farm Boss",
-    Default = false,
-    Callback = function(Value)
-        print("Farm Boss:", Value)
-    end
-})
+-- Kết nối UI
+weaponDropdown:OnChanged(function(value)
+    SelectedWeapon = value
+end)
 
-Tabs.Main:AddToggle("AutoLoot", {
-    Title = "Auto Loot (Range 500)",
-    Default = false,
-    Callback = function(Value)
-        print("Auto Loot:", Value)
-    end
-})
+Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
+    AutoQuai = v
+end)
 
-Tabs.Main:AddButton({
+Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
+    FarmBoss = v
+end)
+
+Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
+    AutoLoot = v
+end)
+
+Tab:AddButton({
     Title = "Tele vào chỗ boss",
     Callback = function()
-        print("Teleport Boss")
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("HumanoidRootPart") then
+            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5))
+        end
     end
 })
 
---// Tab Farm Gỗ
-Tabs.FarmWood:AddButton({
-    Title = "Tele farm gỗ",
-    Callback = function()
-        print("Teleport Farm Gỗ")
+-- Auto chức năng
+RunService.RenderStepped:Connect(function()
+    if AutoQuai then
+        for _, mob in pairs(workspace.Monsters:GetChildren()) do
+            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                hum:MoveTo(mob.HumanoidRootPart.Position)
+                if SelectedWeapon then
+                    game:GetService("ReplicatedStorage").Events.Combat:FireServer(mob, SelectedWeapon)
+                end
+                break
+            end
+        end
     end
-})
 
-Tabs.FarmWood:AddToggle("AutoFarmWood", {
-    Title = "Auto Farm Gỗ",
-    Default = false,
-    Callback = function(Value)
-        print("Auto Farm Gỗ:", Value)
+    if FarmBoss then
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+            hum:MoveTo(boss.HumanoidRootPart.Position)
+            if SelectedWeapon then
+                game:GetService("ReplicatedStorage").Events.Combat:FireServer(boss, SelectedWeapon)
+            end
+        end
     end
-})
 
---// Tab Settings
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:SetLibrary(Fluent)
-
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-Fluent:Notify({
-    Title = "TestHub",
-    Content = "Menu loaded thành công!",
-    Duration = 5
-})
+    if AutoLoot then
+        for _, drop in pairs(workspace.Drops:GetChildren()) do
+            if (drop.Position - chr.HumanoidRootPart.Position).Magnitude <= 500 then
+                chr:PivotTo(drop.CFrame)
+                firetouchinterest(chr.HumanoidRootPart, drop, 0)
+                firetouchinterest(chr.HumanoidRootPart, drop, 1)
+            end
+        end
+    end
+end)
