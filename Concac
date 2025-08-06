@@ -1,16 +1,133 @@
-print("=== BẮT ĐẦU QUÉT GAME ===")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-for _, obj in pairs(workspace:GetChildren()) do
-    if obj:IsA("Folder") or obj:IsA("Model") then
-        print("[Workspace] Folder/Model:", obj.Name, " | Số lượng con:", #obj:GetChildren())
+local lp = Players.LocalPlayer
+local chr, hum
+
+-- Hàm cập nhật nhân vật khi respawn
+local function UpdateChar()
+    chr = lp.Character or lp.CharacterAdded:Wait()
+    hum = chr:WaitForChild("Humanoid")
+end
+UpdateChar()
+lp.CharacterAdded:Connect(function()
+    task.wait(1)
+    UpdateChar()
+end)
+
+-- Load Fluent UI
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local Window = Fluent:CreateWindow({
+    Title = "Cộng Đồng Việt Nam",
+    SubTitle = "Farm Boss Tool",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(520, 420),
+    Acrylic = true,
+    Theme = "Dark"
+})
+
+-- Tab
+local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
+
+-- Chọn vũ khí
+local SelectedWeapon = nil
+local weaponDropdown = Tab:AddDropdown("Select Weapon", {
+    Title = "Chọn Vũ Khí",
+    Values = {"Katana", "Gun", "Punch"},
+    Multi = false,
+    Default = "Katana"
+})
+weaponDropdown:OnChanged(function(value)
+    SelectedWeapon = value
+end)
+
+-- Biến chức năng
+local AutoQuai = false
+local FarmBoss = false
+local AutoLoot = false
+local TeleBoss = false
+
+-- Toggle Auto Quái
+Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
+    AutoQuai = v
+end)
+
+-- Toggle Farm Boss
+Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
+    FarmBoss = v
+end)
+
+-- Toggle Auto Loot
+Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
+    AutoLoot = v
+end)
+
+-- Toggle Tele Boss liên tục
+Tab:AddToggle("Tele Boss", {Title = "Teleport liên tục đến Boss", Default = false}):OnChanged(function(v)
+    TeleBoss = v
+end)
+
+-- Nút Tele ngay lập tức
+Tab:AddButton({
+    Title = "Tele ngay vào chỗ Boss",
+    Callback = function()
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("HumanoidRootPart") then
+            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5))
+        end
+    end
+})
+
+-- Hàm đánh mob/boss
+local function Attack(target)
+    if hum and hum.Health > hum.MaxHealth * 0.2 then -- Safe Farm: chỉ đánh khi máu >20%
+        if SelectedWeapon then
+            ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
+        end
     end
 end
 
-local rs = game:GetService("ReplicatedStorage")
-for _, obj in pairs(rs:GetDescendants()) do
-    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        print("[ReplicatedStorage] Remote:", obj.Name, " | Loại:", obj.ClassName)
+-- Auto chức năng
+RunService.RenderStepped:Connect(function()
+    -- Auto Quái
+    if AutoQuai and workspace:FindFirstChild("Monsters") then
+        for _, mob in pairs(workspace.Monsters:GetChildren()) do
+            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                hum:MoveTo(mob.HumanoidRootPart.Position)
+                Attack(mob)
+                break
+            end
+        end
     end
-end
 
-print("=== KẾT THÚC QUÉT GAME ===")
+    -- Farm Boss
+    if FarmBoss then
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+            hum:MoveTo(boss.HumanoidRootPart.Position)
+            Attack(boss)
+        end
+    end
+
+    -- Tele Boss liên tục
+    if TeleBoss then
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("HumanoidRootPart") then
+            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5))
+        end
+    end
+
+    -- Auto Loot
+    if AutoLoot and workspace:FindFirstChild("Drops") then
+        for _, drop in pairs(workspace.Drops:GetChildren()) do
+            if drop:IsA("BasePart") and (drop.Position - chr.HumanoidRootPart.Position).Magnitude <= 500 then
+                chr:PivotTo(drop.CFrame)
+                firetouchinterest(chr.HumanoidRootPart, drop, 0)
+                firetouchinterest(chr.HumanoidRootPart, drop, 1)
+                task.wait(0.1) -- tránh spam lag
+            end
+        end
+    end
+end)
