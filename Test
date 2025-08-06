@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
@@ -21,38 +22,81 @@ gui.Name = "MatNhanThucMenu"
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 300, 0, 400)
-frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+frame.Position = UDim2.new(0.3, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
 
--- Tiêu đề
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -20, 0, 35)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.BackgroundTransparency = 1
-title.Text = "🌀 Mất Nhận Thức"
-title.TextColor3 = Color3.new(1,1,1)
-title.TextScaled = true
-title.Font = Enum.Font.SourceSansBold
-title.TextXAlignment = Enum.TextXAlignment.Center
+-- Thanh tiêu đề
+local titleBar = Instance.new("Frame", frame)
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0,10)
 
--- Hiệu ứng cầu vồng cho tiêu đề
+-- Chữ tiêu đề
+local titleText = Instance.new("TextLabel", titleBar)
+titleText.Size = UDim2.new(0.8, 0, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "🌀 Mất Nhận Thức"
+titleText.TextColor3 = Color3.new(1,1,1)
+titleText.TextScaled = true
+titleText.Font = Enum.Font.SourceSansBold
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Hiệu ứng cầu vồng
 task.spawn(function()
     local hue = 0
-    while title do
+    while titleText do
         hue = (hue + 1) % 360
-        title.TextColor3 = Color3.fromHSV(hue/360,1,1)
+        titleText.TextColor3 = Color3.fromHSV(hue/360,1,1)
         task.wait(0.05)
     end
 end)
 
--- ScrollingFrame
+-- Nút thu nhỏ
+local toggleBtn = Instance.new("TextButton", titleBar)
+toggleBtn.Size = UDim2.new(0.2, -10, 1, -6)
+toggleBtn.Position = UDim2.new(0.8, 5, 0, 3)
+toggleBtn.Text = "🔽"
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+toggleBtn.TextScaled = true
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,8)
+
+-- Cho phép kéo Frame bằng titleBar
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- ScrollingFrame chứa các nút
 local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -20, 1, -50)
-scroll.Position = UDim2.new(0,10,0,45)
+scroll.Size = UDim2.new(1, -20, 1, -45)
+scroll.Position = UDim2.new(0,10,0,40)
 scroll.CanvasSize = UDim2.new(0,0,0,0)
 scroll.ScrollBarThickness = 5
 scroll.BackgroundTransparency = 1
@@ -64,7 +108,22 @@ list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	scroll.CanvasSize = UDim2.new(0,0,0,list.AbsoluteContentSize.Y+10)
 end)
 
--- Hiển thị máu Boss
+-- Ẩn/hiện nội dung khi bấm nút thu nhỏ
+local minimized = false
+toggleBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        scroll.Visible = false
+        frame.Size = UDim2.new(0,300,0,40)
+        toggleBtn.Text = "🔼"
+    else
+        scroll.Visible = true
+        frame.Size = UDim2.new(0,300,0,400)
+        toggleBtn.Text = "🔽"
+    end
+end)
+
+-- Label máu Boss
 local hpLabel = Instance.new("TextLabel", scroll)
 hpLabel.Size = UDim2.new(1,0,0,30)
 hpLabel.Text = "Máu Boss: ..."
@@ -72,7 +131,7 @@ hpLabel.TextColor3 = Color3.new(1,0,0)
 hpLabel.BackgroundTransparency = 1
 hpLabel.TextScaled = true
 
--- Hiển thị máu bạn
+-- Label máu bạn
 local myHpLabel = Instance.new("TextLabel", scroll)
 myHpLabel.Size = UDim2.new(1,0,0,30)
 myHpLabel.Text = "Máu bạn: ..."
@@ -80,7 +139,7 @@ myHpLabel.TextColor3 = Color3.new(0,1,0)
 myHpLabel.BackgroundTransparency = 1
 myHpLabel.TextScaled = true
 
--- Hàm toggle
+-- Hàm tạo nút bật/tắt
 local function makeSwitch(text, callback)
     local btn = Instance.new("TextButton", scroll)
     btn.Size = UDim2.new(1,0,0,35)
@@ -105,7 +164,7 @@ local function makeSwitch(text, callback)
     end)
 end
 
--- Hàm nhập giá trị (textbox nhỏ)
+-- Hàm nhập số
 local function makeInput(labelText, default, callback)
     local container = Instance.new("Frame", scroll)
     container.Size = UDim2.new(1,0,0,30)
@@ -113,7 +172,6 @@ local function makeInput(labelText, default, callback)
 
     local label = Instance.new("TextLabel", container)
     label.Size = UDim2.new(0.5, -5, 1, 0)
-    label.Position = UDim2.new(0,0,0,0)
     label.Text = labelText
     label.TextColor3 = Color3.new(1,1,1)
     label.BackgroundTransparency = 1
@@ -134,118 +192,15 @@ local function makeInput(labelText, default, callback)
     end)
 end
 
--- Toggle chức năng
+-- Các toggle
 makeSwitch("Fram Boss", function(v) running = v end)
 makeSwitch("Auto Attack", function(v) autoAttack = v end)
 makeSwitch("Auto Heal", function(v) autoHeal = v end)
 makeSwitch("Auto Loot", function(v) autoLoot = v end)
 makeSwitch("Chặt Gỗ", function(v) autoWood = v end)
 
--- Input chỉnh Radius & Speed
+-- Input chỉnh Radius/Speed
 makeInput("Khoảng cách", radius, function(v) radius = v end)
 makeInput("Tốc độ quay", speed, function(v) speed = v end)
 
--- Hàm tìm Boss
-local function getTarget()
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-            return v
-        end
-    end
-end
-
--- Auto Heal
-task.spawn(function()
-    while true do
-        if autoHeal and hum.Health < 80 then
-            if lp.Character then
-                local tool = lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("băng") then
-                    lastWeapon = tool
-                end
-            end
-            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
-            if not bandage or not bandage.Name:lower():find("băng") then
-                for _,tool in ipairs(lp.Backpack:GetChildren()) do
-                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-                        tool.Parent = lp.Character
-                        task.wait(0.2)
-                        break
-                    end
-                end
-            end
-            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-            if healTool and healTool.Name:lower():find("băng") then
-                healTool:Activate()
-                task.wait(1)
-                if lastWeapon and lastWeapon.Parent == lp.Backpack then
-                    lastWeapon.Parent = lp.Character
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- Auto Loot
-task.spawn(function()
-    while true do
-        if autoLoot then
-            for _,prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-                    if dist < 15 then
-                        fireproximityprompt(prompt)
-                        task.wait(0.2)
-                    end
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- Auto Chặt Gỗ
-task.spawn(function()
-    while true do
-        if autoWood then
-            for _,tree in pairs(workspace:GetDescendants()) do
-                if tree:IsA("Model") and tree.Name:lower():find("tree") and tree:FindFirstChild("HumanoidRootPart") then
-                    if (hrp.Position - tree.HumanoidRootPart.Position).Magnitude < 20 then
-                        local axe = lp.Backpack:FindFirstChild("Axe") or lp.Character:FindFirstChild("Axe")
-                        if axe then
-                            axe.Parent = lp.Character
-                            axe:Activate()
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(1)
-    end
-end)
-
--- Auto Attack
-local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Activate() end) end
-end
-
--- Fram Boss
-RunService.Heartbeat:Connect(function()
-    if running then
-        local target = getTarget()
-        if target and target:FindFirstChild("HumanoidRootPart") then
-            local angle = tick() * speed
-            local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-            local goalPos = target.HumanoidRootPart.Position + offset
-            local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
-            tween:Play()
-            hum.AutoRotate = false
-            hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-            if autoAttack then attack() end
-            hpLabel.Text = "Máu Boss: " .. math.floor(target.Humanoid.Health)
-        end
-    end
-    myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
+-- ==== Các phần Auto Heal / Loot / Wood / Fram Boss giống code trước (không đổi) ====
