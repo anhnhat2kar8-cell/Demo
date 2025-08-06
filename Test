@@ -7,180 +7,133 @@ local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Biến trạng thái
+-- Biến
 local framBoss = false
-local autoAttack = false
-local showHp = false
-local autoHeal = false
 local autoLoot = false
-local autoWood = false
-local speed = 2
+local autoHeal = false
 local radius = 15
+local speed = 2
+local lootRange = 50
 local healThreshold = 50
-local woodRange = 25
+local currentWeapon = "None"
 local lastWeapon = nil
-local currentTab = "Boss"
 
 -- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "FramBossGui"
+gui.Name = "FramBossUI"
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 420, 0, 460)
-frame.Position = UDim2.new(0.5, -210, 0.5, -230)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.Active = true
-frame.Draggable = true
-frame.BorderSizePixel = 4
-
--- Bo tròn
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0,15)
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 420, 0, 460)
+mainFrame.Position = UDim2.new(0.5, -210, 0.5, -230)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.BorderSizePixel = 4
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,15)
 
 -- Viền 7 màu
 task.spawn(function()
-    local hue = 0
-    while frame.Parent do
-        hue = (hue + 2) % 360
-        frame.BorderColor3 = Color3.fromHSV(hue/360,1,1)
+    local hue=0
+    while mainFrame.Parent do
+        hue=(hue+2)%360
+        mainFrame.BorderColor3=Color3.fromHSV(hue/360,1,1)
         wait(0.05)
     end
 end)
 
--- Thanh Tab
-local tabBar = Instance.new("Frame", frame)
-tabBar.Size = UDim2.new(1, 0, 0, 40)
-tabBar.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Instance.new("UICorner", tabBar).CornerRadius = UDim.new(0,12)
+-- Tiêu đề
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1,0,0,40)
+title.BackgroundTransparency = 1
+title.Text = "framboss"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextScaled = true
 
-local pages = {}
+-- Dòng chọn vũ khí
+local wepLabel = Instance.new("TextLabel", mainFrame)
+wepLabel.Size = UDim2.new(1,-20,0,30)
+wepLabel.Position = UDim2.new(0,10,0,50)
+wepLabel.Text = "Vũ Khí Hiện Tại : None"
+wepLabel.TextColor3 = Color3.new(1,1,1)
+wepLabel.BackgroundTransparency = 1
+wepLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Tạo trang
-local function makePage(name)
-    local page = Instance.new("Frame", frame)
-    page.Name = name.."Page"
-    page.Size = UDim2.new(1, 0, 1, -40)
-    page.Position = UDim2.new(0,0,0,40)
-    page.BackgroundTransparency = 1
-    page.Visible = (name == "Boss")
-    pages[name] = page
-    return page
-end
-
-local bossPage = makePage("Boss")
-local farmPage = makePage("Farm")
-local miscPage = makePage("Misc")
-
--- Nút Tab
-local function makeTabButton(name, posX)
-    local btn = Instance.new("TextButton", tabBar)
-    btn.Size = UDim2.new(0, 130, 1, 0)
-    btn.Position = UDim2.new(0, posX, 0, 0)
-    btn.Text = name
-    btn.TextSize = 18
-    btn.BackgroundColor3 = (name=="Boss") and Color3.fromRGB(80,120,255) or Color3.fromRGB(60,60,60)
-    btn.TextColor3 = Color3.new(1,1,1)
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
-    btn.MouseButton1Click:Connect(function()
-        currentTab = name
-        for n,p in pairs(pages) do p.Visible = (n==name) end
-        for _,b in pairs(tabBar:GetChildren()) do
-            if b:IsA("TextButton") then
-                b.BackgroundColor3 = Color3.fromRGB(60,60,60)
-            end
+-- Update vũ khí
+task.spawn(function()
+    while true do
+        local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            currentWeapon = tool.Name
+        else
+            currentWeapon = "None"
         end
-        btn.BackgroundColor3 = Color3.fromRGB(80,120,255)
-    end)
-end
+        wepLabel.Text = "Vũ Khí Hiện Tại : "..currentWeapon
+        wait(0.5)
+    end
+end)
 
-makeTabButton("Boss",0)
-makeTabButton("Farm",130)
-makeTabButton("Misc",260)
-
-----------------------------------------------------------------
--- 📌 Hàm tạo Toggle
-local function makeToggle(parent, text, order, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = UDim2.new(0.05, 0, 0, 20 + order*45)
+--------------------------------------------------
+-- 📌 Hàm tiện ích
+local function makeToggle(text,posY,callback)
+    local btn = Instance.new("TextButton", mainFrame)
+    btn.Size = UDim2.new(0.9,0,0,30)
+    btn.Position = UDim2.new(0.05,0,0,posY)
     btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
     btn.TextColor3 = Color3.new(1,1,1)
-    btn.TextSize = 16
     btn.Text = "TẮT: "..text
+    btn.TextScaled = true
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
     btn.MouseButton1Click:Connect(function()
-        local state = not (btn.Text:find("BẬT"))
+        local state = not btn.Text:find("BẬT")
         btn.Text = (state and "BẬT" or "TẮT")..": "..text
         callback(state)
     end)
 end
 
--- 📌 Hàm tạo Slider
-local function makeSlider(parent,text, order, min, max, default, callback)
-    local label = Instance.new("TextLabel", parent)
-    label.Size = UDim2.new(1, -20, 0, 25)
-    label.Position = UDim2.new(0, 10, 0, 20 + order*70)
+local function makeSlider(text,posY,min,max,default,callback)
+    local label = Instance.new("TextLabel", mainFrame)
+    label.Size = UDim2.new(0.9,0,0,25)
+    label.Position = UDim2.new(0.05,0,0,posY)
     label.Text = text..": "..default
-    label.TextSize = 16
     label.TextColor3 = Color3.new(1,1,1)
     label.BackgroundTransparency = 1
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextScaled = true
 
-    local sliderBack = Instance.new("Frame", parent)
-    sliderBack.Size = UDim2.new(0.9, 0, 0, 10)
-    sliderBack.Position = UDim2.new(0.05, 0, 0, 50 + order*70)
-    sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    Instance.new("UICorner", sliderBack).CornerRadius = UDim.new(0,8)
+    local back = Instance.new("Frame", mainFrame)
+    back.Size = UDim2.new(0.9,0,0,10)
+    back.Position = UDim2.new(0.05,0,0,posY+30)
+    back.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    Instance.new("UICorner", back).CornerRadius = UDim.new(0,8)
 
-    local sliderFill = Instance.new("Frame", sliderBack)
-    sliderFill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
-    sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
-    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0,8)
+    local fill = Instance.new("Frame", back)
+    fill.Size = UDim2.new((default-min)/(max-min),0,1,0)
+    fill.BackgroundColor3 = Color3.fromRGB(0,170,255)
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0,8)
 
-    local dragging = false
-    sliderBack.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
-    end)
-    sliderBack.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
-    UIS.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local rel = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
-            sliderFill.Size = UDim2.new(rel,0,1,0)
-            local value = math.floor(min + rel*(max-min))
-            label.Text = text..": "..value
-            callback(value)
+    local dragging=false
+    back.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true end end)
+    back.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
+    UIS.InputChanged:Connect(function(i)
+        if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
+            local rel=math.clamp((i.Position.X-back.AbsolutePosition.X)/back.AbsoluteSize.X,0,1)
+            fill.Size=UDim2.new(rel,0,1,0)
+            local val=math.floor(min+rel*(max-min))
+            label.Text=text..": "..val
+            callback(val)
         end
     end)
 end
 
-----------------------------------------------------------------
--- 📌 Các nút trong từng Tab
+--------------------------------------------------
+-- 📌 Các chức năng
+makeToggle("Farm Boss 🌪️",90,function(s) framBoss=s end)
+makeToggle("Auto Nhặt (teleport) 💎",130,function(s) autoLoot=s end)
+makeSlider("Tầm nhặt",170,10,100,50,function(v) lootRange=v end)
+makeToggle("Auto Heal (băng gạc) 🩹",230,function(s) autoHeal=s end)
 
--- Tab Boss
-makeToggle(bossPage,"Fram Boss 🌪️",0,function(s) framBoss=s end)
-makeToggle(bossPage,"Hiển thị máu Boss ❤️",1,function(s) showHp=s end)
-makeToggle(bossPage,"Auto Attack 🗡️",2,function(s) autoAttack=s end)
-makeSlider(bossPage,"Tốc độ quay",0,1,10,2,function(v) speed=v end)
-
--- Tab Farm
-makeToggle(farmPage,"Auto Heal 🩹",0,function(s) autoHeal=s end)
-makeSlider(farmPage,"Ngưỡng máu Heal (%)",0,10,100,50,function(v) healThreshold=v end)
-makeToggle(farmPage,"Auto Lụm 💎",1,function(s) autoLoot=s end)
-makeToggle(farmPage,"Auto Chặt Gỗ 🌲",2,function(s) autoWood=s end)
-makeSlider(farmPage,"Khoảng cách Chặt Gỗ",1,10,50,25,function(v) woodRange=v end)
-
--- Tab Misc
-local note = Instance.new("TextLabel", miscPage)
-note.Size = UDim2.new(1,0,1,0)
-note.Text = "Tab Misc (chưa có chức năng)"
-note.TextColor3 = Color3.new(1,1,1)
-note.BackgroundTransparency = 1
-note.TextScaled = true
-
-----------------------------------------------------------------
--- 📌 Logic chức năng
+--------------------------------------------------
+-- 📌 Logic Fram Boss
 local function getBoss()
     for _,v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health>0 then
@@ -194,36 +147,15 @@ local function attack()
     if tool then pcall(function() tool:Activate() end) end
 end
 
--- Auto Heal
-task.spawn(function()
-    while true do
-        if autoHeal and (hum.Health/hum.MaxHealth*100) < healThreshold then
-            if lp.Character then
-                local tool = lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("băng") then
-                    lastWeapon = tool
-                end
-            end
-            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
-            if not bandage or not bandage.Name:lower():find("băng") then
-                for _,tool in ipairs(lp.Backpack:GetChildren()) do
-                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-                        tool.Parent = lp.Character
-                        wait(0.2)
-                        break
-                    end
-                end
-            end
-            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-            if healTool and healTool.Name:lower():find("băng") then
-                healTool:Activate()
-                wait(1)
-                if lastWeapon and lastWeapon.Parent == lp.Backpack then
-                    lastWeapon.Parent = lp.Character
-                end
-            end
+RunService.Heartbeat:Connect(function()
+    if framBoss then
+        local boss = getBoss()
+        if boss then
+            local angle = tick() * speed
+            local offset = Vector3.new(math.cos(angle)*radius,0,math.sin(angle)*radius)
+            hrp.CFrame = CFrame.new(boss.HumanoidRootPart.Position+offset,boss.HumanoidRootPart.Position)
+            attack()
         end
-        wait(0.5)
     end
 end)
 
@@ -234,7 +166,7 @@ task.spawn(function()
             for _,prompt in pairs(workspace:GetDescendants()) do
                 if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
                     local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-                    if dist < 15 then
+                    if dist < lootRange then
                         fireproximityprompt(prompt)
                         wait(0.2)
                     end
@@ -245,34 +177,32 @@ task.spawn(function()
     end
 end)
 
--- Auto Chặt Gỗ
+-- Auto Heal
 task.spawn(function()
     while true do
-        if autoWood then
-            for _,tree in pairs(workspace:GetDescendants()) do
-                if tree:IsA("Model") and tree.Name:lower():find("tree") and tree:FindFirstChild("HumanoidRootPart") then
-                    if (hrp.Position - tree.HumanoidRootPart.Position).Magnitude < woodRange then
-                        hrp.CFrame = CFrame.new(hrp.Position, tree.HumanoidRootPart.Position)
-                        attack()
-                        wait(0.2)
-                    end
+        if autoHeal and (hum.Health/hum.MaxHealth*100) < healThreshold then
+            if lp.Character then
+                local tool = lp.Character:FindFirstChildOfClass("Tool")
+                if tool and not tool.Name:lower():find("băng") then
+                    lastWeapon=tool
+                end
+            end
+            for _,tool in ipairs(lp.Backpack:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+                    tool.Parent=lp.Character
+                    wait(0.2)
+                    break
+                end
+            end
+            local healTool=lp.Character:FindFirstChildWhichIsA("Tool")
+            if healTool and healTool.Name:lower():find("băng") then
+                healTool:Activate()
+                wait(1)
+                if lastWeapon and lastWeapon.Parent==lp.Backpack then
+                    lastWeapon.Parent=lp.Character
                 end
             end
         end
         wait(0.5)
-    end
-end)
-
--- Fram Boss
-RunService.Heartbeat:Connect(function()
-    if framBoss then
-        local boss = getBoss()
-        if boss then
-            local angle = tick() * speed
-            local offset = Vector3.new(math.cos(angle)*radius,0,math.sin(angle)*radius)
-            local pos = boss.HumanoidRootPart.Position + offset
-            hrp.CFrame = CFrame.new(pos,boss.HumanoidRootPart.Position)
-            if autoAttack then attack() end
-        end
     end
 end)
