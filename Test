@@ -1,291 +1,225 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Biến
-local radius = 20
-local speed = 2
-local running = false
+-- Biến trạng thái
+local framBoss = false
 local autoAttack = false
+local showHp = false
 local autoHeal = false
 local autoLoot = false
+local autoWood = false
+local speed = 2
+local radius = 15
 local lastWeapon = nil
 
 -- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-gui.Name = "Menu_TT"
-gui.Enabled = false
+gui.Name = "FramBossGui"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 280, 0, 300)
-frame.Position = UDim2.new(0.5, -140, 0.5, -150)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Size = UDim2.new(0, 420, 0, 400)
+frame.Position = UDim2.new(0.5, -210, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.BackgroundTransparency = 0.2
 frame.Active = true
 frame.Draggable = true
-frame.BorderSizePixel = 4
+frame.BorderSizePixel = 0
+frame.ClipsDescendants = true
 
--- Viền 7 màu
-task.spawn(function()
-	local hue = 0
-	while frame do
-		hue = (hue + 1) % 360
-		frame.BorderColor3 = Color3.fromHSV(hue / 360, 1, 1)
-		wait(0.05)
-	end
-end)
+-- Tiêu đề
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -40, 0, 35)
+title.Position = UDim2.new(0, 10, 0, 5)
+title.Text = "Fram Boss Tool"
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Nút bật đánh boss
-local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(1, 0, 0, 40)
-toggle.Text = "BẬT: Đánh Boss"
-toggle.TextColor3 = Color3.new(1,1,1)
-toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+-- Nút tắt
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 20
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)
+closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
--- Khoảng cách
-local disLabel = Instance.new("TextLabel", frame)
-disLabel.Text = "Khoảng cách:"
-disLabel.Size = UDim2.new(0, 120, 0, 25)
-disLabel.Position = UDim2.new(0, 10, 0, 50)
-disLabel.TextColor3 = Color3.new(1,1,1)
-disLabel.BackgroundTransparency = 1
-
-local disInput = Instance.new("TextBox", frame)
-disInput.Size = UDim2.new(0, 100, 0, 25)
-disInput.Position = UDim2.new(0, 150, 0, 50)
-disInput.Text = tostring(radius)
-disInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-disInput.TextColor3 = Color3.new(1,1,1)
-
--- Tốc độ quay
+-- Thanh trượt tốc độ
 local spdLabel = Instance.new("TextLabel", frame)
-spdLabel.Text = "Tốc độ quay:"
-spdLabel.Size = UDim2.new(0, 120, 0, 25)
-spdLabel.Position = UDim2.new(0, 10, 0, 80)
+spdLabel.Size = UDim2.new(1, -20, 0, 30)
+spdLabel.Position = UDim2.new(0, 10, 0, 50)
+spdLabel.Text = "Tốc độ góc quay (radian/s)"
 spdLabel.TextColor3 = Color3.new(1,1,1)
 spdLabel.BackgroundTransparency = 1
+spdLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local spdInput = Instance.new("TextBox", frame)
-spdInput.Size = UDim2.new(0, 100, 0, 25)
-spdInput.Position = UDim2.new(0, 150, 0, 80)
-spdInput.Text = tostring(speed)
-spdInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-spdInput.TextColor3 = Color3.new(1,1,1)
+local sliderBack = Instance.new("Frame", frame)
+sliderBack.Size = UDim2.new(0.9, 0, 0, 8)
+sliderBack.Position = UDim2.new(0.05, 0, 0, 80)
+sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
--- Hiển thị máu mục tiêu
-local hpLabel = Instance.new("TextLabel", frame)
-hpLabel.Size = UDim2.new(1, -20, 0, 25)
-hpLabel.Position = UDim2.new(0, 10, 0, 110)
-hpLabel.Text = "Máu mục tiêu: ..."
-hpLabel.TextColor3 = Color3.new(1, 0, 0)
-hpLabel.BackgroundTransparency = 1
-hpLabel.TextScaled = true
+local sliderFill = Instance.new("Frame", sliderBack)
+sliderFill.Size = UDim2.new(0.5, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
 
--- Hiển thị máu của bạn
-local myHpLabel = Instance.new("TextLabel", frame)
-myHpLabel.Size = UDim2.new(1, -20, 0, 25)
-myHpLabel.Position = UDim2.new(0, 10, 0, 135)
-myHpLabel.Text = "Máu bạn: ..."
-myHpLabel.TextColor3 = Color3.new(0, 1, 0)
-myHpLabel.BackgroundTransparency = 1
-myHpLabel.TextScaled = true
-
--- Auto Đánh
-local autoBtn = Instance.new("TextButton", frame)
-autoBtn.Size = UDim2.new(1, 0, 0, 30)
-autoBtn.Position = UDim2.new(0, 0, 0, 165)
-autoBtn.Text = "⚔️Auto Đánh"
-autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-autoBtn.TextColor3 = Color3.new(1,1,1)
-
--- Auto Băng Gạc
-local healBtn = Instance.new("TextButton", frame)
-healBtn.Size = UDim2.new(1, 0, 0, 30)
-healBtn.Position = UDim2.new(0, 0, 0, 200)
-healBtn.Text = "BẬT: Auto Băng Gạc"
-healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-healBtn.TextColor3 = Color3.new(1,1,1)
-
--- Tự Động Vật Phẩm Rơi
-local lootBtn = Instance.new("TextButton", frame)
-lootBtn.Size = UDim2.new(1, 0, 0, 30)
-lootBtn.Position = UDim2.new(0, 0, 0, 235)
-lootBtn.Text = "🎁: Auto Lụm"
-lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-lootBtn.TextColor3 = Color3.new(1,1,1)
-
--- Hiệu ứng đổi màu tên
-local nameText = Instance.new("TextLabel", frame)
-nameText.Size = UDim2.new(1, 0, 0, 30)
-nameText.Position = UDim2.new(0, 0, 0, 270)
-nameText.Text = "MatNhanThuc"
-nameText.BackgroundTransparency = 1
-nameText.TextScaled = true
-
-task.spawn(function()
-	local hue = 0
-	while true do
-		hue = (hue + 1) % 360
-		nameText.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
-		wait(0.1)
-	end
+local dragging = false
+sliderBack.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+end)
+sliderBack.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+end)
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local rel = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
+        sliderFill.Size = UDim2.new(rel,0,1,0)
+        speed = math.floor(rel*10)
+        if speed < 1 then speed = 1 end
+    end
 end)
 
--- GUI mật khẩu
-local passGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
-passGui.Name = "PassCheck"
-
-local passFrame = Instance.new("Frame", passGui)
-passFrame.Size = UDim2.new(0, 250, 0, 130)
-passFrame.Position = UDim2.new(0.5, -125, 0.5, -65)
-passFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-
-local title = Instance.new("TextLabel", passFrame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 5)
-title.Text = "Nhập Mật Khẩu"
-title.TextColor3 = Color3.new(1,1,1)
-title.BackgroundTransparency = 1
-title.TextScaled = true
-
-local input = Instance.new("TextBox", passFrame)
-input.Size = UDim2.new(0.9, 0, 0, 30)
-input.Position = UDim2.new(0.05, 0, 0, 45)
-input.PlaceholderText = "••••••••"
-input.BackgroundColor3 = Color3.fromRGB(50,50,50)
-input.TextColor3 = Color3.new(1,1,1)
-
-local btn = Instance.new("TextButton", passFrame)
-btn.Size = UDim2.new(0.5, 0, 0, 30)
-btn.Position = UDim2.new(0.25, 0, 0, 85)
-btn.Text = "Xác nhận"
-btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-btn.TextColor3 = Color3.new(1,1,1)
-
-btn.MouseButton1Click:Connect(function()
-	if input.Text == "vietnhat28" then
-		gui.Enabled = true
-		passGui:Destroy()
-	end
-end)
-
--- Hàm tìm mục tiêu
-local function getTarget()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-			return v
-		end
-	end
+-- Hàm tạo toggle
+local function makeToggle(text, order, callback)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(0.9, 0, 0, 30)
+    btn.Position = UDim2.new(0.05, 0, 0, 110 + (order*40))
+    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = "TẮT: "..text
+    btn.MouseButton1Click:Connect(function()
+        local state = not (btn.Text:find("BẬT"))
+        btn.Text = (state and "BẬT" or "TẮT")..": "..text
+        callback(state)
+    end)
+    return btn
 end
 
--- Auto Heal (tự lấy băng gạc trong túi và đổi lại vũ khí sau khi dùng)
+-- Toggles
+makeToggle("Fram Boss 🌪️",0,function(state) framBoss=state end)
+makeToggle("Hiển thị máu Boss ❤️",1,function(state) showHp=state end)
+makeToggle("Tự đánh khi cầm vũ khí 🗡️",2,function(state) autoAttack=state end)
+makeToggle("Auto Heal 🩹",3,function(state) autoHeal=state end)
+makeToggle("Auto Lụm 💎",4,function(state) autoLoot=state end)
+makeToggle("Auto Chặt Gỗ 🌲",5,function(state) autoWood=state end)
+
+-- Nút PLAY
+local playBtn = Instance.new("TextButton", frame)
+playBtn.Size = UDim2.new(0.6, 0, 0, 40)
+playBtn.Position = UDim2.new(0.2, 0, 1, -50)
+playBtn.Text = "PLAY"
+playBtn.BackgroundColor3 = Color3.fromRGB(255,200,0)
+playBtn.TextColor3 = Color3.fromRGB(0,0,0)
+playBtn.Font = Enum.Font.SourceSansBold
+playBtn.TextSize = 22
+
+-- Hàm tìm boss
+local function getBoss()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health>0 then
+            return v
+        end
+    end
+end
+
+-- Auto Attack
+local function attack()
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then pcall(function() tool:Activate() end) end
+end
+
+-- Auto Heal
 task.spawn(function()
-	while true do
-		if autoHeal and hum.Health < 80 then
-			-- Lưu lại vũ khí đang cầm
-			if lp.Character then
-				local tool = lp.Character:FindFirstChildOfClass("Tool")
-				if tool and not tool.Name:lower():find("băng") then
-					lastWeapon = tool
-				end
-			end
-
-			-- Lấy băng gạc từ Backpack nếu chưa có
-			local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
-			if not bandage or not bandage.Name:lower():find("băng") then
-				for _,tool in ipairs(lp.Backpack:GetChildren()) do
-					if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-						tool.Parent = lp.Character
-						wait(0.2)
-						break
-					end
-				end
-			end
-
-			-- Dùng băng gạc
-			local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-			if healTool and healTool.Name:lower():find("băng") then
-				healTool:Activate()
-				wait(1)
-
-				-- Trả lại vũ khí ban đầu
-				if lastWeapon and lastWeapon.Parent == lp.Backpack then
-					lastWeapon.Parent = lp.Character
-				end
-			end
-		end
-		wait(0.5)
-	end
+    while true do
+        if autoHeal and hum.Health < 80 then
+            if lp.Character then
+                local tool = lp.Character:FindFirstChildOfClass("Tool")
+                if tool and not tool.Name:lower():find("băng") then
+                    lastWeapon = tool
+                end
+            end
+            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
+            if not bandage or not bandage.Name:lower():find("băng") then
+                for _,tool in ipairs(lp.Backpack:GetChildren()) do
+                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+                        tool.Parent = lp.Character
+                        wait(0.2)
+                        break
+                    end
+                end
+            end
+            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+            if healTool and healTool.Name:lower():find("băng") then
+                healTool:Activate()
+                wait(1)
+                if lastWeapon and lastWeapon.Parent == lp.Backpack then
+                    lastWeapon.Parent = lp.Character
+                end
+            end
+        end
+        wait(0.5)
+    end
 end)
 
 -- Auto Loot
 task.spawn(function()
-	while true do
-		if autoLoot then
-			for _,prompt in pairs(workspace:GetDescendants()) do
-				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-					if dist < 15 then
-						fireproximityprompt(prompt)
-						wait(0.2)
-					end
-				end
-			end
-		end
-		wait(0.5)
-	end
+    while true do
+        if autoLoot then
+            for _,prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+                    if dist < 15 then
+                        fireproximityprompt(prompt)
+                        wait(0.2)
+                    end
+                end
+            end
+        end
+        wait(0.5)
+    end
 end)
 
--- Auto Attack
-local function attack()
-	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-	if tool then pcall(function() tool:Activate() end) end
-end
+-- Auto Chặt Gỗ
+task.spawn(function()
+    while true do
+        if autoWood then
+            for _,tree in pairs(workspace:GetDescendants()) do
+                if tree:IsA("Model") and tree.Name:lower():find("tree") and tree:FindFirstChild("Humanoid") then
+                    if (hrp.Position - tree.HumanoidRootPart.Position).Magnitude < 20 then
+                        hrp.CFrame = CFrame.new(hrp.Position, tree.HumanoidRootPart.Position)
+                        attack()
+                        wait(0.2)
+                    end
+                end
+            end
+        end
+        wait(0.5)
+    end
+end)
 
--- Điều khiển
+-- Run Fram Boss
 RunService.Heartbeat:Connect(function()
-	if running then
-		local target = getTarget()
-		if target and target:FindFirstChild("HumanoidRootPart") then
-			local angle = tick() * speed
-			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-			local goalPos = target.HumanoidRootPart.Position + offset
-			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
-			tween:Play()
-			hum.AutoRotate = false
-			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-
-			if autoAttack then attack() end
-
-			hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
-		end
-	end
-	myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
-
--- Nút bấm
-toggle.MouseButton1Click:Connect(function()
-	running = not running
-	toggle.Text = (running and "⚔️" or "✅") .. ": Đánh Boss"
-end)
-
-disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
-spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
-
-autoBtn.MouseButton1Click:Connect(function()
-	autoAttack = not autoAttack
-	autoBtn.Text = (autoAttack and "TẮT" or "✅") .. "Auto Đánh"
-end)
-
-healBtn.MouseButton1Click:Connect(function()
-	autoHeal = not autoHeal
-	healBtn.Text = (autoHeal and "TẮT" or "✅") .. "Auto Băng Gạc"
-end)
-
-lootBtn.MouseButton1Click:Connect(function()
-	autoLoot = not autoLoot
-	lootBtn.Text = (autoLoot and "🎁" or "✅") .. "Tự Động Vật Phẩm Rơi"
+    if framBoss then
+        local boss = getBoss()
+        if boss then
+            local angle = tick() * speed
+            local offset = Vector3.new(math.cos(angle)*radius,0,math.sin(angle)*radius)
+            local pos = boss.HumanoidRootPart.Position + offset
+            hrp.CFrame = CFrame.new(pos,boss.HumanoidRootPart.Position)
+            if autoAttack then attack() end
+            if showHp then
+                title.Text = "Fram Boss Tool | Máu Boss: "..math.floor(boss.Humanoid.Health)
+            else
+                title.Text = "Fram Boss Tool"
+            end
+        end
+    end
 end)
