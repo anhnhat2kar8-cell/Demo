@@ -1,241 +1,66 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
-
---// Variables
-local FramBoss = false
-local ShowBossHealth = false
-local AutoAttack = false
-local AutoLoot = false
-local SpinSpeed = 2
-local SelectedWeapon = nil
-
---// GUI
-local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+local gui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
 gui.Name = "FramBossTool"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 500, 0, 400)
-frame.Position = UDim2.new(0.5, -250, 0.5, -200)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Size = UDim2.new(0, 300, 0, 350) -- nhỏ gọn
+frame.Position = UDim2.new(0.5, -150, 0.5, -175)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
 
 -- Tiêu đề
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -20, 0, 40)
-title.Position = UDim2.new(0, 10, 0, 0)
+title.Size = UDim2.new(1, -20, 0, 35)
+title.Position = UDim2.new(0, 10, 0, 5)
 title.BackgroundTransparency = 1
-title.Text = "Fram Boss Tool"
+title.Text = "⚔️ Fram Boss Menu"
 title.TextColor3 = Color3.new(1,1,1)
 title.TextScaled = true
 title.Font = Enum.Font.SourceSansBold
-title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Dropdown chọn vũ khí
-local weaponBtn = Instance.new("TextButton", frame)
-weaponBtn.Size = UDim2.new(0.9,0,0,35)
-weaponBtn.Position = UDim2.new(0.05,0,0,50)
-weaponBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-weaponBtn.Text = "Chọn Vũ Khí (Hiện Tại: None)"
-weaponBtn.TextColor3 = Color3.new(1,1,1)
-weaponBtn.TextScaled = true
-Instance.new("UICorner", weaponBtn).CornerRadius = UDim.new(0,6)
+-- ScrollingFrame (danh sách chức năng)
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, -20, 1, -50)
+scroll.Position = UDim2.new(0,10,0,45)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.ScrollBarThickness = 5
+scroll.BackgroundTransparency = 1
 
-local dropFrame = Instance.new("Frame", frame)
-dropFrame.Size = UDim2.new(0.9,0,0,120)
-dropFrame.Position = UDim2.new(0.05,0,0,85)
-dropFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
-dropFrame.Visible = false
-Instance.new("UICorner", dropFrame).CornerRadius = UDim.new(0,6)
+local list = Instance.new("UIListLayout", scroll)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Padding = UDim.new(0,5)
 
-local UIList = Instance.new("UIListLayout", dropFrame)
-UIList.SortOrder = Enum.SortOrder.LayoutOrder
-
-local function refreshWeapons()
-    dropFrame:ClearAllChildren()
-    local layout = Instance.new("UIListLayout", dropFrame)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    for _,tool in ipairs(lp.Backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            local btn = Instance.new("TextButton", dropFrame)
-            btn.Size = UDim2.new(1,0,0,30)
-            btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-            btn.Text = tool.Name
-            btn.TextColor3 = Color3.new(1,1,1)
-            btn.TextScaled = true
-            btn.MouseButton1Click:Connect(function()
-                SelectedWeapon = tool.Name
-                weaponBtn.Text = "Chọn Vũ Khí (Hiện Tại: " .. tool.Name .. ")"
-                dropFrame.Visible = false
-            end)
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
-        end
-    end
-end
-
-weaponBtn.MouseButton1Click:Connect(function()
-    if dropFrame.Visible then
-        dropFrame.Visible = false
-    else
-        refreshWeapons()
-        dropFrame.Visible = true
-    end
+-- Tự động co giãn
+list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	scroll.CanvasSize = UDim2.new(0,0,0,list.AbsoluteContentSize.Y+10)
 end)
 
--- Thanh slider tốc độ
-local sliderLabel = Instance.new("TextLabel", frame)
-sliderLabel.Size = UDim2.new(1, -20, 0, 25)
-sliderLabel.Position = UDim2.new(0, 10, 0, 210)
-sliderLabel.Text = "Tốc độ góc quay (radian/s)"
-sliderLabel.TextColor3 = Color3.new(1,1,1)
-sliderLabel.BackgroundTransparency = 1
-sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local sliderBack = Instance.new("Frame", frame)
-sliderBack.Size = UDim2.new(0.9,0,0,8)
-sliderBack.Position = UDim2.new(0.05,0,0,240)
-sliderBack.BackgroundColor3 = Color3.fromRGB(60,60,60)
-Instance.new("UICorner", sliderBack).CornerRadius = UDim.new(0,5)
-
-local sliderFill = Instance.new("Frame", sliderBack)
-sliderFill.Size = UDim2.new(0.2,0,1,0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(0,170,255)
-Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(0,5)
-
-local dragging = false
-sliderBack.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true end end)
-sliderBack.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
-UIS.InputChanged:Connect(function(i)
-    if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then
-        local rel = math.clamp((i.Position.X - sliderBack.AbsolutePosition.X)/sliderBack.AbsoluteSize.X,0,1)
-        sliderFill.Size = UDim2.new(rel,0,1,0)
-        SpinSpeed = math.floor(rel*10)
-    end
-end)
-
--- Hàm tạo toggle công tắc
-local function makeSwitch(text,posY,callback)
-    local holder = Instance.new("Frame", frame)
-    holder.Size = UDim2.new(0.9,0,0,35)
-    holder.Position = UDim2.new(0.05,0,0,posY)
-    holder.BackgroundTransparency = 1
-
-    local label = Instance.new("TextLabel", holder)
-    label.Size = UDim2.new(0.7,0,1,0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.new(1,1,1)
-    label.TextScaled = true
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    local switch = Instance.new("TextButton", holder)
-    switch.Size = UDim2.new(0,50,0,25)
-    switch.Position = UDim2.new(1,-60,0.5,-12)
-    switch.BackgroundColor3 = Color3.fromRGB(100,100,100)
-    switch.Text = ""
-    switch.AutoButtonColor = false
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1,0)
-
-    local knob = Instance.new("Frame", switch)
-    knob.Size = UDim2.new(0.5,0,1,0)
-    knob.Position = UDim2.new(0,0,0,0)
-    knob.BackgroundColor3 = Color3.fromRGB(200,200,200)
-    Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
+-- Hàm tạo nút toggle gọn
+local function makeSwitch(text, callback)
+    local btn = Instance.new("TextButton", scroll)
+    btn.Size = UDim2.new(1,0,0,35)
+    btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    btn.Text = "⏹ "..text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextScaled = true
+    btn.Font = Enum.Font.SourceSansBold
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
     local state = false
-    switch.MouseButton1Click:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         state = not state
         if state then
-            switch.BackgroundColor3 = Color3.fromRGB(0,170,255)
-            knob:TweenPosition(UDim2.new(0.5,0,0,0),"Out","Quad",0.2,true)
+            btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+            btn.Text = "✅ "..text
         else
-            switch.BackgroundColor3 = Color3.fromRGB(100,100,100)
-            knob:TweenPosition(UDim2.new(0,0,0,0),"Out","Quad",0.2,true)
+            btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+            btn.Text = "⏹ "..text
         end
         callback(state)
     end)
 end
 
--- Các công tắc toggle
-makeSwitch("Bật Fram Boss 🌪️", 270, function(v) FramBoss = v end)
-makeSwitch("Hiển thị máu Boss ❤️", 305, function(v) ShowBossHealth = v end)
-makeSwitch("Tự đánh khi cầm vũ khí 🗡️", 340, function(v) AutoAttack = v end)
-makeSwitch("Tự động nhặt đồ 🎁", 375, function(v) AutoLoot = v end)
-
--------------------------------------------------
--- 📌 Chức năng
-local function getBoss()
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-            return v
-        end
-    end
-end
-
-local function attack()
-    if SelectedWeapon then
-        if not lp.Character:FindFirstChild(SelectedWeapon) then
-            local tool = lp.Backpack:FindFirstChild(SelectedWeapon)
-            if tool then tool.Parent = lp.Character end
-        end
-        local tool = lp.Character:FindFirstChild(SelectedWeapon)
-        if tool then pcall(function() tool:Activate() end) end
-    else
-        local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-        if tool then pcall(function() tool:Activate() end) end
-    end
-end
-
-local function lootItems()
-    for _,v in pairs(workspace:GetChildren()) do
-        if v:IsA("Tool") or v:IsA("Part") and v.Name:lower():find("drop") then
-            if (v.Position - hrp.Position).Magnitude < 20 then
-                hrp.CFrame = CFrame.new(v.Position)
-                wait(0.1)
-            end
-        end
-    end
-end
-
-RunService.Heartbeat:Connect(function()
-    if FramBoss then
-        local boss = getBoss()
-        if boss then
-            local angle = tick() * SpinSpeed
-            local offset = Vector3.new(math.cos(angle)*10,0,math.sin(angle)*10)
-            hrp.CFrame = CFrame.new(boss.HumanoidRootPart.Position+offset,boss.HumanoidRootPart.Position)
-            if AutoAttack then attack() end
-        end
-    end
-    if AutoLoot then lootItems() end
-end)
-
--- Hiển thị máu boss
-local healthGui = Instance.new("TextLabel", gui)
-healthGui.Size = UDim2.new(0,300,0,30)
-healthGui.Position = UDim2.new(0.5,-150,0,20)
-healthGui.TextColor3 = Color3.new(1,0,0)
-healthGui.TextScaled = true
-healthGui.BackgroundTransparency = 1
-healthGui.Visible = false
-
-RunService.RenderStepped:Connect(function()
-    if ShowBossHealth then
-        local boss = getBoss()
-        if boss then
-            healthGui.Visible = true
-            healthGui.Text = "Boss HP: "..math.floor(boss.Humanoid.Health).."/"..boss.Humanoid.MaxHealth
-        else
-            healthGui.Visible = false
-        end
-    else
-        healthGui.Visible = false
-    end
-end)
+-- Các
