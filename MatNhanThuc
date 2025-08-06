@@ -12,7 +12,7 @@ local speed = 2
 local running = false
 local autoAttack = false
 local autoHeal = false
-local autoLoot = false
+local autoWood = false
 local lastWeapon = nil
 
 -- GUI chính
@@ -120,21 +120,13 @@ healBtn.Text = "BẬT: Auto Băng Gạc"
 healBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 healBtn.TextColor3 = Color3.new(1,1,1)
 
--- Auto Lụm
-local lootBtn = Instance.new("TextButton", frame)
-lootBtn.Size = UDim2.new(1, 0, 0, 30)
-lootBtn.Position = UDim2.new(0, 0, 0, 235)
-lootBtn.Text = "BẬT: Auto Lụm"
-lootBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-lootBtn.TextColor3 = Color3.new(1,1,1)
-
--- Teleport Boss
-local tpBtn = Instance.new("TextButton", frame)
-tpBtn.Size = UDim2.new(1, 0, 0, 30)
-tpBtn.Position = UDim2.new(0, 0, 0, 270)
-tpBtn.Text = "Tele đến Boss"
-tpBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-tpBtn.TextColor3 = Color3.new(1,1,1)
+-- Auto Chặt Gỗ
+local autoWoodBtn = Instance.new("TextButton", frame)
+autoWoodBtn.Size = UDim2.new(1, 0, 0, 30)
+autoWoodBtn.Position = UDim2.new(0, 0, 0, 235)
+autoWoodBtn.Text = "BẬT: Auto Chặt Gỗ"
+autoWoodBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+autoWoodBtn.TextColor3 = Color3.new(1,1,1)
 
 -- Hiệu ứng đổi màu tên
 local nameText = Instance.new("TextLabel", frame)
@@ -191,10 +183,19 @@ btn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Hàm tìm mục tiêu
+-- Hàm tìm mục tiêu (Boss)
 local function getTarget()
     for _,v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+            return v
+        end
+    end
+end
+
+-- Hàm tìm cây
+local function getTree()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and (v.Name:lower():find("tree") or v.Name:lower():find("wood") or v.Name:lower():find("cây")) and v:FindFirstChild("HumanoidRootPart") then
             return v
         end
     end
@@ -233,17 +234,40 @@ task.spawn(function()
     end
 end)
 
--- Auto Loot
+-- Auto Chặt Gỗ + Loot
 task.spawn(function()
     while true do
-        if autoLoot then
-            for _,prompt in pairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-                    if dist < 15 then
-                        fireproximityprompt(prompt)
-                        wait(0.2)
+        if autoWood then
+            local tree = getTree()
+            if tree and tree:FindFirstChild("HumanoidRootPart") then
+                if lp.Character then
+                    local tool = lp.Character:FindFirstChildOfClass("Tool")
+                    if tool and not tool.Name:lower():find("rìu") then
+                        lastWeapon = tool
                     end
+                end
+                local axe = lp.Backpack:FindFirstChildWhichIsA("Tool")
+                if axe and axe.Name:lower():find("rìu") then
+                    axe.Parent = lp.Character
+                    wait(0.2)
+                end
+                local axeTool = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
+                if axeTool and axeTool.Name:lower():find("rìu") then
+                    hrp.CFrame = tree.HumanoidRootPart.CFrame * CFrame.new(0,0,-5)
+                    axeTool:Activate()
+                end
+                wait(1)
+                for _,prompt in pairs(workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+                        local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+                        if dist < 15 then
+                            fireproximityprompt(prompt)
+                            wait(0.2)
+                        end
+                    end
+                end
+                if lastWeapon and lastWeapon.Parent == lp.Backpack then
+                    lastWeapon.Parent = lp.Character
                 end
             end
         end
@@ -272,42 +296,3 @@ RunService.Heartbeat:Connect(function()
             if autoAttack then attack() end
             hpLabel.Text = "Máu mục tiêu: " .. math.floor(target.Humanoid.Health)
         end
-    end
-    myHpLabel.Text = "Máu bạn: " .. math.floor(hum.Health) .. "/" .. math.floor(hum.MaxHealth)
-end)
-
--- Nút bấm
-toggle.MouseButton1Click:Connect(function()
-    running = not running
-    toggle.Text = (running and "TẮT" or "✅") .. ": Đánh Boss"
-end)
-
-disInput.FocusLost:Connect(function() radius = tonumber(disInput.Text) or radius end)
-spdInput.FocusLost:Connect(function() speed = tonumber(spdInput.Text) or speed end)
-
-autoBtn.MouseButton1Click:Connect(function()
-    autoAttack = not autoAttack
-    autoBtn.Text = (autoAttack and "TẮT" or "✅") .. ": Auto Đánh"
-end)
-
-healBtn.MouseButton1Click:Connect(function()
-    autoHeal = not autoHeal
-    healBtn.Text = (autoHeal and "TẮT" or "✅") .. ": Auto Băng Gạc"
-end)
-
-lootBtn.MouseButton1Click:Connect(function()
-    autoLoot = not autoLoot
-    lootBtn.Text = (autoLoot and "👹" or "✅") .. ": Auto Lụm"
-end)
-
-tpBtn.MouseButton1Click:Connect(function()
-    local target = getTarget()
-    if target and target:FindFirstChild("HumanoidRootPart") then
-        hrp.CFrame = target.HumanoidRootPart.CFrame * CFrame.new(0,0,-5)
-    else
-        tpBtn.Text = "Không tìm thấy Boss!"
-        task.delay(1.5, function()
-            tpBtn.Text = "Tele đến Boss"
-        end)
-    end
-end)
