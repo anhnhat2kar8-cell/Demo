@@ -1,13 +1,12 @@
+--// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
---// Variables
 local lp = Players.LocalPlayer
 local chr, hum
 
---// Character Handler
+--// Hàm cập nhật nhân vật
 local function UpdateChar()
     chr = lp.Character or lp.CharacterAdded:Wait()
     hum = chr:WaitForChild("Humanoid")
@@ -18,7 +17,7 @@ lp.CharacterAdded:Connect(function()
     UpdateChar()
 end)
 
---// Fluent GUI
+--// Load UI Fluent
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "Cộng Đồng Việt Nam",
@@ -29,122 +28,8 @@ local Window = Fluent:CreateWindow({
     Theme = "Dark"
 })
 
+--// Tab Main
 local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
 
---// Weapon Dropdown
-local SelectedWeapon = nil
-local weaponDropdown = Tab:AddDropdown("Select Weapon", {
-    Title = "Chọn Vũ Khí",
-    Values = {"Katana", "Gun", "Punch"},
-    Multi = false,
-    Default = "Katana"
-})
-weaponDropdown:OnChanged(function(value)
-    SelectedWeapon = value
-end)
-
---// Function toggles
-local AutoQuai = false
-local FarmBoss = false
-local AutoLoot = false
-local TeleBoss = false
-
-Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
-    AutoQuai = v
-end)
-
-Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
-    FarmBoss = v
-end)
-
-Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
-    AutoLoot = v
-end)
-
-Tab:AddToggle("Tele Boss", {Title = "Teleport liên tục đến Boss", Default = false}):OnChanged(function(v)
-    TeleBoss = v
-end)
-
-Tab:AddButton({
-    Title = "Tele ngay vào chỗ Boss",
-    Callback = function()
-        local boss = workspace:FindFirstChild("Boss")
-        if boss and boss:FindFirstChild("HumanoidRootPart") then
-            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
-        end
-    end
-})
-
---// Boss HP Bar (Progress Display)
-local BossHPBar = Tab:AddParagraph({
-    Title = "Máu Boss",
-    Content = "Đang kiểm tra..."
-})
-
---// Combat Function
-local function Attack(target)
-    if hum and hum.Health > hum.MaxHealth * 0.2 then
-        if SelectedWeapon then
-            ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
-        end
-    end
-end
-
---// Auto Logic
-RunService.RenderStepped:Connect(function()
-    -- Auto Quái
-    if AutoQuai and workspace:FindFirstChild("Monsters") then
-        for _, mob in pairs(workspace.Monsters:GetChildren()) do
-            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
-                hum:MoveTo(mob.HumanoidRootPart.Position)
-                Attack(mob)
-                break
-            end
-        end
-    end
-
-    -- Farm Boss
-    local boss = workspace:FindFirstChild("Boss")
-    if FarmBoss and boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
-        hum:MoveTo(boss.HumanoidRootPart.Position)
-        Attack(boss)
-    end
-
-    -- Tele Boss
-    if TeleBoss and boss and boss:FindFirstChild("HumanoidRootPart") then
-        chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
-    end
-
-    -- Auto Loot
-    if AutoLoot and workspace:FindFirstChild("Drops") then
-        for _, drop in pairs(workspace.Drops:GetChildren()) do
-            if drop:IsA("BasePart") and (drop.Position - chr.HumanoidRootPart.Position).Magnitude <= 500 then
-                chr:PivotTo(drop.CFrame)
-                firetouchinterest(chr.HumanoidRootPart, drop, 0)
-                firetouchinterest(chr.HumanoidRootPart, drop, 1)
-                task.wait(0.1)
-            end
-        end
-    end
-
-    -- Update Boss HP Bar
-    if boss and boss:FindFirstChild("Humanoid") then
-        local hp = boss.Humanoid.Health
-        local max = boss.Humanoid.MaxHealth
-        local percent = math.floor((hp / max) * 100)
-
-        local blocks = 20
-        local filled = math.floor(percent / 100 * blocks)
-        local bar = string.rep("▓", filled) .. string.rep("░", blocks - filled)
-
-        BossHPBar:Set({
-            Title = "Máu Boss",
-            Content = string.format("%s %d%%", bar, percent)
-        })
-    else
-        BossHPBar:Set({
-            Title = "Máu Boss",
-            Content = "Không tìm thấy Boss"
-        })
-    end
-end)
+--// Dropdown chọn vũ khí
+local
