@@ -1,160 +1,142 @@
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Backpack = LocalPlayer:WaitForChild("Backpack")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- GUI
-local Window = OrionLib:MakeWindow({Name = "framboss | renx", HidePremium = false, SaveConfig = true, IntroEnabled = false})
-local Tab = Window:MakeTab({Name = "framboss", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+--// Variables
+local lp = Players.LocalPlayer
+local chr, hum
 
--- Biến chung
-local selectedWeapon = nil
-local autoFarm = false
-local autoHeal = false
-local autoPickup = false
-local hpThreshold = 60
-
--- Dropdown chọn vũ khí
-Tab:AddDropdown({
-    Name = "Chọn Vũ Khí",
-    Default = nil,
-    Options = {},
-    Callback = function(Value)
-        selectedWeapon = Value
-        OrionLib:MakeNotification({
-            Name = "Vũ khí đã chọn",
-            Content = Value,
-            Time = 3
-        })
-    end
-})
-
--- Cập nhật danh sách vũ khí liên tục
-task.spawn(function()
-    while task.wait(2) do
-        local weapons = {}
-        for _, tool in ipairs(Backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                table.insert(weapons, tool.Name)
-            end
-        end
-        Tab:GetChildren()[1]:Refresh(weapons) -- cập nhật dropdown
-    end
+--// Character Handler
+local function UpdateChar()
+    chr = lp.Character or lp.CharacterAdded:Wait()
+    hum = chr:WaitForChild("Humanoid")
+end
+UpdateChar()
+lp.CharacterAdded:Connect(function()
+    task.wait(1)
+    UpdateChar()
 end)
 
--- Nút bật fram boss
+--// Fluent GUI
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local Window = Fluent:CreateWindow({
+    Title = "Cộng Đồng Việt Nam",
+    SubTitle = "Farm Boss Tool",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(520, 420),
+    Acrylic = true,
+    Theme = "Dark"
+})
+
+local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
+
+--// Weapon Dropdown
+local SelectedWeapon = nil
+local weaponDropdown = Tab:AddDropdown("Select Weapon", {
+    Title = "Chọn Vũ Khí",
+    Values = {"Katana", "Gun", "Punch"},
+    Multi = false,
+    Default = "Katana"
+})
+weaponDropdown:OnChanged(function(value)
+    SelectedWeapon = value
+end)
+
+--// Function toggles
+local AutoQuai = false
+local FarmBoss = false
+local AutoLoot = false
+local TeleBoss = false
+
+Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
+    AutoQuai = v
+end)
+
+Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
+    FarmBoss = v
+end)
+
+Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
+    AutoLoot = v
+end)
+
+Tab:AddToggle("Tele Boss", {Title = "Teleport liên tục đến Boss", Default = false}):OnChanged(function(v)
+    TeleBoss = v
+end)
+
 Tab:AddButton({
-    Name = "Bật script fram boss",
+    Title = "Tele ngay vào chỗ Boss",
     Callback = function()
-        autoFarm = not autoFarm
-        OrionLib:MakeNotification({
-            Name = "Trạng Thái Fram Boss",
-            Content = autoFarm and "Đã bật" or "Đã tắt",
-            Time = 3
-        })
+        local boss = workspace:FindFirstChild("Boss")
+        if boss and boss:FindFirstChild("HumanoidRootPart") then
+            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
+        end
     end
 })
 
--- Bật auto Băng Gạc
-Tab:AddToggle({
-    Name = "Auto Băng Gạc dưới 60 hp",
-    Default = false,
-    Callback = function(Value)
-        autoHeal = Value
-    end
-})
-
--- Auto lụm đồ
-Tab:AddToggle({
-    Name = "Auto Lụm Đồ",
-    Default = false,
-    Callback = function(Value)
-        autoPickup = Value
-    end
-})
-
--- Slider điều chỉnh % máu để hồi
-Tab:AddSlider({
-    Name = "🔁 Tầm nhặt",
-    Min = 10,
-    Max = 200,
-    Default = 50,
-    Color = Color3.fromRGB(0,255,140),
-    Increment = 1,
-    ValueName = "Stud",
-    Callback = function(Value)
-        hpThreshold = Value
-    end
-})
-
--- Hiển thị % máu Boss
+--// Boss HP Bar (Progress Display)
 local BossHPBar = Tab:AddParagraph({
-    Title = "Thanh Máu Boss",
+    Title = "Máu Boss",
     Content = "Đang kiểm tra..."
 })
 
--- Hàm tìm Boss
-local function getBoss()
-    for _, obj in ipairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Name:lower():find("boss") then
-            return obj
+--// Combat Function
+local function Attack(target)
+    if hum and hum.Health > hum.MaxHealth * 0.2 then
+        if SelectedWeapon then
+            ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
         end
     end
 end
 
--- Auto hành động
+--// Auto Logic
 RunService.RenderStepped:Connect(function()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return end
-
-    -- Auto heal
-    if autoHeal and humanoid.Health < hpThreshold then
-        for _, item in ipairs(Backpack:GetChildren()) do
-            if item.Name:lower():find("băng") then
-                item:Activate()
-                task.wait(0.5)
+    -- Auto Quái
+    if AutoQuai and workspace:FindFirstChild("Monsters") then
+        for _, mob in pairs(workspace.Monsters:GetChildren()) do
+            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                hum:MoveTo(mob.HumanoidRootPart.Position)
+                Attack(mob)
+                break
             end
         end
     end
 
-    -- Auto farm boss
-    if autoFarm then
-        local boss = getBoss()
-        if boss and boss:FindFirstChild("HumanoidRootPart") then
-            local dist = (boss.HumanoidRootPart.Position - character.HumanoidRootPart.Position).Magnitude
-            if dist > 5 then
-                character:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
-            end
+    -- Farm Boss
+    local boss = workspace:FindFirstChild("Boss")
+    if FarmBoss and boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+        hum:MoveTo(boss.HumanoidRootPart.Position)
+        Attack(boss)
+    end
 
-            if selectedWeapon and Backpack:FindFirstChild(selectedWeapon) then
-                Backpack[selectedWeapon].Parent = character
+    -- Tele Boss
+    if TeleBoss and boss and boss:FindFirstChild("HumanoidRootPart") then
+        chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
+    end
+
+    -- Auto Loot
+    if AutoLoot and workspace:FindFirstChild("Drops") then
+        for _, drop in pairs(workspace.Drops:GetChildren()) do
+            if drop:IsA("BasePart") and (drop.Position - chr.HumanoidRootPart.Position).Magnitude <= 500 then
+                chr:PivotTo(drop.CFrame)
+                firetouchinterest(chr.HumanoidRootPart, drop, 0)
+                firetouchinterest(chr.HumanoidRootPart, drop, 1)
+                task.wait(0.1)
             end
         end
     end
 
-    -- Auto lụm
-    if autoPickup then
-        for _, item in ipairs(workspace:GetDescendants()) do
-            if item:IsA("Tool") and (item.Position - character.HumanoidRootPart.Position).Magnitude < 15 then
-                firetouchinterest(item.Handle, character.HumanoidRootPart, 0)
-                firetouchinterest(item.Handle, character.HumanoidRootPart, 1)
-            end
-        end
-    end
-
-    -- Update % máu Boss
-    local boss = getBoss()
+    -- Update Boss HP Bar
     if boss and boss:FindFirstChild("Humanoid") then
-        local current = boss.Humanoid.Health
+        local hp = boss.Humanoid.Health
         local max = boss.Humanoid.MaxHealth
-        local percent = math.floor((current / max) * 100)
-        local filled = math.floor(percent / 5)
-        local empty = 20 - filled
-        local bar = string.rep("▓", filled) .. string.rep("░", empty)
+        local percent = math.floor((hp / max) * 100)
+
+        local blocks = 20
+        local filled = math.floor(percent / 100 * blocks)
+        local bar = string.rep("▓", filled) .. string.rep("░", blocks - filled)
+
         BossHPBar:Set({
             Title = "Máu Boss",
             Content = string.format("%s %d%%", bar, percent)
@@ -166,6 +148,3 @@ RunService.RenderStepped:Connect(function()
         })
     end
 end)
-
--- Khởi động GUI
-OrionLib:Init()
