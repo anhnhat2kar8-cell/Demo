@@ -1,35 +1,113 @@
---// Services
+local core = (syn and syn.protect_gui and gethui()) or game.CoreGui
+
+-- Setup Fluent GUI
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+Fluent:SetParent(core)
+
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lp = Players.LocalPlayer
-local chr, hum
-
---// Hàm cập nhật nhân vật
-local function UpdateChar()
-    chr = lp.Character or lp.CharacterAdded:Wait()
-    hum = chr:WaitForChild("Humanoid")
-end
-UpdateChar()
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
 lp.CharacterAdded:Connect(function()
-    task.wait(1)
-    UpdateChar()
+    chr = lp.Character
+    hum = chr:WaitForChild("Humanoid")
 end)
 
---// Load UI Fluent
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+-- UI Setup
 local Window = Fluent:CreateWindow({
-    Title = "Cộng Đồng Việt Nam",
-    SubTitle = "Farm Boss Tool",
+    Title = "Cộng Đồng Việt Nam Farm Boss",
+    SubTitle = "Auto Boss | Hiển thị HP%",
     TabWidth = 160,
-    Size = UDim2.fromOffset(520, 420),
+    Size = UDim2.fromOffset(500, 480),
     Acrylic = true,
     Theme = "Dark"
 })
-
---// Tab Main
 local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
 
---// Dropdown chọn vũ khí
-local
+-- Variables
+local SelectedWeapon = nil
+local AutoFarmBoss = false
+
+-- Dropdown: Chọn vũ khí từ Backpack
+local weaponDropdown = Tab:AddDropdown("Chọn Vũ Khí", {
+    Title = "Chọn Vũ Khí",
+    Values = {},
+    Multi = false,
+    Default = "None"
+})
+weaponDropdown:OnChanged(function(v)
+    SelectedWeapon = v
+end)
+
+-- Toggle: Auto Farm Boss
+Tab:AddToggle("Farm Boss", { Title = "Auto Farm Boss", Default = false }):OnChanged(function(v)
+    AutoFarmBoss = v
+end)
+
+-- Boss HP display
+local BossHPLabel = Tab:AddParagraph("Boss HP", "Đang kiểm tra...")
+
+-- Function: Update weapon dropdown values based on Backpack
+task.spawn(function()
+    while task.wait(2) do
+        local names = {}
+        if lp.Backpack then
+            for _, tool in ipairs(lp.Backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    table.insert(names, tool.Name)
+                end
+            end
+        end
+        weaponDropdown:Set({ Values = names, Default = SelectedWeapon or names[1] })
+        if not SelectedWeapon then SelectedWeapon = names[1] end
+    end
+end)
+
+-- Helper: Find boss model - tìm model có tên chứa "boss"
+local function findBoss()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name:lower():find("boss") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            return v
+        end
+    end
+end
+
+-- Function: Update Boss HP bar display
+local function updateBossHP()
+    local boss = findBoss()
+    if boss then
+        local humBoss = boss:FindFirstChild("Humanoid")
+        if humBoss then
+            local hp = humBoss.Health
+            local max = humBoss.MaxHealth
+            local percent = math.floor((hp / max) * 100)
+            BossHPLabel:Set({
+                Title = "Boss HP",
+                Content = string.format("%d / %d (%d%%)", math.floor(hp), math.floor(max), percent)
+            })
+        end
+    else
+        BossHPLabel:Set({ Title = "Boss HP", Content = "Không tìm thấy Boss" })
+    end
+end
+
+-- Core loop: Auto farm boss
+RunService.RenderStepped:Connect(function()
+    updateBossHP()
+
+    if AutoFarmBoss and SelectedWeapon and chr and hum and hum.Health > 0.2 * hum.MaxHealth then
+        local boss = findBoss()
+        if boss then
+            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
+
+            local combatEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Combat")
+            if combatEvent then
+                combatEvent:FireServer(boss, SelectedWeapon)
+            end
+        end
+    end
+end)
