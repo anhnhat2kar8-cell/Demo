@@ -8,6 +8,7 @@ Fluent:SetParent(core)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
 
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
@@ -19,21 +20,54 @@ end)
 
 -- UI Setup
 local Window = Fluent:CreateWindow({
-    Title = "Cộng Đồng Việt Nam Farm Boss",
-    SubTitle = "Auto Boss | Hiển thị HP%",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(500, 480),
+    Title = "��RENX�� | tiktok:ungdungtutai4",
+    SubTitle = "Auto Farm + Heal + Nhặt",
+    TabWidth = 140,
+    Size = UDim2.fromOffset(520, 500),
     Acrylic = true,
     Theme = "Dark"
 })
-local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
+
+-- Tabs
+local MainTab = Window:AddTab({ Title = "Main", Icon = "home" })
+local FarmBossTab = Window:AddTab({ Title = "framboss", Icon = "sword" })
 
 -- Variables
-local SelectedWeapon = nil
+local AutoHeal = false
 local AutoFarmBoss = false
+local AutoPickup = false
+local SelectedWeapon = nil
+local PickupDistance = 50
 
--- Dropdown: Chọn vũ khí từ Backpack
-local weaponDropdown = Tab:AddDropdown("Chọn Vũ Khí", {
+-- ====== TAB MAIN ======
+
+-- Toggle: Tắt Balo (ẩn Inventory)
+MainTab:AddButton({
+    Title = "Tắt Balo",
+    Description = "Ẩn Inventory",
+    Callback = function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+    end
+})
+
+-- Toggle: Bật lại Balo
+MainTab:AddButton({
+    Title = "Bật Lại Balo",
+    Description = "Hiện lại Inventory",
+    Callback = function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+    end
+})
+
+-- Toggle: Auto Băng Gạc (Auto Heal)
+MainTab:AddToggle("AutoHeal", { Title = "Auto Băng Gạc (HP < 60)", Default = false }):OnChanged(function(v)
+    AutoHeal = v
+end)
+
+-- ====== TAB FRAMBOSS ======
+
+-- Dropdown: Chọn vũ khí
+local weaponDropdown = FarmBossTab:AddDropdown("Chọn Vũ Khí", {
     Title = "Chọn Vũ Khí",
     Values = {},
     Multi = false,
@@ -44,70 +78,93 @@ weaponDropdown:OnChanged(function(v)
 end)
 
 -- Toggle: Auto Farm Boss
-Tab:AddToggle("Farm Boss", { Title = "Auto Farm Boss", Default = false }):OnChanged(function(v)
+FarmBossTab:AddToggle("Farm Boss", { Title = "Farm Boss", Default = false }):OnChanged(function(v)
     AutoFarmBoss = v
 end)
 
--- Boss HP display
-local BossHPLabel = Tab:AddParagraph("Boss HP", "Đang kiểm tra...")
+-- Slider: Khoảng cách nhặt item
+FarmBossTab:AddSlider("Tầm Nhặt", {
+    Title = "�� Tầm nhặt",
+    Description = "Khoảng cách để tự động nhặt",
+    Default = 50,
+    Min = 5,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(v)
+        PickupDistance = v
+    end
+})
 
--- Function: Update weapon dropdown values based on Backpack
+-- Toggle: Auto Nhặt (Teleport)
+FarmBossTab:AddToggle("AutoPickup", {
+    Title = "auto nhặt (teleport)",
+    Description = "Tự động nhặt vật phẩm gần rương",
+    Default = false
+}):OnChanged(function(v)
+    AutoPickup = v
+end)
+
+-- ====== Cập nhật danh sách vũ khí ======
 task.spawn(function()
     while task.wait(2) do
-        local names = {}
+        local tools = {}
         if lp.Backpack then
-            for _, tool in ipairs(lp.Backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    table.insert(names, tool.Name)
+            for _, item in ipairs(lp.Backpack:GetChildren()) do
+                if item:IsA("Tool") then
+                    table.insert(tools, item.Name)
                 end
             end
         end
-        weaponDropdown:Set({ Values = names, Default = SelectedWeapon or names[1] })
-        if not SelectedWeapon then SelectedWeapon = names[1] end
+        weaponDropdown:Set({ Values = tools, Default = SelectedWeapon or tools[1] })
+        if not SelectedWeapon then SelectedWeapon = tools[1] end
     end
 end)
 
--- Helper: Find boss model - tìm model có tên chứa "boss"
+-- ====== Tìm Boss ======
 local function findBoss()
     for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v.Name:lower():find("boss") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+        if v:IsA("Model") and v.Name:lower():find("boss") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
             return v
         end
     end
 end
 
--- Function: Update Boss HP bar display
-local function updateBossHP()
-    local boss = findBoss()
-    if boss then
-        local humBoss = boss:FindFirstChild("Humanoid")
-        if humBoss then
-            local hp = humBoss.Health
-            local max = humBoss.MaxHealth
-            local percent = math.floor((hp / max) * 100)
-            BossHPLabel:Set({
-                Title = "Boss HP",
-                Content = string.format("%d / %d (%d%%)", math.floor(hp), math.floor(max), percent)
-            })
+-- ====== Tìm vật phẩm nhặt được ======
+local function findNearbyItem()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Tool") and (v.Position - chr.HumanoidRootPart.Position).Magnitude <= PickupDistance then
+            return v
         end
-    else
-        BossHPLabel:Set({ Title = "Boss HP", Content = "Không tìm thấy Boss" })
     end
 end
 
--- Core loop: Auto farm boss
+-- ====== Loop chính ======
 RunService.RenderStepped:Connect(function()
-    updateBossHP()
+    -- Auto Heal nếu HP < 60
+    if AutoHeal and hum and hum.Health / hum.MaxHealth < 0.6 then
+        local healEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Heal")
+        if healEvent then
+            healEvent:FireServer()
+        end
+    end
 
+    -- Auto Farm Boss
     if AutoFarmBoss and SelectedWeapon and chr and hum and hum.Health > 0.2 * hum.MaxHealth then
         local boss = findBoss()
         if boss then
             chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
-
             local combatEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Combat")
             if combatEvent then
                 combatEvent:FireServer(boss, SelectedWeapon)
             end
+        end
+    end
+
+    -- Auto nhặt item (teleport)
+    if AutoPickup and chr and hum.Health > 0 then
+        local item = findNearbyItem()
+        if item then
+            chr:PivotTo(item.CFrame + Vector3.new(0, 2, 0))
         end
     end
 end)
