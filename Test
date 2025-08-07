@@ -158,6 +158,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+--Máu Boss
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
