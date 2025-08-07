@@ -1,144 +1,59 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local lp = Players.LocalPlayer
+-- Tạo GUI chính
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "RENX_GUI"
+gui.Enabled = true
 
-local chr, hum
-local function UpdateChar()
-    chr = lp.Character or lp.CharacterAdded:Wait()
-    hum = chr:WaitForChild("Humanoid")
-end
-UpdateChar()
-lp.CharacterAdded:Connect(function()
-    task.wait(1)
-    UpdateChar()
-end)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Active = true
+frame.Draggable = true
+frame.BorderSizePixel = 0
 
--- Giao diện
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local Window = Fluent:CreateWindow({
-    Title = "Cộng Đồng Việt Nam",
-    SubTitle = "Farm Boss Tool",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(520, 420),
-    Acrylic = true,
-    Theme = "Dark"
-})
-local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
+-- Tên: ??RENX??
+local nameLabel = Instance.new("TextLabel", frame)
+nameLabel.Size = UDim2.new(1, 0, 0, 25)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
+nameLabel.Text = "��RENX��"
+nameLabel.TextColor3 = Color3.new(1, 1, 1)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Font = Enum.Font.SourceSansBold
+nameLabel.TextSize = 20
 
--- Biến chức năng
-local AutoQuai = false
-local FarmBoss = false
-local AutoLoot = false
-local TeleBoss = false
-local SelectedWeapon = nil
+-- Nút: Bật Farm Boss
+local toggleBtn = Instance.new("TextButton", frame)
+toggleBtn.Size = UDim2.new(1, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0, 0, 0, 30)
+toggleBtn.Text = "Bật Farm Boss"
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 18
 
--- Dropdown chọn vũ khí
-local weaponDropdown = Tab:AddDropdown("Select Weapon", {
-    Title = "Chọn Vũ Khí",
-    Values = {"Katana", "Gun", "Punch"},
-    Multi = false,
-    Default = "Katana"
-})
-weaponDropdown:OnChanged(function(value)
-    SelectedWeapon = value
-end)
+-- Label: Khoảng cách
+local distLabel = Instance.new("TextLabel", frame)
+distLabel.Size = UDim2.new(0.5, 0, 0, 25)
+distLabel.Position = UDim2.new(0, 0, 0, 65)
+distLabel.Text = "22"
+distLabel.TextColor3 = Color3.new(1, 1, 1)
+distLabel.BackgroundTransparency = 1
+distLabel.Font = Enum.Font.SourceSansBold
+distLabel.TextSize = 18
 
--- Toggle các chức năng
-Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
-    AutoQuai = v
-end)
+-- Label: Tốc độ quay
+local speedLabel = Instance.new("TextLabel", frame)
+speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
+speedLabel.Text = "2"
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextSize = 18
 
-Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
-    FarmBoss = v
-end)
-
-Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
-    AutoLoot = v
-end)
-
-Tab:AddToggle("Tele Boss", {Title = "Teleport liên tục đến Boss", Default = false}):OnChanged(function(v)
-    TeleBoss = v
-end)
-
-Tab:AddButton({
-    Title = "Tele ngay vào chỗ Boss",
-    Callback = function()
-        local boss = workspace:FindFirstChild("Boss")
-        if boss and boss:FindFirstChild("HumanoidRootPart") then
-            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5))
-        end
-    end
-})
-
--- Hiển thị máu Boss (progress bar)
-local BossHealthText = Tab:AddParagraph("Máu Boss", "Đang kiểm tra...")
-local function UpdateBossHealth()
-    local boss = workspace:FindFirstChild("Boss")
-    if boss and boss:FindFirstChild("Humanoid") then
-        local hp = boss.Humanoid.Health
-        local max = boss.Humanoid.MaxHealth
-        if max > 0 then
-            local percent = math.floor((hp / max) * 100)
-            BossHealthText:SetDescription(percent .. "% (" .. math.floor(hp) .. "/" .. math.floor(max) .. ")")
-        else
-            BossHealthText:SetDescription("Không xác định.")
-        end
-    else
-        BossHealthText:SetDescription("Không tìm thấy Boss.")
-    end
-end
-
--- Tự động đánh
-local function Attack(target)
-    if hum and hum.Health > hum.MaxHealth * 0.2 and SelectedWeapon then
-        ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
-    end
-end
-
--- Vòng lặp chính
-RunService.RenderStepped:Connect(function()
-    -- Auto Quái
-    if AutoQuai and workspace:FindFirstChild("Monsters") then
-        for _, mob in pairs(workspace.Monsters:GetChildren()) do
-            if mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
-                hum:MoveTo(mob.HumanoidRootPart.Position)
-                Attack(mob)
-                break
-            end
-        end
-    end
-
-    -- Farm Boss
-    if FarmBoss then
-        local boss = workspace:FindFirstChild("Boss")
-        if boss and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
-            hum:MoveTo(boss.HumanoidRootPart.Position)
-            Attack(boss)
-        end
-    end
-
-    -- Tele Boss
-    if TeleBoss then
-        local boss = workspace:FindFirstChild("Boss")
-        if boss and boss:FindFirstChild("HumanoidRootPart") then
-            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5))
-        end
-    end
-
-    -- Auto Loot
-    if AutoLoot and workspace:FindFirstChild("Drops") then
-        for _, drop in pairs(workspace.Drops:GetChildren()) do
-            if drop:IsA("BasePart") and (drop.Position - chr.HumanoidRootPart.Position).Magnitude <= 500 then
-                chr:PivotTo(drop.CFrame)
-                firetouchinterest(chr.HumanoidRootPart, drop, 0)
-                firetouchinterest(chr.HumanoidRootPart, drop, 1)
-                task.wait(0.1)
-            end
-        end
-    end
-
-    -- Cập nhật thanh máu boss
-    UpdateBossHealth()
+-- Chức năng nút Bật/Tắt
+local running = false
+toggleBtn.MouseButton1Click:Connect(function()
+	running = not running
+	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
 end)
