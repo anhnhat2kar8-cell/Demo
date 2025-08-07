@@ -2,11 +2,9 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local lp = Players.LocalPlayer
-local chr, hum
 
--- Hàm cập nhật nhân vật khi respawn
+local chr, hum
 local function UpdateChar()
     chr = lp.Character or lp.CharacterAdded:Wait()
     hum = chr:WaitForChild("Humanoid")
@@ -17,7 +15,7 @@ lp.CharacterAdded:Connect(function()
     UpdateChar()
 end)
 
--- Load Fluent UI
+-- Giao diện
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Window = Fluent:CreateWindow({
     Title = "Cộng Đồng Việt Nam",
@@ -27,12 +25,16 @@ local Window = Fluent:CreateWindow({
     Acrylic = true,
     Theme = "Dark"
 })
-
--- Tab
 local Tab = Window:AddTab({ Title = "Main", Icon = "home" })
 
--- Chọn vũ khí
+-- Biến chức năng
+local AutoQuai = false
+local FarmBoss = false
+local AutoLoot = false
+local TeleBoss = false
 local SelectedWeapon = nil
+
+-- Dropdown chọn vũ khí
 local weaponDropdown = Tab:AddDropdown("Select Weapon", {
     Title = "Chọn Vũ Khí",
     Values = {"Katana", "Gun", "Punch"},
@@ -43,33 +45,23 @@ weaponDropdown:OnChanged(function(value)
     SelectedWeapon = value
 end)
 
--- Biến chức năng
-local AutoQuai = false
-local FarmBoss = false
-local AutoLoot = false
-local TeleBoss = false
-
--- Toggle Auto Quái
+-- Toggle các chức năng
 Tab:AddToggle("Auto Quái", {Title = "Auto Quái", Default = false}):OnChanged(function(v)
     AutoQuai = v
 end)
 
--- Toggle Farm Boss
 Tab:AddToggle("Farm Boss", {Title = "Farm Boss", Default = false}):OnChanged(function(v)
     FarmBoss = v
 end)
 
--- Toggle Auto Loot
 Tab:AddToggle("Auto Loot", {Title = "Auto Loot (Range 500)", Default = false}):OnChanged(function(v)
     AutoLoot = v
 end)
 
--- Toggle Tele Boss liên tục
 Tab:AddToggle("Tele Boss", {Title = "Teleport liên tục đến Boss", Default = false}):OnChanged(function(v)
     TeleBoss = v
 end)
 
--- Nút Tele ngay lập tức
 Tab:AddButton({
     Title = "Tele ngay vào chỗ Boss",
     Callback = function()
@@ -80,16 +72,32 @@ Tab:AddButton({
     end
 })
 
--- Hàm đánh mob/boss
-local function Attack(target)
-    if hum and hum.Health > hum.MaxHealth * 0.2 then -- Safe Farm: chỉ đánh khi máu >20%
-        if SelectedWeapon then
-            ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
+-- Hiển thị máu Boss (progress bar)
+local BossHealthText = Tab:AddParagraph("Máu Boss", "Đang kiểm tra...")
+local function UpdateBossHealth()
+    local boss = workspace:FindFirstChild("Boss")
+    if boss and boss:FindFirstChild("Humanoid") then
+        local hp = boss.Humanoid.Health
+        local max = boss.Humanoid.MaxHealth
+        if max > 0 then
+            local percent = math.floor((hp / max) * 100)
+            BossHealthText:SetDescription(percent .. "% (" .. math.floor(hp) .. "/" .. math.floor(max) .. ")")
+        else
+            BossHealthText:SetDescription("Không xác định.")
         end
+    else
+        BossHealthText:SetDescription("Không tìm thấy Boss.")
     end
 end
 
--- Auto chức năng
+-- Tự động đánh
+local function Attack(target)
+    if hum and hum.Health > hum.MaxHealth * 0.2 and SelectedWeapon then
+        ReplicatedStorage.Events.Combat:FireServer(target, SelectedWeapon)
+    end
+end
+
+-- Vòng lặp chính
 RunService.RenderStepped:Connect(function()
     -- Auto Quái
     if AutoQuai and workspace:FindFirstChild("Monsters") then
@@ -111,7 +119,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Tele Boss liên tục
+    -- Tele Boss
     if TeleBoss then
         local boss = workspace:FindFirstChild("Boss")
         if boss and boss:FindFirstChild("HumanoidRootPart") then
@@ -126,8 +134,11 @@ RunService.RenderStepped:Connect(function()
                 chr:PivotTo(drop.CFrame)
                 firetouchinterest(chr.HumanoidRootPart, drop, 0)
                 firetouchinterest(chr.HumanoidRootPart, drop, 1)
-                task.wait(0.1) -- tránh spam lag
+                task.wait(0.1)
             end
         end
     end
+
+    -- Cập nhật thanh máu boss
+    UpdateBossHealth()
 end)
