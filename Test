@@ -1,36 +1,31 @@
-local core = (syn and syn.protect_gui and gethui()) or game:WaitForChild("CoreGui")
+-- Tải Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Tải thư viện Fluent
-local success, Fluent = pcall(function()
-    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-end)
-
-if not success then
-    warn("Không thể tải Fluent UI! Kiểm tra lại kết nối hoặc executor.")
-    return
-end
-
--- Gán GUI vào CoreGui
-Fluent:SetParent(core)
-
--- Tạo cửa sổ
-local Window = Fluent:CreateWindow({
-    Title = "TEST MENU HIỂN THỊ",
-    SubTitle = "Chạy thử menu",
-    TabWidth = 150,
-    Size = UDim2.fromOffset(500, 400),
-    Acrylic = true,
-    Theme = "Dark"
+-- Tạo cửa sổ menu
+local Window = Rayfield:CreateWindow({
+    Name = "Cộng Đồng VN Auto Farm",
+    LoadingTitle = "Đang tải menu...",
+    LoadingSubtitle = "By Nhật Việt",
+    ConfigurationSaving = {
+        Enabled = false
+    },
+    Discord = {
+        Enabled = false
+    },
+    KeySystem = false
 })
 
--- Thêm tab
-local tab = Window:AddTab({ Title = "Main", Icon = "home" })
+-- Tạo tab chính
+local MainTab = Window:CreateTab("Main", 4483362458) -- icon ID bất kỳ
 
--- Thêm một nút để test
-tab:AddButton({
-    Title = "Thông báo",
-    Description = "In ra Hello",
+-- Thêm nút test
+MainTab:CreateButton({
+    Name = "Thông báo test",
     Callback = function()
-        print("Hello từ Fluent UI")
+        Rayfield:Notify({
+            Title = "Test Thành Công",
+            Content = "Menu hoạt động bình thường!",
+            Duration = 5
+        })
     end
 })
