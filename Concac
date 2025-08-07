@@ -1,4 +1,3 @@
--- Tạo GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "RENX_GUI"
 gui.Enabled = true
