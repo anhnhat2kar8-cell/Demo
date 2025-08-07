@@ -1,170 +1,36 @@
-local core = (syn and syn.protect_gui and gethui()) or game.CoreGui
+local core = (syn and syn.protect_gui and gethui()) or game:WaitForChild("CoreGui")
 
--- Setup Fluent GUI
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-Fluent:SetParent(core)
-
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
-
-local lp = Players.LocalPlayer
-local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
-lp.CharacterAdded:Connect(function()
-    chr = lp.Character
-    hum = chr:WaitForChild("Humanoid")
+-- Tải thư viện Fluent
+local success, Fluent = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 end)
 
--- UI Setup
+if not success then
+    warn("Không thể tải Fluent UI! Kiểm tra lại kết nối hoặc executor.")
+    return
+end
+
+-- Gán GUI vào CoreGui
+Fluent:SetParent(core)
+
+-- Tạo cửa sổ
 local Window = Fluent:CreateWindow({
-    Title = "��RENX�� | tiktok:ungdungtutai4",
-    SubTitle = "Auto Farm + Heal + Nhặt",
-    TabWidth = 140,
-    Size = UDim2.fromOffset(520, 500),
+    Title = "TEST MENU HIỂN THỊ",
+    SubTitle = "Chạy thử menu",
+    TabWidth = 150,
+    Size = UDim2.fromOffset(500, 400),
     Acrylic = true,
     Theme = "Dark"
 })
 
--- Tabs
-local MainTab = Window:AddTab({ Title = "Main", Icon = "home" })
-local FarmBossTab = Window:AddTab({ Title = "framboss", Icon = "sword" })
+-- Thêm tab
+local tab = Window:AddTab({ Title = "Main", Icon = "home" })
 
--- Variables
-local AutoHeal = false
-local AutoFarmBoss = false
-local AutoPickup = false
-local SelectedWeapon = nil
-local PickupDistance = 50
-
--- ====== TAB MAIN ======
-
--- Toggle: Tắt Balo (ẩn Inventory)
-MainTab:AddButton({
-    Title = "Tắt Balo",
-    Description = "Ẩn Inventory",
+-- Thêm một nút để test
+tab:AddButton({
+    Title = "Thông báo",
+    Description = "In ra Hello",
     Callback = function()
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+        print("Hello từ Fluent UI")
     end
 })
-
--- Toggle: Bật lại Balo
-MainTab:AddButton({
-    Title = "Bật Lại Balo",
-    Description = "Hiện lại Inventory",
-    Callback = function()
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-    end
-})
-
--- Toggle: Auto Băng Gạc (Auto Heal)
-MainTab:AddToggle("AutoHeal", { Title = "Auto Băng Gạc (HP < 60)", Default = false }):OnChanged(function(v)
-    AutoHeal = v
-end)
-
--- ====== TAB FRAMBOSS ======
-
--- Dropdown: Chọn vũ khí
-local weaponDropdown = FarmBossTab:AddDropdown("Chọn Vũ Khí", {
-    Title = "Chọn Vũ Khí",
-    Values = {},
-    Multi = false,
-    Default = "None"
-})
-weaponDropdown:OnChanged(function(v)
-    SelectedWeapon = v
-end)
-
--- Toggle: Auto Farm Boss
-FarmBossTab:AddToggle("Farm Boss", { Title = "Farm Boss", Default = false }):OnChanged(function(v)
-    AutoFarmBoss = v
-end)
-
--- Slider: Khoảng cách nhặt item
-FarmBossTab:AddSlider("Tầm Nhặt", {
-    Title = "�� Tầm nhặt",
-    Description = "Khoảng cách để tự động nhặt",
-    Default = 50,
-    Min = 5,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(v)
-        PickupDistance = v
-    end
-})
-
--- Toggle: Auto Nhặt (Teleport)
-FarmBossTab:AddToggle("AutoPickup", {
-    Title = "auto nhặt (teleport)",
-    Description = "Tự động nhặt vật phẩm gần rương",
-    Default = false
-}):OnChanged(function(v)
-    AutoPickup = v
-end)
-
--- ====== Cập nhật danh sách vũ khí ======
-task.spawn(function()
-    while task.wait(2) do
-        local tools = {}
-        if lp.Backpack then
-            for _, item in ipairs(lp.Backpack:GetChildren()) do
-                if item:IsA("Tool") then
-                    table.insert(tools, item.Name)
-                end
-            end
-        end
-        weaponDropdown:Set({ Values = tools, Default = SelectedWeapon or tools[1] })
-        if not SelectedWeapon then SelectedWeapon = tools[1] end
-    end
-end)
-
--- ====== Tìm Boss ======
-local function findBoss()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v.Name:lower():find("boss") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
-            return v
-        end
-    end
-end
-
--- ====== Tìm vật phẩm nhặt được ======
-local function findNearbyItem()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Tool") and (v.Position - chr.HumanoidRootPart.Position).Magnitude <= PickupDistance then
-            return v
-        end
-    end
-end
-
--- ====== Loop chính ======
-RunService.RenderStepped:Connect(function()
-    -- Auto Heal nếu HP < 60
-    if AutoHeal and hum and hum.Health / hum.MaxHealth < 0.6 then
-        local healEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Heal")
-        if healEvent then
-            healEvent:FireServer()
-        end
-    end
-
-    -- Auto Farm Boss
-    if AutoFarmBoss and SelectedWeapon and chr and hum and hum.Health > 0.2 * hum.MaxHealth then
-        local boss = findBoss()
-        if boss then
-            chr:PivotTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
-            local combatEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Combat")
-            if combatEvent then
-                combatEvent:FireServer(boss, SelectedWeapon)
-            end
-        end
-    end
-
-    -- Auto nhặt item (teleport)
-    if AutoPickup and chr and hum.Health > 0 then
-        local item = findNearbyItem()
-        if item then
-            chr:PivotTo(item.CFrame + Vector3.new(0, 2, 0))
-        end
-    end
-end)
