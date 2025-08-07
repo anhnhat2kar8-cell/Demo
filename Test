@@ -1,31 +1,261 @@
--- Tải Rayfield UI
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Tạo cửa sổ menu
-local Window = Rayfield:CreateWindow({
-    Name = "Cộng Đồng VN Auto Farm",
-    LoadingTitle = "Đang tải menu...",
-    LoadingSubtitle = "By Nhật Việt",
-    ConfigurationSaving = {
-        Enabled = false
-    },
-    Discord = {
-        Enabled = false
-    },
-    KeySystem = false
-})
+-- Biến
+local radius = 22
+local speed = 2
+local running = false
+local autoAttack = true
+local autoHeal = true
+local autoLoot = true
+local lastWeapon = nil
 
--- Tạo tab chính
-local MainTab = Window:CreateTab("Main", 4483362458) -- icon ID bất kỳ
+-- GUI chính (theo phong cách ảnh)
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "RENX_GUI"
+gui.Enabled = true
 
--- Thêm nút test
-MainTab:CreateButton({
-    Name = "Thông báo test",
-    Callback = function()
-        Rayfield:Notify({
-            Title = "Test Thành Công",
-            Content = "Menu hoạt động bình thường!",
-            Duration = 5
-        })
-    end
-})
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Active = true
+frame.Draggable = true
+frame.BorderSizePixel = 0
+
+-- Tên: ??RENX??
+local nameLabel = Instance.new("TextLabel", frame)
+nameLabel.Size = UDim2.new(1, 0, 0, 25)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
+nameLabel.Text = "��RENX��"
+nameLabel.TextColor3 = Color3.new(1, 1, 1)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Font = Enum.Font.SourceSansBold
+nameLabel.TextSize = 20
+
+-- Nút: Bật Farm Boss
+local toggleBtn = Instance.new("TextButton", frame)
+toggleBtn.Size = UDim2.new(1, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0, 0, 0, 30)
+toggleBtn.Text = "Bật Farm Boss"
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 18
+
+-- Label: Khoảng cách
+local distLabel = Instance.new("TextLabel", frame)
+distLabel.Size = UDim2.new(0.5, 0, 0, 25)
+distLabel.Position = UDim2.new(0, 0, 0, 65)
+distLabel.Text = tostring(radius)
+distLabel.TextColor3 = Color3.new(1, 1, 1)
+distLabel.BackgroundTransparency = 1
+distLabel.Font = Enum.Font.SourceSansBold
+distLabel.TextSize = 18
+
+-- Label: Tốc độ quay
+local speedLabel = Instance.new("TextLabel", frame)
+speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
+speedLabel.Text = tostring(speed)
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextSize = 18
+
+-- Xử lý bật / tắt boss
+toggleBtn.MouseButton1Click:Connect(function()
+	running = not running
+	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
+end)
+
+-- Hàm tìm mục tiêu boss
+local function getTarget()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+			return v
+		end
+	end
+end
+
+-- Tự động dùng băng gạc
+task.spawn(function()
+	while true do
+		if autoHeal and hum.Health < 80 then
+			local tool = lp.Character:FindFirstChildOfClass("Tool")
+			if tool and not tool.Name:lower():find("băng") then
+				lastWeapon = tool
+			end
+
+			local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
+			if not bandage or not bandage.Name:lower():find("băng") then
+				for _,tool in ipairs(lp.Backpack:GetChildren()) do
+					if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+						tool.Parent = lp.Character
+						wait(0.2)
+						break
+					end
+				end
+			end
+
+			local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+			if healTool and healTool.Name:lower():find("băng") then
+				healTool:Activate()
+				wait(1)
+				if lastWeapon and lastWeapon.Parent == lp.Backpack then
+					lastWeapon.Parent = lp.Character
+				end
+			end
+		end
+		wait(0.5)
+	end
+end)
+
+-- Tự động lụm đồ
+task.spawn(function()
+	while true do
+		if autoLoot then
+			for _,prompt in pairs(workspace:GetDescendants()) do
+				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+					if dist < 15 then
+						fireproximityprompt(prompt)
+						wait(0.2)
+					end
+				end
+			end
+		end
+		wait(0.5)
+	end
+end)
+
+-- Tự động đánh
+local function attack()
+	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+	if tool then pcall(function() tool:Activate() end) end
+end
+
+-- Di chuyển quanh boss + auto đánh
+RunService.Heartbeat:Connect(function()
+	if running then
+		local target = getTarget()
+		if target and target:FindFirstChild("HumanoidRootPart") then
+			local angle = tick() * speed
+			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+			local goalPos = target.HumanoidRootPart.Position + offset
+			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+			tween:Play()
+			hum.AutoRotate = false
+			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+
+			if autoAttack then attack() end
+		end
+	end
+end)
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Hàm tạo GUI thanh máu boss
+local function createBossHealthBar(target)
+	if target:FindFirstChild("RENX_HP_GUI") then return end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "RENX_HP_GUI"
+	billboard.Size = UDim2.new(4, 0, 2, 0)
+	billboard.StudsOffset = Vector3.new(0, 5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = target
+
+	-- Tên Boss
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0.4, 0)
+	nameLabel.Position = UDim2.new(0, 0, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.TextScaled = true
+	nameLabel.Text = "🔥 BOSS 🔥"
+	nameLabel.Name = "BossName"
+	nameLabel.Parent = billboard
+
+	-- Thanh máu nền
+	local bgBar = Instance.new("Frame")
+	bgBar.Size = UDim2.new(1, 0, 0.25, 0)
+	bgBar.Position = UDim2.new(0, 0, 0.4, 0)
+	bgBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	bgBar.BorderSizePixel = 0
+	bgBar.Parent = billboard
+
+	-- Thanh máu chính
+	local hpBar = Instance.new("Frame")
+	hpBar.Name = "HPBar"
+	hpBar.Size = UDim2.new(1, 0, 1, 0)
+	hpBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+	hpBar.BorderSizePixel = 0
+	hpBar.Parent = bgBar
+
+	-- Text số máu
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 0.35, 0)
+	label.Position = UDim2.new(0, 0, 0.65, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Font = Enum.Font.SourceSansBold
+	label.TextScaled = true
+	label.Text = "0 / 0"
+	label.Name = "HPText"
+	label.Parent = billboard
+end
+
+-- Hàm chọn Boss có Humanoid và có chữ "boss" trong tên
+local function getTarget()
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+			if v.Humanoid.Health > 0 and v.Name:lower():find("boss") then
+				return v
+			end
+		end
+	end
+	return nil
+end
+
+-- Vòng lặp cập nhật thanh máu
+RunService.Heartbeat:Connect(function()
+	local target = getTarget()
+	if target and target:FindFirstChild("Humanoid") then
+		createBossHealthBar(target)
+
+		local maxHp = target.Humanoid.MaxHealth
+		local currentHp = target.Humanoid.Health
+		local gui = target:FindFirstChild("RENX_HP_GUI")
+		if gui then
+			local hpBar = gui:FindFirstChild("HPBar", true)
+			local hpText = gui:FindFirstChild("HPText", true)
+
+			local percent = currentHp / maxHp
+			if hpBar then
+				hpBar.Size = UDim2.new(percent, 0, 1, 0)
+
+				-- Đổi màu theo % máu
+				if percent > 0.7 then
+					hpBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+				elseif percent > 0.4 then
+					hpBar.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+				else
+					hpBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+				end
+			end
+
+			if hpText then
+				hpText.Text = string.format("%d / %d", math.floor(currentHp), math.floor(maxHp))
+			end
+		end
+	end
+end)
