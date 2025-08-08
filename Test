@@ -32,7 +32,7 @@ frame.BorderSizePixel = 0
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
 nameLabel.Position = UDim2.new(0, 0, 0, 0)
-nameLabel.Text = "��VietNhat💀"
+nameLabel.Text = "💀💀VietNhat💀💀"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
 nameLabel.Font = Enum.Font.SourceSansBold
@@ -48,18 +48,25 @@ toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 
--- Label khoảng cách
-local distBox = Instance.new("TextBox", frame)
-distBox.Size = UDim2.new(0.5, 0, 0, 25)
-distBox.Position = UDim2.new(0, 0, 0, 65)
-distBox.Text = tostring(radius)
-distBox.TextColor3 = Color3.new(1, 1, 1)
-distBox.BackgroundTransparency = 0.2
-distBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-distBox.Font = Enum.Font.SourceSansBold
-distBox.TextSize = 18
+-- Label giả (hiển thị đẹp) + TextBox ẩn để nhập
+
+-- Khoảng cách
+local distLabel = Instance.new("TextLabel", frame)
+distLabel.Size = UDim2.new(0.5, 0, 0, 25)
+distLabel.Position = UDim2.new(0, 0, 0, 65)
+distLabel.Text = tostring(radius)
+distLabel.TextColor3 = Color3.new(1, 1, 1)
+distLabel.BackgroundTransparency = 1
+distLabel.Font = Enum.Font.SourceSansBold
+distLabel.TextSize = 18
+
+local distBox = Instance.new("TextBox", distLabel) -- TextBox nằm đè lên label
+distBox.Size = UDim2.new(1, 0, 1, 0)
+distBox.BackgroundTransparency = 1 -- trong suốt hoàn toàn
+distBox.TextTransparency = 1        -- không hiện chữ khi gõ
 distBox.ClearTextOnFocus = true
-distBox.PlaceholderText = "Nhập"
+distBox.Text = ""
+distBox.KeyboardType = Enum.KeyboardType.NumberPad -- bàn phím số
 
 distBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
@@ -68,25 +75,29 @@ distBox.FocusLost:Connect(function(enterPressed)
 			if num < 21 then num = 21 end
 			if num > 25 then num = 25 end
 			radius = num
-			distBox.Text = tostring(radius)
-		else
-			distBox.Text = tostring(radius)
+			distLabel.Text = tostring(radius)
 		end
+		distBox.Text = ""
 	end
 end)
 
--- TextBox: Tốc độ quay
-local speedBox = Instance.new("TextBox", frame)
-speedBox.Size = UDim2.new(0.5, 0, 0, 25)
-speedBox.Position = UDim2.new(0.5, 0, 0, 65)
-speedBox.Text = tostring(speed)
-speedBox.TextColor3 = Color3.new(1, 1, 1)
-speedBox.BackgroundTransparency = 0.2
-speedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-speedBox.Font = Enum.Font.SourceSansBold
-speedBox.TextSize = 18
+-- Tốc độ quay
+local speedLabel = Instance.new("TextLabel", frame)
+speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
+speedLabel.Text = tostring(speed)
+speedLabel.TextColor3 = Color3.new(1, 1, 1)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Font = Enum.Font.SourceSansBold
+speedLabel.TextSize = 18
+
+local speedBox = Instance.new("TextBox", speedLabel)
+speedBox.Size = UDim2.new(1, 0, 1, 0)
+speedBox.BackgroundTransparency = 1
+speedBox.TextTransparency = 1
 speedBox.ClearTextOnFocus = true
-speedBox.PlaceholderText = "Nhập"
+speedBox.Text = ""
+speedBox.KeyboardType = Enum.KeyboardType.NumberPad
 
 speedBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
@@ -95,10 +106,9 @@ speedBox.FocusLost:Connect(function(enterPressed)
 			if num < 1 then num = 1 end
 			if num > 10 then num = 10 end
 			speed = num
-			speedBox.Text = tostring(speed)
-		else
-			speedBox.Text = tostring(speed)
+			speedLabel.Text = tostring(speed)
 		end
+		speedBox.Text = ""
 	end
 end)
 
