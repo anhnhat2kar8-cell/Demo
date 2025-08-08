@@ -21,9 +21,9 @@ gui.Name = "RENX_GUI"
 gui.Enabled = true
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 120)
-frame.Position = UDim2.new(0, 20, 0.5, -60)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Size = UDim2.new(0, 200, 0, 180) -- tăng chiều cao
+frame.Position = UDim2.new(0, 20, 0.5, -90)
+frame.BackgroundTransparency = 1 -- trong suốt
 frame.Active = true
 frame.Draggable = true
 frame.BorderSizePixel = 0
@@ -31,7 +31,6 @@ frame.BorderSizePixel = 0
 -- Tên
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
-nameLabel.Position = UDim2.new(0, 0, 0, 0)
 nameLabel.Text = "💀💀VietNhat💀💀"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
@@ -48,25 +47,55 @@ toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 
--- Label giả (hiển thị đẹp) + TextBox ẩn để nhập
+toggleBtn.MouseButton1Click:Connect(function()
+    running = not running
+    toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
+end)
+
+-- Nút Tele tới boss 15000 máu
+local teleBtn = Instance.new("TextButton", frame)
+teleBtn.Size = UDim2.new(1, 0, 0, 30)
+teleBtn.Position = UDim2.new(0, 0, 0, 65)
+teleBtn.Text = "Teleport Boss 15000HP"
+teleBtn.TextColor3 = Color3.new(1, 1, 1)
+teleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+teleBtn.Font = Enum.Font.SourceSansBold
+teleBtn.TextSize = 18
+
+teleBtn.MouseButton1Click:Connect(function()
+	local foundBoss = nil
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") 
+			and v:FindFirstChild("Humanoid") 
+			and v:FindFirstChild("HumanoidRootPart") 
+			and math.floor(v.Humanoid.Health) == 15000 then
+			foundBoss = v
+			break
+		end
+	end
+	if foundBoss then
+		hrp.CFrame = foundBoss.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
+	else
+		warn("Không tìm thấy boss 15000 máu!")
+	end
+end)
 
 -- Khoảng cách
 local distLabel = Instance.new("TextLabel", frame)
 distLabel.Size = UDim2.new(0.5, 0, 0, 25)
-distLabel.Position = UDim2.new(0, 0, 0, 65)
+distLabel.Position = UDim2.new(0, 0, 0, 100)
 distLabel.Text = tostring(radius)
 distLabel.TextColor3 = Color3.new(1, 1, 1)
 distLabel.BackgroundTransparency = 1
 distLabel.Font = Enum.Font.SourceSansBold
 distLabel.TextSize = 18
 
-local distBox = Instance.new("TextBox", distLabel) -- TextBox nằm đè lên label
+local distBox = Instance.new("TextBox", distLabel)
 distBox.Size = UDim2.new(1, 0, 1, 0)
-distBox.BackgroundTransparency = 1 -- trong suốt hoàn toàn
-distBox.TextTransparency = 1        -- không hiện chữ khi gõ
+distBox.BackgroundTransparency = 1
+distBox.TextTransparency = 1
 distBox.ClearTextOnFocus = true
-distBox.Text = ""
-distBox.KeyboardType = Enum.KeyboardType.NumberPad -- bàn phím số
+distBox.KeyboardType = Enum.KeyboardType.NumberPad
 
 distBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
@@ -81,10 +110,10 @@ distBox.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- Tốc độ quay
+-- Tốc độ quay (đưa xuống cuối)
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
-speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 150)
 speedLabel.Text = tostring(speed)
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.BackgroundTransparency = 1
@@ -96,7 +125,6 @@ speedBox.Size = UDim2.new(1, 0, 1, 0)
 speedBox.BackgroundTransparency = 1
 speedBox.TextTransparency = 1
 speedBox.ClearTextOnFocus = true
-speedBox.Text = ""
 speedBox.KeyboardType = Enum.KeyboardType.NumberPad
 
 speedBox.FocusLost:Connect(function(enterPressed)
@@ -112,12 +140,6 @@ speedBox.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- Xử lý bật / tắt farm boss
-toggleBtn.MouseButton1Click:Connect(function()
-    running = not running
-    toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
-end)
-
 -- Hàm tìm mục tiêu boss
 local function getTarget()
     for _,v in pairs(workspace:GetDescendants()) do
@@ -127,7 +149,7 @@ local function getTarget()
     end
 end
 
--- Tự động dùng băng gạc
+-- Tự động heal
 task.spawn(function()
     while true do
         if autoHeal and hum.Health < 80 then
@@ -135,7 +157,6 @@ task.spawn(function()
             if tool and not tool.Name:lower():find("băng") then
                 lastWeapon = tool
             end
-
             local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")  
             if not bandage or not bandage.Name:lower():find("băng") then  
                 for _,tool in ipairs(lp.Backpack:GetChildren()) do  
@@ -146,7 +167,6 @@ task.spawn(function()
                     end  
                 end  
             end  
-
             local healTool = lp.Character:FindFirstChildWhichIsA("Tool")  
             if healTool and healTool.Name:lower():find("băng") then  
                 healTool:Activate()  
@@ -160,7 +180,7 @@ task.spawn(function()
     end
 end)
 
--- Tự động lụm đồ
+-- Tự động lụm
 task.spawn(function()
     while true do
         if autoLoot then
@@ -178,13 +198,13 @@ task.spawn(function()
     end
 end)
 
--- Tự động đánh
+-- Auto đánh
 local function attack()
     local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
     if tool then pcall(function() tool:Activate() end) end
 end
 
--- Di chuyển quanh boss + auto đánh
+-- Di chuyển quanh boss
 RunService.Heartbeat:Connect(function()
     if running then
         local target = getTarget()
@@ -196,7 +216,6 @@ RunService.Heartbeat:Connect(function()
             tween:Play()
             hum.AutoRotate = false
             hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-
             if autoAttack then attack() end  
         end  
     end
