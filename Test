@@ -6,7 +6,7 @@ local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Biến
+-- Biến cài đặt
 local radius = 22
 local speed = 2
 local running = false
@@ -15,15 +15,17 @@ local autoHeal = true
 local autoLoot = true
 local lastWeapon = nil
 
--- GUI chính
+-- GUI
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "RENX_GUI"
 gui.Enabled = true
+gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 180) -- tăng chiều cao
-frame.Position = UDim2.new(0, 20, 0.5, -90)
-frame.BackgroundTransparency = 1 -- trong suốt
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0, 20, 0.5, -75)
+frame.BackgroundTransparency = 0.3
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.Active = true
 frame.Draggable = true
 frame.BorderSizePixel = 0
@@ -31,6 +33,7 @@ frame.BorderSizePixel = 0
 -- Tên
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
 nameLabel.Text = "💀💀VietNhat💀💀"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
@@ -56,28 +59,19 @@ end)
 local teleBtn = Instance.new("TextButton", frame)
 teleBtn.Size = UDim2.new(1, 0, 0, 30)
 teleBtn.Position = UDim2.new(0, 0, 0, 65)
-teleBtn.Text = "Teleport Boss 15000HP"
+teleBtn.Text = "Tele Boss 15000 HP"
 teleBtn.TextColor3 = Color3.new(1, 1, 1)
 teleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 teleBtn.Font = Enum.Font.SourceSansBold
 teleBtn.TextSize = 18
 
 teleBtn.MouseButton1Click:Connect(function()
-	local foundBoss = nil
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model") 
-			and v:FindFirstChild("Humanoid") 
-			and v:FindFirstChild("HumanoidRootPart") 
-			and math.floor(v.Humanoid.Health) == 15000 then
-			foundBoss = v
-			break
-		end
-	end
-	if foundBoss then
-		hrp.CFrame = foundBoss.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-	else
-		warn("Không tìm thấy boss 15000 máu!")
-	end
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.MaxHealth == 15000 and v:FindFirstChild("HumanoidRootPart") then
+            hrp.CFrame = v.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+            break
+        end
+    end
 end)
 
 -- Khoảng cách
@@ -98,22 +92,22 @@ distBox.ClearTextOnFocus = true
 distBox.KeyboardType = Enum.KeyboardType.NumberPad
 
 distBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local num = tonumber(distBox.Text)
-		if num then
-			if num < 21 then num = 21 end
-			if num > 25 then num = 25 end
-			radius = num
-			distLabel.Text = tostring(radius)
-		end
-		distBox.Text = ""
-	end
+    if enterPressed then
+        local num = tonumber(distBox.Text)
+        if num then
+            if num < 21 then num = 21 end
+            if num > 25 then num = 25 end
+            radius = num
+            distLabel.Text = tostring(radius)
+        end
+        distBox.Text = ""
+    end
 end)
 
--- Tốc độ quay (đưa xuống cuối)
+-- Tốc độ quay
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
-speedLabel.Position = UDim2.new(0.5, 0, 0, 150)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 100)
 speedLabel.Text = tostring(speed)
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.BackgroundTransparency = 1
@@ -128,28 +122,28 @@ speedBox.ClearTextOnFocus = true
 speedBox.KeyboardType = Enum.KeyboardType.NumberPad
 
 speedBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local num = tonumber(speedBox.Text)
-		if num then
-			if num < 1 then num = 1 end
-			if num > 10 then num = 10 end
-			speed = num
-			speedLabel.Text = tostring(speed)
-		end
-		speedBox.Text = ""
-	end
+    if enterPressed then
+        local num = tonumber(speedBox.Text)
+        if num then
+            if num < 1 then num = 1 end
+            if num > 10 then num = 10 end
+            speed = num
+            speedLabel.Text = tostring(speed)
+        end
+        speedBox.Text = ""
+    end
 end)
 
--- Hàm tìm mục tiêu boss
+-- Hàm tìm boss 15000 máu
 local function getTarget()
     for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.MaxHealth == 15000 and v.Humanoid.Health > 0 and v:FindFirstChild("HumanoidRootPart") then
             return v
         end
     end
 end
 
--- Tự động heal
+-- Auto heal
 task.spawn(function()
     while true do
         if autoHeal and hum.Health < 80 then
@@ -157,30 +151,25 @@ task.spawn(function()
             if tool and not tool.Name:lower():find("băng") then
                 lastWeapon = tool
             end
-            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")  
-            if not bandage or not bandage.Name:lower():find("băng") then  
-                for _,tool in ipairs(lp.Backpack:GetChildren()) do  
-                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then  
-                        tool.Parent = lp.Character  
-                        wait(0.2)  
-                        break  
-                    end  
-                end  
-            end  
-            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")  
-            if healTool and healTool.Name:lower():find("băng") then  
-                healTool:Activate()  
-                wait(1)  
-                if lastWeapon and lastWeapon.Parent == lp.Backpack then  
-                    lastWeapon.Parent = lp.Character  
-                end  
-            end  
-        end  
-        wait(0.5)  
+            local bandage = lp.Backpack:FindFirstChildWhichIsA("Tool")
+            if bandage and bandage.Name:lower():find("băng") then
+                bandage.Parent = lp.Character
+                wait(0.2)
+            end
+            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+            if healTool and healTool.Name:lower():find("băng") then
+                healTool:Activate()
+                wait(1)
+                if lastWeapon and lastWeapon.Parent == lp.Backpack then
+                    lastWeapon.Parent = lp.Character
+                end
+            end
+        end
+        wait(0.5)
     end
 end)
 
--- Tự động lụm
+-- Auto loot
 task.spawn(function()
     while true do
         if autoLoot then
@@ -198,13 +187,13 @@ task.spawn(function()
     end
 end)
 
--- Auto đánh
+-- Auto attack
 local function attack()
     local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
     if tool then pcall(function() tool:Activate() end) end
 end
 
--- Di chuyển quanh boss
+-- Auto farm quanh boss
 RunService.Heartbeat:Connect(function()
     if running then
         local target = getTarget()
@@ -216,7 +205,7 @@ RunService.Heartbeat:Connect(function()
             tween:Play()
             hum.AutoRotate = false
             hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
-            if autoAttack then attack() end  
-        end  
+            if autoAttack then attack() end
+        end
     end
 end)
