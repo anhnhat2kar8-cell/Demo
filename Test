@@ -32,7 +32,7 @@ frame.BorderSizePixel = 0
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
 nameLabel.Position = UDim2.new(0, 0, 0, 0)
-nameLabel.Text = "��VietNhat��"
+nameLabel.Text = "��VietNhat💀"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
 nameLabel.Font = Enum.Font.SourceSansBold
@@ -57,6 +57,25 @@ distLabel.TextColor3 = Color3.new(1, 1, 1)
 distLabel.BackgroundTransparency = 1
 distLabel.Font = Enum.Font.SourceSansBold
 distLabel.TextSize = 18
+
+-- Nút: Tăng khoảng cách
+local increaseBtn = Instance.new("TextButton", frame)
+increaseBtn.Size = UDim2.new(1, 0, 0, 30)
+increaseBtn.Position = UDim2.new(0, 0, 0, 95)
+increaseBtn.Text = "Tăng Khoảng Cách"
+increaseBtn.TextColor3 = Color3.new(1, 1, 1)
+increaseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+increaseBtn.Font = Enum.Font.SourceSansBold
+increaseBtn.TextSize = 18
+
+-- Xử lý khi nhấn nút tăng khoảng cách
+increaseBtn.MouseButton1Click:Connect(function()
+	radius = radius + 1
+	if radius > 25 then
+		radius = 21
+	end
+	distLabel.Text = tostring(radius)
+end)
 
 -- Label tốc độ quay
 local speedLabel = Instance.new("TextLabel", frame)
