@@ -1,184 +1,159 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+local chr = lp.Character or lp.CharacterAdded:Wait()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
+
+-- Biến
+local radius = 22
+local speed = 2
+local running = false
+local autoAttack = true
+local autoHeal = true
+local autoLoot = true
+local lastWeapon = nil
+
+-- GUI chính (theo phong cách ảnh)
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "RENX_GUI"
-gui.ResetOnSpawn = false
+gui.Enabled = true
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 300)
-frame.Position = UDim2.new(0, 20, 0.5, -150)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = 0.2
-frame.BorderSizePixel = 0
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.Active = true
 frame.Draggable = true
-frame.Parent = gui
-frame.AnchorPoint = Vector2.new(0, 0.5)
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+frame.BorderSizePixel = 0
 
--- Tiêu đề
+-- Tên: ??RENX??
 local nameLabel = Instance.new("TextLabel", frame)
-nameLabel.Size = UDim2.new(1, 0, 0, 28)
+nameLabel.Size = UDim2.new(1, 0, 0, 25)
 nameLabel.Position = UDim2.new(0, 0, 0, 0)
-nameLabel.Text = "��RENX GUI��"
+nameLabel.Text = "��VietNhat��"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
-nameLabel.Font = Enum.Font.GothamBold
-nameLabel.TextSize = 22
+nameLabel.Font = Enum.Font.SourceSansBold
+nameLabel.TextSize = 20
 
--- Hàm tạo nút toggle
-local function createToggleButton(parent, text, posY, defaultState, onToggle)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -10, 0, 30)
-	btn.Position = UDim2.new(0, 5, 0, posY)
-	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	btn.TextColor3 = Color3.new(1, 1, 1)
-	btn.Font = Enum.Font.Gotham
-	btn.TextSize = 18
-	btn.Text = (defaultState and "Tắt " or "Bật ") .. text
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-	btn.Parent = parent
+-- Nút: Bật Farm Boss
+local toggleBtn = Instance.new("TextButton", frame)
+toggleBtn.Size = UDim2.new(1, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0, 0, 0, 30)
+toggleBtn.Text = "Bật Farm Boss"
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.TextSize = 18
 
-	btn.MouseButton1Click:Connect(function()
-		defaultState = not defaultState
-		btn.Text = (defaultState and "Tắt " or "Bật ") .. text
-		onToggle(defaultState)
-	end)
+-- Label: Khoảng cách
+local distLabel = Instance.new("TextLabel", frame)
+distLabel.Size = UDim2.new(0.5, 0, 0, 25)
+distLabel.Position = UDim2.new(0, 0, 0, 65)
+distLabel.Text = tostring(radius)
+distLabel.TextColor3 = Color3.new(1, 1, 1)
+distLabel.BackgroundTransparency = 1
+distLabel.Font = Enum.Font.SourceSansBold
+distLabel.TextSize = 18
 
-	return btn
-end
-
--- Các nút toggle
-createToggleButton(frame, "Farm Boss", 30, running, function(state) running = state end)
-createToggleButton(frame, "Auto Nhặt", 65, autoLoot, function(state) autoLoot = state end)
-createToggleButton(frame, "Auto Heal", 100, autoHeal, function(state) autoHeal = state end)
-createToggleButton(frame, "Auto Attack", 135, autoAttack, function(state) autoAttack = state end)
-
--- Label Radius
-local radiusLabel = Instance.new("TextLabel", frame)
-radiusLabel.Position = UDim2.new(0, 10, 0, 175)
-radiusLabel.Size = UDim2.new(0, 50, 0, 25)
-radiusLabel.Text = "R:"
-radiusLabel.TextColor3 = Color3.new(1, 1, 1)
-radiusLabel.BackgroundTransparency = 1
-radiusLabel.Font = Enum.Font.GothamMedium
-radiusLabel.TextSize = 18
-radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Box Radius
-local radiusBox = Instance.new("TextBox", frame)
-radiusBox.Position = UDim2.new(0, 50, 0, 175)
-radiusBox.Size = UDim2.new(0, 60, 0, 25)
-radiusBox.Text = tostring(radius)
-radiusBox.TextColor3 = Color3.new(1, 1, 1)
-radiusBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-radiusBox.Font = Enum.Font.Gotham
-radiusBox.TextSize = 18
-radiusBox.ClearTextOnFocus = false
-Instance.new("UICorner", radiusBox).CornerRadius = UDim.new(0, 4)
-
--- Radius -/+
-local radiusMinus = Instance.new("TextButton", frame)
-radiusMinus.Position = UDim2.new(0, 120, 0, 175)
-radiusMinus.Size = UDim2.new(0, 25, 0, 25)
-radiusMinus.Text = "-"
-radiusMinus.TextColor3 = Color3.new(1, 1, 1)
-radiusMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-radiusMinus.Font = Enum.Font.GothamBold
-radiusMinus.TextSize = 18
-Instance.new("UICorner", radiusMinus).CornerRadius = UDim.new(0, 4)
-
-local radiusPlus = Instance.new("TextButton", frame)
-radiusPlus.Position = UDim2.new(0, 150, 0, 175)
-radiusPlus.Size = UDim2.new(0, 25, 0, 25)
-radiusPlus.Text = "+"
-radiusPlus.TextColor3 = Color3.new(1, 1, 1)
-radiusPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-radiusPlus.Font = Enum.Font.GothamBold
-radiusPlus.TextSize = 18
-Instance.new("UICorner", radiusPlus).CornerRadius = UDim.new(0, 4)
-
--- Label Speed
+-- Label: Tốc độ quay
 local speedLabel = Instance.new("TextLabel", frame)
-speedLabel.Position = UDim2.new(0, 10, 0, 210)
-speedLabel.Size = UDim2.new(0, 50, 0, 25)
-speedLabel.Text = "S:"
+speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
+speedLabel.Text = tostring(speed)
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.BackgroundTransparency = 1
-speedLabel.Font = Enum.Font.GothamMedium
+speedLabel.Font = Enum.Font.SourceSansBold
 speedLabel.TextSize = 18
-speedLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Box Speed
-local speedBox = Instance.new("TextBox", frame)
-speedBox.Position = UDim2.new(0, 50, 0, 210)
-speedBox.Size = UDim2.new(0, 60, 0, 25)
-speedBox.Text = tostring(speed)
-speedBox.TextColor3 = Color3.new(1, 1, 1)
-speedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-speedBox.Font = Enum.Font.Gotham
-speedBox.TextSize = 18
-speedBox.ClearTextOnFocus = false
-Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 4)
+-- Xử lý bật / tắt boss
+toggleBtn.MouseButton1Click:Connect(function()
+	running = not running
+	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
+end)
 
--- Speed -/+
-local speedMinus = Instance.new("TextButton", frame)
-speedMinus.Position = UDim2.new(0, 120, 0, 210)
-speedMinus.Size = UDim2.new(0, 25, 0, 25)
-speedMinus.Text = "-"
-speedMinus.TextColor3 = Color3.new(1, 1, 1)
-speedMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-speedMinus.Font = Enum.Font.GothamBold
-speedMinus.TextSize = 18
-Instance.new("UICorner", speedMinus).CornerRadius = UDim.new(0, 4)
-
-local speedPlus = Instance.new("TextButton", frame)
-speedPlus.Position = UDim2.new(0, 150, 0, 210)
-speedPlus.Size = UDim2.new(0, 25, 0, 25)
-speedPlus.Text = "+"
-speedPlus.TextColor3 = Color3.new(1, 1, 1)
-speedPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-speedPlus.Font = Enum.Font.GothamBold
-speedPlus.TextSize = 18
-Instance.new("UICorner", speedPlus).CornerRadius = UDim.new(0, 4)
-
--- Xử lý chỉnh số
-radiusBox.FocusLost:Connect(function(enter)
-	if enter then
-		local val = tonumber(radiusBox.Text)
-		if val then
-			radius = math.clamp(val, 5, 100)
-			radiusBox.Text = tostring(radius)
-		else
-			radiusBox.Text = tostring(radius)
+-- Hàm tìm mục tiêu boss
+local function getTarget()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+			return v
 		end
+	end
+end
+
+-- Tự động dùng băng gạc
+task.spawn(function()
+	while true do
+		if autoHeal and hum.Health < 80 then
+			local tool = lp.Character:FindFirstChildOfClass("Tool")
+			if tool and not tool.Name:lower():find("băng") then
+				lastWeapon = tool
+			end
+
+			local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
+			if not bandage or not bandage.Name:lower():find("băng") then
+				for _,tool in ipairs(lp.Backpack:GetChildren()) do
+					if tool:IsA("Tool") and tool.Name:lower():find("băng") then
+						tool.Parent = lp.Character
+						wait(0.2)
+						break
+					end
+				end
+			end
+
+			local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+			if healTool and healTool.Name:lower():find("băng") then
+				healTool:Activate()
+				wait(1)
+				if lastWeapon and lastWeapon.Parent == lp.Backpack then
+					lastWeapon.Parent = lp.Character
+				end
+			end
+		end
+		wait(0.5)
 	end
 end)
 
-speedBox.FocusLost:Connect(function(enter)
-	if enter then
-		local val = tonumber(speedBox.Text)
-		if val then
-			speed = math.clamp(val, 0.1, 20)
-			speedBox.Text = tostring(speed)
-		else
-			speedBox.Text = tostring(speed)
+-- Tự động lụm đồ
+task.spawn(function()
+	while true do
+		if autoLoot then
+			for _,prompt in pairs(workspace:GetDescendants()) do
+				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+					if dist < 15 then
+						fireproximityprompt(prompt)
+						wait(0.2)
+					end
+				end
+			end
 		end
+		wait(0.5)
 	end
 end)
 
-radiusMinus.MouseButton1Click:Connect(function()
-	radius = math.max(5, radius - 1)
-	radiusBox.Text = tostring(radius)
-end)
-radiusPlus.MouseButton1Click:Connect(function()
-	radius = math.min(100, radius + 1)
-	radiusBox.Text = tostring(radius)
-end)
+-- Tự động đánh
+local function attack()
+	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+	if tool then pcall(function() tool:Activate() end) end
+end
 
-speedMinus.MouseButton1Click:Connect(function()
-	speed = math.max(0.1, speed - 0.1)
-	speedBox.Text = string.format("%.1f", speed)
-end)
-speedPlus.MouseButton1Click:Connect(function()
-	speed = math.min(20, speed + 0.1)
-	speedBox.Text = string.format("%.1f", speed)
+-- Di chuyển quanh boss + auto đánh
+RunService.Heartbeat:Connect(function()
+	if running then
+		local target = getTarget()
+		if target and target:FindFirstChild("HumanoidRootPart") then
+			local angle = tick() * speed
+			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+			local goalPos = target.HumanoidRootPart.Position + offset
+			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+			tween:Play()
+			hum.AutoRotate = false
+			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+
+			if autoAttack then attack() end
+		end
+	end
 end)
