@@ -15,7 +15,7 @@ local autoHeal = true
 local autoLoot = true
 local lastWeapon = nil
 
--- GUI chính (theo phong cách ảnh)
+-- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "RENX_GUI"
 gui.Enabled = true
@@ -28,7 +28,7 @@ frame.Active = true
 frame.Draggable = true
 frame.BorderSizePixel = 0
 
--- Tên: ??RENX??
+-- Tên
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
 nameLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -38,7 +38,7 @@ nameLabel.BackgroundTransparency = 1
 nameLabel.Font = Enum.Font.SourceSansBold
 nameLabel.TextSize = 20
 
--- Nút: Bật Farm Boss
+-- Nút bật farm boss
 local toggleBtn = Instance.new("TextButton", frame)
 toggleBtn.Size = UDim2.new(1, 0, 0, 30)
 toggleBtn.Position = UDim2.new(0, 0, 0, 30)
@@ -48,7 +48,7 @@ toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 
--- Label: Khoảng cách
+-- Label khoảng cách
 local distLabel = Instance.new("TextLabel", frame)
 distLabel.Size = UDim2.new(0.5, 0, 0, 25)
 distLabel.Position = UDim2.new(0, 0, 0, 65)
@@ -58,7 +58,7 @@ distLabel.BackgroundTransparency = 1
 distLabel.Font = Enum.Font.SourceSansBold
 distLabel.TextSize = 18
 
--- Label: Tốc độ quay
+-- Label tốc độ quay
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
 speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
@@ -68,92 +68,117 @@ speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.SourceSansBold
 speedLabel.TextSize = 18
 
--- Xử lý bật / tắt boss
+-- Tự động thay đổi radius từ 21 -> 25 rồi lặp lại
+local minRadius, maxRadius = 21, 25
+local radiusStep = 0.05
+local radiusIncreasing = true
+
+task.spawn(function()
+    while true do
+        if radiusIncreasing then
+            radius = radius + radiusStep
+            if radius >= maxRadius then
+                radius = maxRadius
+                radiusIncreasing = false
+            end
+        else
+            radius = radius - radiusStep
+            if radius <= minRadius then
+                radius = minRadius
+                radiusIncreasing = true
+            end
+        end
+        distLabel.Text = string.format("%.1f", radius)
+        task.wait(0.05)
+    end
+end)
+
+-- Xử lý bật / tắt farm boss
 toggleBtn.MouseButton1Click:Connect(function()
-	running = not running
-	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
+    running = not running
+    toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
 end)
 
 -- Hàm tìm mục tiêu boss
 local function getTarget()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-			return v
-		end
-	end
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+            return v
+        end
+    end
 end
 
 -- Tự động dùng băng gạc
 task.spawn(function()
-	while true do
-		if autoHeal and hum.Health < 80 then
-			local tool = lp.Character:FindFirstChildOfClass("Tool")
-			if tool and not tool.Name:lower():find("băng") then
-				lastWeapon = tool
-			end
+    while true do
+        if autoHeal and hum.Health < 80 then
+            local tool = lp.Character:FindFirstChildOfClass("Tool")
+            if tool and not tool.Name:lower():find("băng") then
+                lastWeapon = tool
+            end
 
-			local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")
-			if not bandage or not bandage.Name:lower():find("băng") then
-				for _,tool in ipairs(lp.Backpack:GetChildren()) do
-					if tool:IsA("Tool") and tool.Name:lower():find("băng") then
-						tool.Parent = lp.Character
-						wait(0.2)
-						break
-					end
-				end
-			end
+            local bandage = lp.Character and lp.Character:FindFirstChildWhichIsA("Tool")  
+            if not bandage or not bandage.Name:lower():find("băng") then  
+                for _,tool in ipairs(lp.Backpack:GetChildren()) do  
+                    if tool:IsA("Tool") and tool.Name:lower():find("băng") then  
+                        tool.Parent = lp.Character  
+                        wait(0.2)  
+                        break  
+                    end  
+                end  
+            end  
 
-			local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-			if healTool and healTool.Name:lower():find("băng") then
-				healTool:Activate()
-				wait(1)
-				if lastWeapon and lastWeapon.Parent == lp.Backpack then
-					lastWeapon.Parent = lp.Character
-				end
-			end
-		end
-		wait(0.5)
-	end
+            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")  
+            if healTool and healTool.Name:lower():find("băng") then  
+                healTool:Activate()  
+                wait(1)  
+                if lastWeapon and lastWeapon.Parent == lp.Backpack then  
+                    lastWeapon.Parent = lp.Character  
+                end  
+            end  
+        end  
+        wait(0.5)  
+    end
 end)
 
 -- Tự động lụm đồ
 task.spawn(function()
-	while true do
-		if autoLoot then
-			for _,prompt in pairs(workspace:GetDescendants()) do
-				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-					if dist < 15 then
-						fireproximityprompt(prompt)
-						wait(0.2)
-					end
-				end
-			end
-		end
-		wait(0.5)
-	end
+    while true do
+        if autoLoot then
+            for _,prompt in pairs(workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
+                    local dist = (hrp.Position - prompt.Parent.Position).Magnitude
+                    if dist < 15 then
+                        fireproximityprompt(prompt)
+                        wait(0.2)
+                    end
+                end
+            end
+        end
+        wait(0.5)
+    end
 end)
 
 -- Tự động đánh
 local function attack()
-	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-	if tool then pcall(function() tool:Activate() end) end
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then pcall(function() tool:Activate() end) end
 end
 
 -- Di chuyển quanh boss + auto đánh
 RunService.Heartbeat:Connect(function()
-	if running then
-		local target = getTarget()
-		if target and target:FindFirstChild("HumanoidRootPart") then
-			local angle = tick() * speed
-			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-			local goalPos = target.HumanoidRootPart.Position + offset
-			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
-			tween:Play()
-			hum.AutoRotate = false
-			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+    if running then
+        local target = getTarget()
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            local angle = tick() * speed
+            local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+            local goalPos = target.HumanoidRootPart.Position + offset
+            local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+            tween:Play()
+            hum.AutoRotate = false
+            hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
 
-			if autoAttack then attack() end
-		end
-	end
+            if autoAttack then attack() end  
+        end  
+    end
 end)
