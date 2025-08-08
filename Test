@@ -68,31 +68,6 @@ speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.SourceSansBold
 speedLabel.TextSize = 18
 
--- Tự động thay đổi radius từ 21 -> 25 rồi lặp lại
-local minRadius, maxRadius = 21, 25
-local radiusStep = 0.05
-local radiusIncreasing = true
-
-task.spawn(function()
-    while true do
-        if radiusIncreasing then
-            radius = radius + radiusStep
-            if radius >= maxRadius then
-                radius = maxRadius
-                radiusIncreasing = false
-            end
-        else
-            radius = radius - radiusStep
-            if radius <= minRadius then
-                radius = minRadius
-                radiusIncreasing = true
-            end
-        end
-        distLabel.Text = string.format("%.1f", radius)
-        task.wait(0.05)
-    end
-end)
-
 -- Xử lý bật / tắt farm boss
 toggleBtn.MouseButton1Click:Connect(function()
     running = not running
