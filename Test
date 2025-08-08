@@ -49,42 +49,57 @@ toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 
 -- Label khoảng cách
--- Label: Khoảng cách (click để tăng)
-local distLabel = Instance.new("TextButton", frame) -- đổi từ TextLabel sang TextButton
-distLabel.Size = UDim2.new(0.5, 0, 0, 25)
-distLabel.Position = UDim2.new(0, 0, 0, 65)
-distLabel.Text = tostring(radius)
-distLabel.TextColor3 = Color3.new(1, 1, 1)
-distLabel.BackgroundTransparency = 1
-distLabel.Font = Enum.Font.SourceSansBold
-distLabel.TextSize = 18
-distLabel.AutoButtonColor = true
+local distBox = Instance.new("TextBox", frame)
+distBox.Size = UDim2.new(0.5, 0, 0, 25)
+distBox.Position = UDim2.new(0, 0, 0, 65)
+distBox.Text = tostring(radius)
+distBox.TextColor3 = Color3.new(1, 1, 1)
+distBox.BackgroundTransparency = 0.2
+distBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+distBox.Font = Enum.Font.SourceSansBold
+distBox.TextSize = 18
+distBox.ClearTextOnFocus = true
+distBox.PlaceholderText = "Nhập"
 
-distLabel.MouseButton1Click:Connect(function()
-	radius = radius + 1
-	if radius > 25 then
-		radius = 21
+distBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local num = tonumber(distBox.Text)
+		if num then
+			if num < 21 then num = 21 end
+			if num > 25 then num = 25 end
+			radius = num
+			distBox.Text = tostring(radius)
+		else
+			distBox.Text = tostring(radius)
+		end
 	end
-	distLabel.Text = tostring(radius)
 end)
 
--- Label: Tốc độ quay (click để tăng)
-local speedLabel = Instance.new("TextButton", frame) -- đổi từ TextLabel sang TextButton
-speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
-speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
-speedLabel.Text = tostring(speed)
-speedLabel.TextColor3 = Color3.new(1, 1, 1)
-speedLabel.BackgroundTransparency = 1
-speedLabel.Font = Enum.Font.SourceSansBold
-speedLabel.TextSize = 18
-speedLabel.AutoButtonColor = true
+-- TextBox: Tốc độ quay
+local speedBox = Instance.new("TextBox", frame)
+speedBox.Size = UDim2.new(0.5, 0, 0, 25)
+speedBox.Position = UDim2.new(0.5, 0, 0, 65)
+speedBox.Text = tostring(speed)
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+speedBox.BackgroundTransparency = 0.2
+speedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+speedBox.Font = Enum.Font.SourceSansBold
+speedBox.TextSize = 18
+speedBox.ClearTextOnFocus = true
+speedBox.PlaceholderText = "Nhập"
 
-speedLabel.MouseButton1Click:Connect(function()
-	speed = speed + 1
-	if speed > 10 then -- ví dụ giới hạn tốc độ là 10
-		speed = 1
+speedBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local num = tonumber(speedBox.Text)
+		if num then
+			if num < 1 then num = 1 end
+			if num > 10 then num = 10 end
+			speed = num
+			speedBox.Text = tostring(speed)
+		else
+			speedBox.Text = tostring(speed)
+		end
 	end
-	speedLabel.Text = tostring(speed)
 end)
 
 -- Xử lý bật / tắt farm boss
