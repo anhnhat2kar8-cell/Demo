@@ -6,7 +6,7 @@ local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Cài đặt
+-- Biến
 local radius = 22
 local speed = 2
 local running = false
@@ -14,135 +14,105 @@ local autoAttack = true
 local autoHeal = true
 local autoLoot = true
 local lastWeapon = nil
+local bossTarget = nil
 
--- GUI
+-- GUI chính
 local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 gui.Name = "RENX_GUI"
+gui.Enabled = true
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 160)
-frame.Position = UDim2.new(0, 20, 0.5, -80)
-frame.BackgroundTransparency = 1
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.3 -- làm mờ
 frame.Active = true
 frame.Draggable = true
 frame.BorderSizePixel = 0
 
--- Tên
 local nameLabel = Instance.new("TextLabel", frame)
 nameLabel.Size = UDim2.new(1, 0, 0, 25)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
 nameLabel.Text = "💀💀VietNhat💀💀"
 nameLabel.TextColor3 = Color3.new(1, 1, 1)
 nameLabel.BackgroundTransparency = 1
 nameLabel.Font = Enum.Font.SourceSansBold
 nameLabel.TextSize = 20
 
--- Nút bật farm
 local toggleBtn = Instance.new("TextButton", frame)
 toggleBtn.Size = UDim2.new(1, 0, 0, 30)
-toggleBtn.Position = UDim2.new(0, 0, 0, 25)
+toggleBtn.Position = UDim2.new(0, 0, 0, 30)
 toggleBtn.Text = "Bật Farm Boss"
 toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.BackgroundTransparency = 0.3
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 
--- Nút tele
-local teleBtn = Instance.new("TextButton", frame)
-teleBtn.Size = UDim2.new(1, 0, 0, 30)
-teleBtn.Position = UDim2.new(0, 0, 0, 60)
-teleBtn.Text = "Tele Boss 15000 HP"
-teleBtn.TextColor3 = Color3.new(1, 1, 1)
-teleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-teleBtn.Font = Enum.Font.SourceSansBold
-teleBtn.TextSize = 18
-
--- Khoảng cách
 local distLabel = Instance.new("TextLabel", frame)
 distLabel.Size = UDim2.new(0.5, 0, 0, 25)
-distLabel.Position = UDim2.new(0, 0, 0, 95)
+distLabel.Position = UDim2.new(0, 0, 0, 65)
 distLabel.Text = tostring(radius)
 distLabel.TextColor3 = Color3.new(1, 1, 1)
 distLabel.BackgroundTransparency = 1
 distLabel.Font = Enum.Font.SourceSansBold
 distLabel.TextSize = 18
 
-local distBox = Instance.new("TextBox", distLabel)
-distBox.Size = UDim2.new(1, 0, 1, 0)
-distBox.BackgroundTransparency = 1
-distBox.TextTransparency = 1
-distBox.ClearTextOnFocus = true
-distBox.KeyboardType = Enum.KeyboardType.NumberPad
-distBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local num = tonumber(distBox.Text)
-		if num then
-			if num < 21 then num = 21 end
-			if num > 25 then num = 25 end
-			radius = num
-			distLabel.Text = tostring(radius)
-		end
-		distBox.Text = ""
-	end
-end)
-
--- Tốc độ quay
 local speedLabel = Instance.new("TextLabel", frame)
 speedLabel.Size = UDim2.new(0.5, 0, 0, 25)
-speedLabel.Position = UDim2.new(0.5, 0, 0, 135)
+speedLabel.Position = UDim2.new(0.5, 0, 0, 65)
 speedLabel.Text = tostring(speed)
 speedLabel.TextColor3 = Color3.new(1, 1, 1)
 speedLabel.BackgroundTransparency = 1
 speedLabel.Font = Enum.Font.SourceSansBold
 speedLabel.TextSize = 18
 
-local speedBox = Instance.new("TextBox", speedLabel)
-speedBox.Size = UDim2.new(1, 0, 1, 0)
-speedBox.BackgroundTransparency = 1
-speedBox.TextTransparency = 1
-speedBox.ClearTextOnFocus = true
-speedBox.KeyboardType = Enum.KeyboardType.NumberPad
-speedBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed then
-		local num = tonumber(speedBox.Text)
-		if num then
-			if num < 1 then num = 1 end
-			if num > 10 then num = 10 end
-			speed = num
-			speedLabel.Text = tostring(speed)
-		end
-		speedBox.Text = ""
-	end
-end)
+-- Thanh máu boss ở giữa màn hình
+local bossGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+bossGui.Name = "BossHealthGUI"
 
--- Nút bấm
+local bossFrame = Instance.new("Frame", bossGui)
+bossFrame.Size = UDim2.new(0.4, 0, 0.03, 0)
+bossFrame.Position = UDim2.new(0.3, 0, 0.05, 0)
+bossFrame.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+bossFrame.Visible = false
+
+local bossBar = Instance.new("Frame", bossFrame)
+bossBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+bossBar.Size = UDim2.new(1, 0, 1, 0)
+
+local bossNameLabel = Instance.new("TextLabel", bossGui)
+bossNameLabel.Size = UDim2.new(0.4, 0, 0.03, 0)
+bossNameLabel.Position = UDim2.new(0.3, 0, 0.02, 0)
+bossNameLabel.BackgroundTransparency = 1
+bossNameLabel.TextColor3 = Color3.new(1, 1, 1)
+bossNameLabel.Font = Enum.Font.SourceSansBold
+bossNameLabel.TextSize = 20
+bossNameLabel.Text = ""
+bossNameLabel.Visible = false
+
+-- Nút bật / tắt
 toggleBtn.MouseButton1Click:Connect(function()
-    running = not running
-    toggleBtn.Text = running and "Tắt Farm Boss" or "Bật Farm Boss"
+	running = not running
+	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
 end)
 
-teleBtn.MouseButton1Click:Connect(function()
-	local boss = getTarget()
-	if boss then
-		hrp.CFrame = boss.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
-	end
-end)
-
--- Hàm tìm boss 15000 máu
-function getTarget()
-	local nearest, dist
+-- Tìm boss 15000 máu
+local function getBoss15000()
+	local closestBoss = nil
+	local shortestDist = math.huge
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("Model") and v:FindFirstChild("Humanoid") 
-		and v:FindFirstChild("HumanoidRootPart")
-		and v.Humanoid.Health > 0 
-		and v.Humanoid.MaxHealth == 15000 then
-			local d = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
-			if not nearest or d < dist then
-				nearest = v
-				dist = d
+		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+			if v.Humanoid.MaxHealth == 15000 and v.Humanoid.Health > 0 then
+				local dist = (hrp.Position - v.HumanoidRootPart.Position).Magnitude
+				if dist < shortestDist then
+					shortestDist = dist
+					closestBoss = v
+				end
 			end
 		end
 	end
-	return nearest
+	return closestBoss
 end
 
 -- Auto heal
@@ -153,12 +123,10 @@ task.spawn(function()
 			if tool and not tool.Name:lower():find("băng") then
 				lastWeapon = tool
 			end
-			for _,t in ipairs(lp.Backpack:GetChildren()) do
-				if t:IsA("Tool") and t.Name:lower():find("băng") then
-					t.Parent = lp.Character
-					wait(0.2)
-					break
-				end
+			local bandage = lp.Backpack:FindFirstChildWhichIsA("Tool")
+			if bandage and bandage.Name:lower():find("băng") then
+				bandage.Parent = lp.Character
+				wait(0.2)
 			end
 			local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
 			if healTool and healTool.Name:lower():find("băng") then
@@ -178,11 +146,9 @@ task.spawn(function()
 	while true do
 		if autoLoot then
 			for _,prompt in pairs(workspace:GetDescendants()) do
-				if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("MeshPart")) then
-					local dist = (hrp.Position - prompt.Parent.Position).Magnitude
-					if dist < 15 then
+				if prompt:IsA("ProximityPrompt") and prompt.Parent:IsA("BasePart") then
+					if (hrp.Position - prompt.Parent.Position).Magnitude < 15 then
 						fireproximityprompt(prompt)
-						wait(0.2)
 					end
 				end
 			end
@@ -193,23 +159,34 @@ end)
 
 -- Auto attack
 local function attack()
-	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+	local tool = lp.Character:FindFirstChildOfClass("Tool")
 	if tool then pcall(function() tool:Activate() end) end
 end
 
--- Auto farm di chuyển quanh boss
+-- Di chuyển quanh boss
 RunService.Heartbeat:Connect(function()
 	if running then
-		local target = getTarget()
-		if target and target:FindFirstChild("HumanoidRootPart") then
+		local boss = getBoss15000()
+		bossTarget = boss
+		if boss then
+			-- Cập nhật thanh máu
+			bossFrame.Visible = true
+			bossNameLabel.Visible = true
+			bossNameLabel.Text = boss.Name
+			bossBar.Size = UDim2.new(boss.Humanoid.Health / boss.Humanoid.MaxHealth, 0, 1, 0)
+			
 			local angle = tick() * speed
 			local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-			local goalPos = target.HumanoidRootPart.Position + offset
-			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, target.HumanoidRootPart.Position)})
+			local goalPos = boss.HumanoidRootPart.Position + offset
+			local tween = TweenService:Create(hrp, TweenInfo.new(0.1), {CFrame = CFrame.new(goalPos, boss.HumanoidRootPart.Position)})
 			tween:Play()
 			hum.AutoRotate = false
-			hrp.CFrame = CFrame.new(hrp.Position, target.HumanoidRootPart.Position)
+			hrp.CFrame = CFrame.new(hrp.Position, boss.HumanoidRootPart.Position)
+
 			if autoAttack then attack() end
+		else
+			bossFrame.Visible = false
+			bossNameLabel.Visible = false
 		end
 	end
 end)
