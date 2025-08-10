@@ -4,7 +4,6 @@ local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 local guiParent = lp:WaitForChild("PlayerGui")
 
--- đảm bảo character luôn hợp lệ
 local function getCharacter()
     return lp.Character or lp.CharacterAdded:Wait()
 end
@@ -13,7 +12,7 @@ local chr = getCharacter()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Biến
+-- Biến chính
 local farming = false
 local radius = 22
 local speed = 2
@@ -25,21 +24,21 @@ local lastWeapon = nil
 local bossMaxHealth = 15000
 local bossHealth = bossMaxHealth
 
--- GUI chính
+-- GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RENX_GUI"
 ScreenGui.Parent = guiParent
 
--- Main blurred-like frame
+-- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 250, 0, 150)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.BackgroundTransparency = 0.3
 MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
 -- Title
 local Title = Instance.new("TextLabel")
@@ -63,39 +62,55 @@ FarmButton.TextSize = 18
 FarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmButton.Parent = MainFrame
 
--- Label khoảng cách
-local DistanceLabel = Instance.new("TextLabel")
-DistanceLabel.Size = UDim2.new(1, -20, 0, 30)
-DistanceLabel.Position = UDim2.new(0, 10, 0, 70)
-DistanceLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-DistanceLabel.BackgroundTransparency = 0.2
-DistanceLabel.Font = Enum.Font.Gotham
-DistanceLabel.TextSize = 16
-DistanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-DistanceLabel.TextXAlignment = Enum.TextXAlignment.Left
-DistanceLabel.Text = "Khoảng cách (VD: " .. radius .. ")"
-DistanceLabel.Parent = MainFrame
+-- Hàm tạo ô nhập giả
+local function createEditableLabel(yPos, labelText, getValue, setValue)
+    local LabelButton = Instance.new("TextButton")
+    LabelButton.Size = UDim2.new(1, -20, 0, 30)
+    LabelButton.Position = UDim2.new(0, 10, 0, yPos)
+    LabelButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    LabelButton.BackgroundTransparency = 0.2
+    LabelButton.Font = Enum.Font.Gotham
+    LabelButton.TextSize = 16
+    LabelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LabelButton.TextXAlignment = Enum.TextXAlignment.Left
+    LabelButton.Text = labelText .. " (VD: " .. getValue() .. ")"
+    LabelButton.Parent = MainFrame
 
--- Label tốc độ vòng
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(1, -20, 0, 30)
-SpeedLabel.Position = UDim2.new(0, 10, 0, 105)
-SpeedLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-SpeedLabel.BackgroundTransparency = 0.2
-SpeedLabel.Font = Enum.Font.Gotham
-SpeedLabel.TextSize = 16
-SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.Text = "Tốc độ vòng (VD: " .. speed .. ")"
-SpeedLabel.Parent = MainFrame
+    LabelButton.MouseButton1Click:Connect(function()
+        -- Tạo TextBox tạm
+        local TempBox = Instance.new("TextBox")
+        TempBox.Size = LabelButton.Size
+        TempBox.Position = LabelButton.Position
+        TempBox.BackgroundTransparency = 0.2
+        TempBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        TempBox.Font = Enum.Font.Gotham
+        TempBox.TextSize = 16
+        TempBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TempBox.ClearTextOnFocus = false
+        TempBox.Text = tostring(getValue())
+        TempBox.Parent = MainFrame
+        TempBox:CaptureFocus()
 
--- Hàm cập nhật text label
-local function updateLabels()
-    DistanceLabel.Text = "Khoảng cách (VD: " .. radius .. ")"
-    SpeedLabel.Text = "Tốc độ vòng (VD: " .. speed .. ")"
+        TempBox.FocusLost:Connect(function(enterPressed)
+            local num = tonumber(TempBox.Text)
+            if num then
+                setValue(num)
+            end
+            LabelButton.Text = labelText .. " (VD: " .. getValue() .. ")"
+            TempBox:Destroy()
+        end)
+    end)
+
+    return LabelButton
 end
 
--- Boss HP bar (góc trên phải)
+-- Khoảng cách
+createEditableLabel(70, "Khoảng cách", function() return radius end, function(v) radius = v end)
+
+-- Tốc độ vòng
+createEditableLabel(105, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
+
+-- Boss HP bar
 local BossFrame = Instance.new("Frame")
 BossFrame.Size = UDim2.new(0, 300, 0, 28)
 BossFrame.Position = UDim2.new(1, -320, 0, 20)
@@ -123,15 +138,11 @@ BossText.Parent = BossFrame
 local function updateBossHealth(current, maximum)
     bossHealth = math.clamp(current or 0, 0, maximum or bossMaxHealth)
     bossMaxHealth = maximum or bossMaxHealth
-    if bossMaxHealth > 0 then
-        BossBar.Size = UDim2.new(bossHealth / bossMaxHealth, 0, 1, 0)
-    else
-        BossBar.Size = UDim2.new(0, 0, 1, 0)
-    end
+    BossBar.Size = UDim2.new(bossMaxHealth > 0 and bossHealth / bossMaxHealth or 0, 0, 1, 0)
     BossText.Text = "Máu Boss: " .. math.floor(bossHealth) .. " / " .. math.floor(bossMaxHealth)
 end
 
--- Hàm tìm boss
+-- Tìm boss
 local function getTarget()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
@@ -185,11 +196,9 @@ task.spawn(function()
                 for _, prompt in pairs(workspace:GetDescendants()) do
                     if prompt:IsA("ProximityPrompt") then
                         local ok, pos = pcall(function() return prompt.Parent.Position end)
-                        if ok and pos then
-                            if (hrp.Position - pos).Magnitude <= 15 then
-                                pcall(function() fireproximityprompt(prompt) end)
-                                wait(0.15)
-                            end
+                        if ok and pos and (hrp.Position - pos).Magnitude <= 15 then
+                            pcall(function() fireproximityprompt(prompt) end)
+                            wait(0.15)
                         end
                     end
                 end
@@ -241,26 +250,7 @@ FarmButton.MouseButton1Click:Connect(function()
     FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
 end)
 
--- Cập nhật label demo
-task.spawn(function()
-    while true do
-        task.wait(1)
-        radius = radius + 1
-        if radius > 25 then radius = 21 end
-        updateLabels()
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(2)
-        speed = speed + 1
-        if speed > 5 then speed = 1 end
-        updateLabels()
-    end
-end)
-
--- Cập nhật tham chiếu khi respawn
+-- Khi respawn
 lp.CharacterAdded:Connect(function(char)
     chr = char
     hum = chr:WaitForChild("Humanoid")
