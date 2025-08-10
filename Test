@@ -62,7 +62,7 @@ FarmButton.TextSize = 18
 FarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 FarmButton.Parent = MainFrame
 
--- Hàm tạo ô nhập giả
+-- Hàm tạo ô hiển thị giống label nhưng có thể bấm để chỉnh (nhấn -> label ẩn, TextBox hiện & mở bàn phím)
 local function createEditableLabel(yPos, labelText, getValue, setValue)
     local LabelButton = Instance.new("TextButton")
     LabelButton.Size = UDim2.new(1, -20, 0, 30)
@@ -73,41 +73,50 @@ local function createEditableLabel(yPos, labelText, getValue, setValue)
     LabelButton.TextSize = 16
     LabelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     LabelButton.TextXAlignment = Enum.TextXAlignment.Left
-    LabelButton.Text = labelText .. " (VD: " .. getValue() .. ")"
+    LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
+    LabelButton.AutoButtonColor = false
     LabelButton.Parent = MainFrame
 
     LabelButton.MouseButton1Click:Connect(function()
-        -- Tạo TextBox tạm
+        -- ẩn label (mất đi)
+        LabelButton.Visible = false
+
+        -- Tạo TextBox tạm để mở bàn phím
         local TempBox = Instance.new("TextBox")
         TempBox.Size = LabelButton.Size
         TempBox.Position = LabelButton.Position
-        TempBox.BackgroundTransparency = 0.2
         TempBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        TempBox.BackgroundTransparency = 0.2
         TempBox.Font = Enum.Font.Gotham
         TempBox.TextSize = 16
         TempBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TempBox.TextXAlignment = Enum.TextXAlignment.Left
         TempBox.ClearTextOnFocus = false
         TempBox.Text = tostring(getValue())
         TempBox.Parent = MainFrame
+
+        -- đảm bảo TextBox được focus để mở bàn phím trên mobile
         TempBox:CaptureFocus()
 
+        -- Khi xong nhập (bấm Enter hoặc bấm ra ngoài), cập nhật và xoá TextBox, hiện label trở lại
         TempBox.FocusLost:Connect(function(enterPressed)
             local num = tonumber(TempBox.Text)
             if num then
                 setValue(num)
             end
-            LabelButton.Text = labelText .. " (VD: " .. getValue() .. ")"
+            LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
             TempBox:Destroy()
+            LabelButton.Visible = true
         end)
     end)
 
     return LabelButton
 end
 
--- Khoảng cách
+-- Khoảng cách (bấm để chỉnh)
 createEditableLabel(70, "Khoảng cách", function() return radius end, function(v) radius = v end)
 
--- Tốc độ vòng
+-- Tốc độ vòng (bấm để chỉnh)
 createEditableLabel(105, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
 
 -- Boss HP bar
