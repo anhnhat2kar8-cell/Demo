@@ -1,267 +1,316 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
 local lp = Players.LocalPlayer
 local guiParent = lp:WaitForChild("PlayerGui")
 
+-- ---------- Character refs ----------
 local function getCharacter()
     return lp.Character or lp.CharacterAdded:Wait()
 end
 
 local chr = getCharacter()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
+local hum = chr:FindFirstChild("Humanoid") or chr:WaitForChild("Humanoid")
+local hrp = chr:FindFirstChild("HumanoidRootPart") or chr:WaitForChild("HumanoidRootPart")
 
--- Biến chính
+lp.CharacterAdded:Connect(function(c)
+    chr = c
+    hum = chr:WaitForChild("Humanoid")
+    hrp = chr:WaitForChild("HumanoidRootPart")
+end)
+
+-- ---------- Settings ----------
 local farming = false
-local radius = 22
-local speed = 2
+local radius = 0        -- cho bạn tự set trong GUI
+local speed = 0         -- cho bạn tự set trong GUI
 local autoAttack = true
 local autoLoot = true
-local autoHeal = true
-local lastWeapon = nil
+local autoHeal = false  -- giữ false, bật nếu cần
 
-local bossMaxHealth = 15000
-local bossHealth = bossMaxHealth
+-- Boss identification
+local BOSS_NAME = "Boss" -- dùng "Boss" theo bạn nói
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RENX_GUI"
-ScreenGui.Parent = guiParent
+-- ---------- UI ----------
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ZENX_GUI_Full"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = guiParent
+screenGui.IgnoreGuiInset = true
 
--- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 150)
-MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.3
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
+-- Main frame (góc phải trên)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 260, 0, 170)
+mainFrame.Position = UDim2.new(1, -270, 0, 12) -- góc phải trên
+mainFrame.AnchorPoint = Vector2.new(0,0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+mainFrame.BackgroundTransparency = 0.32
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner", mainFrame)
+mainCorner.CornerRadius = UDim.new(0, 10)
 
 -- Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundTransparency = 1
-Title.Text = "💀 ZENX 💀"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Parent = MainFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 36)
+title.Position = UDim2.new(0, 0, 0, 6)
+title.BackgroundTransparency = 1
+title.Text = "💀 ZENX 💀"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.Parent = mainFrame
 
--- Farm Button
-local FarmButton = Instance.new("TextButton")
-FarmButton.Size = UDim2.new(1, -20, 0, 30)
-FarmButton.Position = UDim2.new(0, 10, 0, 35)
-FarmButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-FarmButton.BackgroundTransparency = 0.2
-FarmButton.Text = "Bật Farm Boss"
-FarmButton.Font = Enum.Font.GothamBold
-FarmButton.TextSize = 18
-FarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FarmButton.Parent = MainFrame
+-- Farm button
+local farmBtn = Instance.new("TextButton")
+farmBtn.Size = UDim2.new(1, -24, 0, 38)
+farmBtn.Position = UDim2.new(0, 12, 0, 48)
+farmBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+farmBtn.BackgroundTransparency = 0.36
+farmBtn.Font = Enum.Font.GothamBold
+farmBtn.TextSize = 18
+farmBtn.TextColor3 = Color3.fromRGB(255,255,255)
+farmBtn.Text = "Bật Farm Boss"
+farmBtn.Parent = mainFrame
 
--- Hàm tạo ô hiển thị giống label nhưng có thể bấm để chỉnh (nhấn -> label ẩn, TextBox hiện & mở bàn phím)
-local function createEditableLabel(yPos, labelText, getValue, setValue)
-    local LabelButton = Instance.new("TextButton")
-    LabelButton.Size = UDim2.new(1, -20, 0, 30)
-    LabelButton.Position = UDim2.new(0, 10, 0, yPos)
-    LabelButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    LabelButton.BackgroundTransparency = 0.2
-    LabelButton.Font = Enum.Font.Gotham
-    LabelButton.TextSize = 16
-    LabelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    LabelButton.TextXAlignment = Enum.TextXAlignment.Left
-    LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
-    LabelButton.AutoButtonColor = false
-    LabelButton.Parent = MainFrame
+local farmCorner = Instance.new("UICorner", farmBtn)
+farmCorner.CornerRadius = UDim.new(0,8)
 
-    LabelButton.MouseButton1Click:Connect(function()
-        -- ẩn label (mất đi)
-        LabelButton.Visible = false
+-- Utility to create label/button that becomes editable on click
+local function createEditable(yPos, labelText, getValueFunc, setValueFunc)
+    -- A visible label-like button
+    local labelBtn = Instance.new("TextButton")
+    labelBtn.Size = UDim2.new(1, -24, 0, 34)
+    labelBtn.Position = UDim2.new(0, 12, 0, yPos)
+    labelBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    labelBtn.BackgroundTransparency = 0.36
+    labelBtn.Font = Enum.Font.Gotham
+    labelBtn.TextSize = 16
+    labelBtn.TextColor3 = Color3.fromRGB(245,245,245)
+    labelBtn.TextXAlignment = Enum.TextXAlignment.Center
+    labelBtn.Text = labelText .. " (VD: " .. tostring(getValueFunc()) .. ")"
+    labelBtn.Parent = mainFrame
+    Instance.new("UICorner", labelBtn).CornerRadius = UDim.new(0,8)
 
-        -- Tạo TextBox tạm để mở bàn phím
-        local TempBox = Instance.new("TextBox")
-        TempBox.Size = LabelButton.Size
-        TempBox.Position = LabelButton.Position
-        TempBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        TempBox.BackgroundTransparency = 0.2
-        TempBox.Font = Enum.Font.Gotham
-        TempBox.TextSize = 16
-        TempBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TempBox.TextXAlignment = Enum.TextXAlignment.Left
-        TempBox.ClearTextOnFocus = false
-        TempBox.Text = tostring(getValue())
-        TempBox.Parent = MainFrame
+    -- When clicked, create TextBox overlayed.
+    labelBtn.MouseButton1Click:Connect(function()
+        -- Create TextBox
+        local tb = Instance.new("TextBox")
+        tb.Size = labelBtn.Size
+        tb.Position = labelBtn.Position
+        tb.BackgroundColor3 = labelBtn.BackgroundColor3
+        tb.BackgroundTransparency = labelBtn.BackgroundTransparency
+        tb.Font = labelBtn.Font
+        tb.TextSize = labelBtn.TextSize
+        tb.TextColor3 = labelBtn.TextColor3
+        tb.TextXAlignment = Enum.TextXAlignment.Center
+        tb.ClearTextOnFocus = false
+        -- prefill with current value (so user sees it), but we only hide label when they actually change text
+        local current = tostring(getValueFunc())
+        tb.Text = current
+        tb.Parent = mainFrame
+        Instance.new("UICorner", tb).CornerRadius = UDim.new(0,8)
 
-        -- đảm bảo TextBox được focus để mở bàn phím trên mobile
-        TempBox:CaptureFocus()
+        -- show keyboard/focus
+        tb:CaptureFocus()
 
-        -- Khi xong nhập (bấm Enter hoặc bấm ra ngoài), cập nhật và xoá TextBox, hiện label trở lại
-        TempBox.FocusLost:Connect(function(enterPressed)
-            local num = tonumber(TempBox.Text)
-            if num then
-                setValue(num)
+        -- track whether user started typing (changed text to something different)
+        local startedTyping = false
+        local connChanged
+        connChanged = tb.Changed:Connect(function(prop)
+            if prop == "Text" then
+                -- user changed the text content; if different from original, hide label
+                if tb.Text ~= current and not startedTyping then
+                    startedTyping = true
+                    labelBtn.Visible = false
+                end
             end
-            LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
-            TempBox:Destroy()
-            LabelButton.Visible = true
+        end)
+
+        -- If user presses Enter or unfocus, apply change (if valid)
+        tb.FocusLost:Connect(function(enterPressed)
+            connChanged:Disconnect()
+            local num = tonumber(tb.Text)
+            if num then
+                setValueFunc(num)
+            end
+            -- restore label text with new value
+            labelBtn.Text = labelText .. " (VD: " .. tostring(getValueFunc()) .. ")"
+            labelBtn.Visible = true
+            tb:Destroy()
         end)
     end)
 
-    return LabelButton
+    return labelBtn
 end
 
--- Khoảng cách (bấm để chỉnh)
-createEditableLabel(70, "Khoảng cách", function() return radius end, function(v) radius = v end)
+-- Create distance & speed controls (yPos chosen to match layout)
+local distLabel = createEditable(96, "Khoảng cách", function() return radius end, function(v) radius = v end)
+local speedLabel = createEditable(136, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
 
--- Tốc độ vòng (bấm để chỉnh)
-createEditableLabel(105, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
+-- Boss HP display (top-right inside main frame)
+local hpLabel = Instance.new("TextLabel")
+hpLabel.Size = UDim2.new(1, -24, 0, 28)
+hpLabel.Position = UDim2.new(0, 12, 0, 136) -- adjust if needed (we used 136 for speed, so will overlap if needed; we'll show HP as separate small box on top)
+hpLabel.BackgroundTransparency = 1
+hpLabel.Font = Enum.Font.GothamBold
+hpLabel.TextSize = 16
+hpLabel.TextColor3 = Color3.fromRGB(0,255,0)
+hpLabel.TextXAlignment = Enum.TextXAlignment.Center
+hpLabel.Text = "Boss: --%"
+hpLabel.Parent = mainFrame
 
--- Boss HP bar
-local BossFrame = Instance.new("Frame")
-BossFrame.Size = UDim2.new(0, 300, 0, 28)
-BossFrame.Position = UDim2.new(1, -320, 0, 20)
-BossFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-BossFrame.BackgroundTransparency = 0.2
-BossFrame.BorderSizePixel = 0
-BossFrame.Parent = ScreenGui
+-- We'll also create a small nicer bar above the HP text (optional)
+local hpBarFrame = Instance.new("Frame")
+hpBarFrame.Size = UDim2.new(1, -24, 0, 8)
+hpBarFrame.Position = UDim2.new(0, 12, 0, 110)
+hpBarFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+hpBarFrame.BackgroundTransparency = 0.24
+hpBarFrame.BorderSizePixel = 0
+hpBarFrame.Parent = mainFrame
+Instance.new("UICorner", hpBarFrame).CornerRadius = UDim.new(0,6)
 
-local BossBar = Instance.new("Frame")
-BossBar.Size = UDim2.new(1, 0, 1, 0)
-BossBar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-BossBar.BorderSizePixel = 0
-BossBar.Parent = BossFrame
+local hpFill = Instance.new("Frame")
+hpFill.Size = UDim2.new(0, 0, 1, 0)
+hpFill.Position = UDim2.new(0,0,0,0)
+hpFill.BackgroundColor3 = Color3.fromRGB(0,200,0)
+hpFill.BorderSizePixel = 0
+hpFill.Parent = hpBarFrame
+Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0,6)
 
-local BossText = Instance.new("TextLabel")
-BossText.Size = UDim2.new(1, 0, 1, 0)
-BossText.BackgroundTransparency = 1
-BossText.Text = "Máu Boss: " .. bossHealth .. " / " .. bossMaxHealth
-BossText.Font = Enum.Font.GothamBold
-BossText.TextSize = 16
-BossText.TextColor3 = Color3.fromRGB(255,255,255)
-BossText.Parent = BossFrame
-
--- Cập nhật thanh máu
-local function updateBossHealth(current, maximum)
-    bossHealth = math.clamp(current or 0, 0, maximum or bossMaxHealth)
-    bossMaxHealth = maximum or bossMaxHealth
-    BossBar.Size = UDim2.new(bossMaxHealth > 0 and bossHealth / bossMaxHealth or 0, 0, 1, 0)
-    BossText.Text = "Máu Boss: " .. math.floor(bossHealth) .. " / " .. math.floor(bossMaxHealth)
+-- Helper to update HP UI (percent and color)
+local function updateHpUI(percent)
+    percent = math.clamp(percent, 0, 100)
+    hpLabel.Text = "Boss: " .. tostring(math.floor(percent)) .. "%"
+    -- color ranges
+    if percent > 70 then
+        hpLabel.TextColor3 = Color3.fromRGB(0, 220, 0)
+        hpFill.BackgroundColor3 = Color3.fromRGB(0,200,0)
+    elseif percent > 30 then
+        hpLabel.TextColor3 = Color3.fromRGB(245, 200, 20)
+        hpFill.BackgroundColor3 = Color3.fromRGB(245,200,20)
+    else
+        hpLabel.TextColor3 = Color3.fromRGB(220, 20, 20)
+        hpFill.BackgroundColor3 = Color3.fromRGB(220,20,20)
+    end
+    -- tween fill width
+    local pct = percent / 100
+    pcall(function()
+        hpFill:TweenSize(UDim2.new(pct, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
+    end)
 end
 
--- Tìm boss
-local function getTarget()
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+-- ---------- Game logic: find boss, update HP ----------
+local function findBossModel()
+    -- Try direct child or anywhere under workspace
+    local b = Workspace:FindFirstChild(BOSS_NAME)
+    if b and b:IsA("Model") and b:FindFirstChild("Humanoid") then
+        return b
+    end
+    -- fallback: search for any model named BOSS_NAME anywhere
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name == BOSS_NAME and v:FindFirstChild("Humanoid") then
             return v
         end
     end
     return nil
 end
 
--- Auto heal
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if autoHeal then
-            chr = getCharacter()
-            hum = chr:FindFirstChild("Humanoid") or hum
-            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
-            if hum and hum.Health < 80 then
-                local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-                if tool and not tool.Name:lower():find("băng") then
-                    lastWeapon = tool
-                end
-                for _, t in ipairs(lp.Backpack:GetChildren()) do
-                    if t:IsA("Tool") and t.Name:lower():find("băng") then
-                        t.Parent = lp.Character
-                        wait(0.15)
-                        local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-                        if healTool and healTool.Name:lower():find("băng") then
-                            pcall(function() healTool:Activate() end)
-                            wait(1)
-                            if lastWeapon and lastWeapon.Parent == lp.Backpack then
-                                lastWeapon.Parent = lp.Character
-                            end
-                        end
-                        break
-                    end
+-- Lightweight update loop for HP (render stepped so UI is smooth)
+RunService.RenderStepped:Connect(function()
+    local boss = findBossModel()
+    if boss and boss:FindFirstChild("Humanoid") then
+        local humB = boss.Humanoid
+        if humB.MaxHealth > 0 then
+            local pct = (humB.Health / humB.MaxHealth) * 100
+            updateHpUI(pct)
+        else
+            updateHpUI(0)
+        end
+    else
+        hpLabel.Text = "Boss: --%"
+        hpFill:TweenSize(UDim2.new(0,0,1,0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.12, true)
+    end
+end)
+
+-- ---------- Auto Loot helper ----------
+local function tryLootNearby()
+    if not autoLoot then return end
+    if not hrp then return end
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local ok, pos = pcall(function() return obj.Parent.Position end)
+            if ok and pos then
+                local dist = (hrp.Position - pos).Magnitude
+                if dist <= 16 then
+                    pcall(function() fireproximityprompt(obj) end)
+                    task.wait(0.08)
                 end
             end
         end
     end
-end)
-
--- Auto loot
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if autoLoot then
-            chr = getCharacter()
-            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
-            if hrp then
-                for _, prompt in pairs(workspace:GetDescendants()) do
-                    if prompt:IsA("ProximityPrompt") then
-                        local ok, pos = pcall(function() return prompt.Parent.Position end)
-                        if ok and pos and (hrp.Position - pos).Magnitude <= 15 then
-                            pcall(function() fireproximityprompt(prompt) end)
-                            wait(0.15)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Auto attack
-local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Activate() end) end
 end
 
--- Cập nhật máu boss
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        local target = getTarget()
-        if target and target:FindFirstChild("Humanoid") then
-            updateBossHealth(target.Humanoid.Health, target.Humanoid.MaxHealth)
-        end
+-- ---------- Auto Attack helper ----------
+local function tryAttack()
+    if not autoAttack then return end
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function() tool:Activate() end)
     end
+end
+
+-- ---------- Movement around boss when farming ----------
+-- We'll use Heartbeat for smoothness; only run when farming true
+RunService.Heartbeat:Connect(function(delta)
+    if not farming then
+        if hum then pcall(function() hum.AutoRotate = true end) end
+        return
+    end
+
+    local boss = findBossModel()
+    if not boss or not boss:FindFirstChild("HumanoidRootPart") then return end
+    local thrp = boss.HumanoidRootPart
+    -- Use numeric radius/speed, default fallback
+    local r = tonumber(radius) or 0
+    local s = tonumber(speed) or 0
+    -- If radius is 0, stay very close (use 2) to avoid NaN
+    if r == 0 then r = 2 end
+    -- angle
+    local ang = tick() * (s ~= 0 and s or 1)
+    local offset = Vector3.new(math.cos(ang) * r, 0, math.sin(ang) * r)
+    local goalPos = thrp.Position + offset
+
+    -- Tween HRP to position facing boss
+    local ok, tween = pcall(function()
+        return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
+    end)
+    if ok and tween then
+        tween:Play()
+    else
+        pcall(function() hrp.CFrame = CFrame.new(goalPos, thrp.Position) end)
+    end
+
+    if hum then pcall(function() hum.AutoRotate = false end) end
+
+    -- attack + loot
+    tryAttack()
+    tryLootNearby()
 end)
 
--- Di chuyển quanh boss
-RunService.Heartbeat:Connect(function()
-    if farming then
-        local target = getTarget()
-        if target and target:FindFirstChild("HumanoidRootPart") then
-            local thrp = target.HumanoidRootPart
-            local angle = tick() * speed
-            local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-            local goalPos = thrp.Position + offset
-            local ok, tween = pcall(function()
-                return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
-            end)
-            if ok and tween then tween:Play()
-            else hrp.CFrame = CFrame.new(goalPos, thrp.Position) end
-            if hum then hum.AutoRotate = false end
-            if autoAttack then attack() end
-        end
-    end
-end)
-
--- Nút farm
-FarmButton.MouseButton1Click:Connect(function()
+-- ---------- Farm button behavior ----------
+farmBtn.MouseButton1Click:Connect(function()
     farming = not farming
-    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+    farmBtn.Text = farming and "Đang Farm Boss..." or "Bật Farm Boss"
 end)
 
--- Khi respawn
-lp.CharacterAdded:Connect(function(char)
-    chr = char
-    hum = chr:WaitForChild("Humanoid")
-    hrp = chr:WaitForChild("HumanoidRootPart")
-end)
+-- ---------- End of script ----------
+-- Bạn có thể sửa trực tiếp các biến radius/speed trong GUI.
+-- Nếu muốn mình thêm:
+--  - Nút bật/tắt AutoAttack hoặc AutoLoot riêng
+--  - Lưu cấu hình (DataStore)
+--  - Hoặc điều chỉnh vị trí GUI / kích thước
+-- thì nói mình làm tiếp.
