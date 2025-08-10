@@ -15,79 +15,82 @@ local autoHeal = true
 local autoLoot = true
 local lastWeapon = nil
 
--- ===================== GUI GIỐNG ẢNH =====================
-local gui = Instance.new("ScreenGui")
-gui.Name = "ZENX_GUI"
-gui.Parent = lp:WaitForChild("PlayerGui")
-gui.ResetOnSpawn = false
+-- GUI chính
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+gui.Name = "RENX_GUI"
+gui.Enabled = true
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 160, 0, 90)
-frame.Position = UDim2.new(0, 20, 0.5, -45)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0, 20, 0.5, -60)
 frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Active = true
+frame.Draggable = true
 frame.BorderSizePixel = 0
-frame.Parent = gui
 
--- Tiêu đề
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 25)
-title.BackgroundTransparency = 1
-title.Text = "☠ ZENX ☠"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 20
-title.Parent = frame
+-- Tên
+local nameLabel = Instance.new("TextLabel", frame)
+nameLabel.Size = UDim2.new(1, 0, 0, 25)
+nameLabel.Position = UDim2.new(0, 0, 0, 0)
+nameLabel.Text = "��VietNhat��"
+nameLabel.TextColor3 = Color3.new(1, 1, 1)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Font = Enum.Font.SourceSansBold
+nameLabel.TextSize = 20
 
--- Nút bật/tắt Farm Boss
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(1, 0, 0, 20)
-toggleBtn.Position = UDim2.new(0, 0, 0, 25)
-toggleBtn.BackgroundTransparency = 1
+-- Nút: Bật/Tắt Farm Boss
+local toggleBtn = Instance.new("TextButton", frame)
+toggleBtn.Size = UDim2.new(1, 0, 0, 30)
+toggleBtn.Position = UDim2.new(0, 0, 0, 30)
 toggleBtn.Text = "Bật Farm Boss"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Font = Enum.Font.SourceSans
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
-toggleBtn.Parent = frame
-
 toggleBtn.MouseButton1Click:Connect(function()
 	running = not running
-	toggleBtn.Text = running and "Đang Farm Boss..." or "Bật Farm Boss"
+	toggleBtn.Text = (running and "Tắt Farm Boss" or "Bật Farm Boss")
 end)
 
--- Label radius
-local distLabel = Instance.new("TextLabel")
-distLabel.Size = UDim2.new(1, 0, 0, 20)
-distLabel.Position = UDim2.new(0, 0, 0, 45)
-distLabel.BackgroundTransparency = 1
-distLabel.Text = tostring(radius)
-distLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-distLabel.Font = Enum.Font.SourceSansBold
-distLabel.TextSize = 18
-distLabel.Parent = frame
-
--- Label speed
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(1, 0, 0, 20)
-speedLabel.Position = UDim2.new(0, 0, 0, 65)
-speedLabel.BackgroundTransparency = 1
-speedLabel.Text = tostring(speed)
-speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedLabel.Font = Enum.Font.SourceSansBold
-speedLabel.TextSize = 18
-speedLabel.Parent = frame
-
--- Cập nhật realtime
-task.spawn(function()
-	while true do
-		distLabel.Text = tostring(radius)
-		speedLabel.Text = tostring(speed)
-		wait(0.1)
-	end
+-- TextBox: Khoảng cách
+local distBox = Instance.new("TextBox", frame)
+distBox.Size = UDim2.new(0.5, 0, 0, 25)
+distBox.Position = UDim2.new(0, 0, 0, 65)
+distBox.Text = tostring(radius)
+distBox.TextColor3 = Color3.new(1, 1, 1)
+distBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+distBox.Font = Enum.Font.SourceSansBold
+distBox.TextSize = 18
+distBox.ClearTextOnFocus = false
+distBox.FocusLost:Connect(function()
+    local num = tonumber(distBox.Text)
+    if num then
+        radius = num
+    else
+        distBox.Text = tostring(radius)
+    end
 end)
 
--- ===================== CODE FARM =====================
+-- TextBox: Tốc độ
+local speedBox = Instance.new("TextBox", frame)
+speedBox.Size = UDim2.new(0.5, 0, 0, 25)
+speedBox.Position = UDim2.new(0.5, 0, 0, 65)
+speedBox.Text = tostring(speed)
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+speedBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+speedBox.Font = Enum.Font.SourceSansBold
+speedBox.TextSize = 18
+speedBox.ClearTextOnFocus = false
+speedBox.FocusLost:Connect(function()
+    local num = tonumber(speedBox.Text)
+    if num then
+        speed = num
+    else
+        speedBox.Text = tostring(speed)
+    end
+end)
 
--- Hàm tìm boss
+-- Hàm tìm mục tiêu boss
 local function getTarget()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
@@ -96,7 +99,7 @@ local function getTarget()
 	end
 end
 
--- Auto Heal
+-- Tự động heal
 task.spawn(function()
 	while true do
 		if autoHeal and hum.Health < 80 then
@@ -129,7 +132,7 @@ task.spawn(function()
 	end
 end)
 
--- Auto Loot
+-- Tự động loot
 task.spawn(function()
 	while true do
 		if autoLoot then
@@ -147,7 +150,7 @@ task.spawn(function()
 	end
 end)
 
--- Auto Attack
+-- Đánh
 local function attack()
 	local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
 	if tool then pcall(function() tool:Activate() end) end
