@@ -1,12 +1,12 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+local workspace = game:GetService("Workspace")
 
 local lp = Players.LocalPlayer
 local guiParent = lp:WaitForChild("PlayerGui")
 
--- Lấy character an toàn
+-- Hàm lấy character
 local function getCharacter()
     return lp.Character or lp.CharacterAdded:Wait()
 end
@@ -75,8 +75,8 @@ local farmCorner = Instance.new("UICorner")
 farmCorner.CornerRadius = UDim.new(0, 8)
 farmCorner.Parent = FarmButton
 
--- Hàm tạo ô nhập giả (cân giữa + mờ + bo góc)
-local function createEditableLabel(yPos, labelText, getValue, setValue)
+-- Hàm tạo ô nhập chỉ hiện số
+local function createEditableLabel(yPos, getValue, setValue)
     local LabelButton = Instance.new("TextButton")
     LabelButton.Size = UDim2.new(1, -24, 0, 34)
     LabelButton.Position = UDim2.new(0, 12, 0, yPos)
@@ -86,7 +86,7 @@ local function createEditableLabel(yPos, labelText, getValue, setValue)
     LabelButton.TextSize = 18
     LabelButton.TextColor3 = Color3.fromRGB(245, 245, 245)
     LabelButton.TextXAlignment = Enum.TextXAlignment.Center
-    LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
+    LabelButton.Text = tostring(getValue())
     LabelButton.Parent = MainFrame
 
     local corner = Instance.new("UICorner")
@@ -94,7 +94,6 @@ local function createEditableLabel(yPos, labelText, getValue, setValue)
     corner.Parent = LabelButton
 
     LabelButton.MouseButton1Click:Connect(function()
-        -- Tạo TextBox tạm thay thế nút
         local TempBox = Instance.new("TextBox")
         TempBox.Size = LabelButton.Size
         TempBox.Position = LabelButton.Position
@@ -112,15 +111,14 @@ local function createEditableLabel(yPos, labelText, getValue, setValue)
         corner2.CornerRadius = UDim.new(0, 8)
         corner2.Parent = TempBox
 
-        -- Bắt focus để hiện bàn phím trên mobile
         TempBox:CaptureFocus()
 
-        TempBox.FocusLost:Connect(function(enterPressed)
+        TempBox.FocusLost:Connect(function()
             local num = tonumber(TempBox.Text)
             if num then
                 setValue(num)
             end
-            LabelButton.Text = labelText .. " (VD: " .. tostring(getValue()) .. ")"
+            LabelButton.Text = tostring(getValue())
             TempBox:Destroy()
         end)
     end)
@@ -128,14 +126,14 @@ local function createEditableLabel(yPos, labelText, getValue, setValue)
     return LabelButton
 end
 
--- Khoảng cách & Tốc độ vòng
-local distLabel = createEditableLabel(96, "Khoảng cách", function() return radius end, function(v) radius = v end)
-local speedLabel = createEditableLabel(136, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
+-- Khoảng cách & Tốc độ
+local distLabel = createEditableLabel(96, function() return radius end, function(v) radius = v end)
+local speedLabel = createEditableLabel(136, function() return speed end, function(v) speed = v end)
 
--- Boss HP bar (góc phải)
+-- Boss HP bar
 local BossFrame = Instance.new("Frame")
 BossFrame.Size = UDim2.new(0, 320, 0, 30)
-BossFrame.Position = UDim2.new(1, -340, 0, 18) -- góc phải
+BossFrame.Position = UDim2.new(1, -340, 0, 18)
 BossFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 BossFrame.BackgroundTransparency = 0.28
 BossFrame.BorderSizePixel = 0
@@ -182,12 +180,10 @@ local function updateBossHealth(current, maximum)
     BossText.Text = "Máu Boss: " .. math.floor(bossHealth) .. " / " .. math.floor(bossMaxHealth)
 end
 
--- ====== Logic Auto / Attack / Loot / Heal (tối ưu: chạy ít vòng khi không farming) ======
-
--- Tìm target boss (đơn giản: model có Humanoid và HumanoidRootPart, != player)
+-- Hàm tìm target boss
 local function getTarget()
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and v ~= chr and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= chr and v:FindFirstChild("HumanoidRootPart") then
             if v.Humanoid.Health > 0 then
                 return v
             end
@@ -196,73 +192,69 @@ local function getTarget()
     return nil
 end
 
--- Auto heal (chạy mỗi 0.6s, chỉ kiểm tra nếu autoHeal = true)
+-- Auto heal
 task.spawn(function()
-    while true do
-        task.wait(0.6)
-        if not autoHeal then continue end
-        chr = getCharacter()
-        hum = chr:FindFirstChild("Humanoid") or hum
-        hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
-        if hum and hum.Health and hum.Health < 80 then
-            local lastWeapon = nil
-            local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-            if tool and not tool.Name:lower():find("băng") then
-                lastWeapon = tool
+    while task.wait(0.6) do
+        if autoHeal then
+            chr = getCharacter()
+            hum = chr:FindFirstChild("Humanoid") or hum
+            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
+            if hum and hum.Health and hum.Health < 80 then
+                local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+                local lastWeapon = nil
+                if tool and not tool.Name:lower():find("băng") then
+                    lastWeapon = tool
+                end
+                for _, t in ipairs(lp.Backpack:GetChildren()) do
+                    if t:IsA("Tool") and t.Name:lower():find("băng") then
+                        t.Parent = lp.Character
+                        task.wait(0.15)
+                        local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+                        if healTool and healTool.Name:lower():find("băng") then
+                            pcall(function() healTool:Activate() end)
+                            task.wait(1)
+                            if lastWeapon and lastWeapon.Parent == lp.Backpack then
+                                lastWeapon.Parent = lp.Character
+                            end
+                        end
+                        break
+                    end
+                end
             end
-            for _, t in ipairs(lp.Backpack:GetChildren()) do
-                if t:IsA("Tool") and t.Name:lower():find("băng") then
-                    t.Parent = lp.Character
-                    task.wait(0.15)
-                    local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-                    if healTool and healTool.Name:lower():find("băng") then
-                        pcall(function() healTool:Activate() end)
-                        task.wait(1)
-                        if lastWeapon and lastWeapon.Parent == lp.Backpack then
-                            lastWeapon.Parent = lp.Character
+        end
+    end
+end)
+
+-- Auto loot
+task.spawn(function()
+    while task.wait(0.5) do
+        if autoLoot then
+            chr = getCharacter()
+            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
+            if hrp then
+                for _, prompt in pairs(workspace:GetDescendants()) do
+                    if prompt:IsA("ProximityPrompt") then
+                        local ok, pos = pcall(function() return prompt.Parent.Position end)
+                        if ok and pos and (hrp.Position - pos).Magnitude <= 16 then
+                            pcall(function() fireproximityprompt(prompt) end)
+                            task.wait(0.12)
                         end
                     end
-                    break
                 end
             end
         end
     end
 end)
 
--- Auto loot (chỉ khi farming và autoLoot bật)
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if not farming or not autoLoot then continue end
-        chr = getCharacter()
-        hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
-        if hrp then
-            for _, prompt in pairs(Workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local ok, pos = pcall(function() return prompt.Parent.Position end)
-                    if ok and pos and (hrp.Position - pos).Magnitude <= 16 then
-                        pcall(function() fireproximityprompt(prompt) end)
-                        task.wait(0.12)
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Auto attack (kích hoạt tool khi farming)
 local function attack()
-    if not farming or not autoAttack then return end
     local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
     if tool then
         pcall(function() tool:Activate() end)
     end
 end
 
--- Cập nhật boss health liên tục (nhưng nhẹ, 0.12s)
 task.spawn(function()
-    while true do
-        task.wait(0.12)
+    while task.wait(0.12) do
         local target = getTarget()
         if target and target:FindFirstChild("Humanoid") then
             updateBossHealth(target.Humanoid.Health, target.Humanoid.MaxHealth)
@@ -272,47 +264,37 @@ task.spawn(function()
     end
 end)
 
--- Di chuyển quanh boss khi farming (dùng Heartbeat)
 RunService.Heartbeat:Connect(function()
-    if not farming then
-        if hum then pcall(function() hum.AutoRotate = true end) end
-        return
-    end
-
-    local target = getTarget()
-    if target and target:FindFirstChild("HumanoidRootPart") then
-        local thrp = target.HumanoidRootPart
-        local ang = tick() * (tonumber(speed) or 2)
-        local off = Vector3.new(math.cos(ang) * (tonumber(radius) or 22), 0, math.sin(ang) * (tonumber(radius) or 22))
-        local goalPos = thrp.Position + off
-        local ok, tween = pcall(function()
-            return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
-        end)
-        if ok and tween then
-            tween:Play()
-        else
-            pcall(function() hrp.CFrame = CFrame.new(goalPos, thrp.Position) end)
+    if farming then
+        local target = getTarget()
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            local thrp = target.HumanoidRootPart
+            local angle = tick() * (tonumber(speed) or 2)
+            local off = Vector3.new(math.cos(angle) * (tonumber(radius) or 22), 0, math.sin(angle) * (tonumber(radius) or 22))
+            local goalPos = thrp.Position + off
+            local ok, tween = pcall(function()
+                return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
+            end)
+            if ok and tween then
+                tween:Play()
+            else
+                pcall(function() hrp.CFrame = CFrame.new(goalPos, thrp.Position) end)
+            end
+            if hum then pcall(function() hum.AutoRotate = false end) end
+            if autoAttack then attack() end
         end
-        if hum then pcall(function() hum.AutoRotate = false end) end
-        attack()
+    else
+        if hum then pcall(function() hum.AutoRotate = true end) end
     end
 end)
 
--- Farm button toggle: đổi text thành "Đang Farm Boss..." khi bật
 FarmButton.MouseButton1Click:Connect(function()
     farming = not farming
-    if farming then
-        FarmButton.Text = "Đang Farm Boss..."
-    else
-        FarmButton.Text = "Bật Farm Boss"
-    end
+    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
 end)
 
--- Khi respawn cập nhật character refs
 lp.CharacterAdded:Connect(function(char)
     chr = char
     hum = chr:WaitForChild("Humanoid")
     hrp = chr:WaitForChild("HumanoidRootPart")
 end)
-
--- END - Script đã hoàn chỉnh
