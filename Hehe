@@ -1,4 +1,4 @@
---// Auto Attack + Safe Speed (BodyVelocity) + GUI
+--// Auto Attack + Safe Speed (BodyVelocity Bypass) + GUI
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -7,9 +7,9 @@ local humanoid = character:WaitForChild("Humanoid")
 
 -- Cài đặt
 local autoAttack = false
-local useBodyVelocity = false
-local speedValue = 80   -- tốc độ chạy khi bật
-local attackDelay = 0.2 -- delay giữa các đòn đánh
+local safeSpeed = false
+local speedValue = 80   -- tốc độ chạy an toàn
+local attackDelay = 0.2 -- delay đánh
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
@@ -46,7 +46,7 @@ ToggleSpeed.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ToggleSpeed)
 
--- Auto attack khi có Tool
+-- Auto attack khi cầm vũ khí
 task.spawn(function()
 	while true do
 		if autoAttack and player.Character then
@@ -61,34 +61,29 @@ task.spawn(function()
 	end
 end)
 
--- Tăng tốc bằng BodyVelocity
+-- Safe speed bằng BodyVelocity
 local bodyVel
 
 RunService.Heartbeat:Connect(function()
-	if useBodyVelocity and character and humanoid and humanoid.RootPart then
+	if safeSpeed and character and humanoid and humanoid.MoveDirection.Magnitude > 0 then
 		if not bodyVel or not bodyVel.Parent then
 			bodyVel = Instance.new("BodyVelocity")
-			bodyVel.MaxForce = Vector3.new(1e5, 0, 1e5) -- chỉ đẩy ngang
+			bodyVel.MaxForce = Vector3.new(1e5, 0, 1e5)
 			bodyVel.Velocity = Vector3.zero
 			bodyVel.Parent = humanoid.RootPart
 		end
-		if humanoid.MoveDirection.Magnitude > 0 then
-			bodyVel.Velocity = humanoid.MoveDirection * speedValue
-		else
-			bodyVel.Velocity = Vector3.zero
-		end
+		bodyVel.Velocity = humanoid.MoveDirection * speedValue
 	elseif bodyVel then
 		bodyVel.Velocity = Vector3.zero
 	end
 end)
 
--- Khi nhân vật respawn
 player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoid = character:WaitForChild("Humanoid")
 end)
 
--- Toggle nút
+-- Toggle buttons
 ToggleAttack.MouseButton1Click:Connect(function()
 	autoAttack = not autoAttack
 	if autoAttack then
@@ -101,8 +96,8 @@ ToggleAttack.MouseButton1Click:Connect(function()
 end)
 
 ToggleSpeed.MouseButton1Click:Connect(function()
-	useBodyVelocity = not useBodyVelocity
-	if useBodyVelocity then
+	safeSpeed = not safeSpeed
+	if safeSpeed then
 		ToggleSpeed.Text = "Speed: ON (" .. speedValue .. ")"
 		ToggleSpeed.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 	else
