@@ -1,56 +1,35 @@
---// Auto Attack + Hiển thị HP Player
+--// Auto Attack + HP Player (hiển thị trên đầu)
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-
 local autoAttack = false
 
--- GUI chính
+-- GUI đơn giản cho Auto Attack
 local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
-Frame.Size = UDim2.new(0, 240, 0, 300)
+Frame.Size = UDim2.new(0, 200, 0, 80)
 Frame.Active, Frame.Draggable = true, true
 Instance.new("UICorner", Frame)
 
 local Title = Instance.new("TextLabel", Frame)
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "Auto Farm Menu"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "Auto Farm"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
 
 -- Toggle Auto Attack
 local ToggleAttack = Instance.new("TextButton", Frame)
-ToggleAttack.Position = UDim2.new(0.1, 0, 0.1, 0)
-ToggleAttack.Size = UDim2.new(0.8, 0, 0, 30)
+ToggleAttack.Position = UDim2.new(0.1,0,0.5,0)
+ToggleAttack.Size = UDim2.new(0.8,0,0,30)
 ToggleAttack.Text = "Auto Attack: OFF"
-ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-ToggleAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleAttack.BackgroundColor3 = Color3.fromRGB(170,0,0)
+ToggleAttack.TextColor3 = Color3.fromRGB(255,255,255)
 Instance.new("UICorner", ToggleAttack)
-
--- Label HP Players
-local HpTitle = Instance.new("TextLabel", Frame)
-HpTitle.Position = UDim2.new(0,0,0.25,0)
-HpTitle.Size = UDim2.new(1,0,0,25)
-HpTitle.Text = "HP Players:"
-HpTitle.TextColor3 = Color3.fromRGB(255,255,255)
-HpTitle.Font = Enum.Font.SourceSansBold
-HpTitle.TextSize = 16
-HpTitle.BackgroundTransparency = 1
-
--- ScrollingFrame để hiển thị từng player
-local Scroll = Instance.new("ScrollingFrame", Frame)
-Scroll.Position = UDim2.new(0.05,0,0.3,0)
-Scroll.Size = UDim2.new(0.9,0,0.65,0)
-Scroll.CanvasSize = UDim2.new(0,0,0,0)
-Scroll.ScrollBarThickness = 6
-Scroll.BackgroundTransparency = 0.2
-Scroll.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Instance.new("UICorner", Scroll)
 
 -- Hàm auto attack khi cầm vũ khí
 local function autoAttackLoop()
@@ -72,38 +51,55 @@ ToggleAttack.MouseButton1Click:Connect(function()
     autoAttack = not autoAttack
     if autoAttack then
         ToggleAttack.Text = "Auto Attack: ON"
-        ToggleAttack.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        ToggleAttack.BackgroundColor3 = Color3.fromRGB(0,170,0)
         task.spawn(autoAttackLoop)
     else
         ToggleAttack.Text = "Auto Attack: OFF"
-        ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        ToggleAttack.BackgroundColor3 = Color3.fromRGB(170,0,0)
     end
 end)
 
--- Cập nhật HP Player
+-- Hàm cập nhật HP trên đầu người chơi
+local function updatePlayerHP(plr)
+    if not plr.Character then return end
+    local head = plr.Character:FindFirstChild("Head")
+    if not head then return end
+
+    local billboard = head:FindFirstChild("HP_Display")
+    if not billboard then
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "HP_Display"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0,100,0,20)
+        billboard.StudsOffset = Vector3.new(0,2,0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = head
+
+        local text = Instance.new("TextLabel", billboard)
+        text.Size = UDim2.new(1,0,1,0)
+        text.BackgroundTransparency = 1
+        text.TextColor3 = Color3.fromRGB(0,255,0)
+        text.Font = Enum.Font.SourceSansBold
+        text.TextScaled = true
+    end
+
+    local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local text = billboard:FindFirstChildOfClass("TextLabel")
+        if text then
+            text.Text = math.floor(humanoid.Health).."/"..math.floor(humanoid.MaxHealth)
+        end
+    end
+end
+
+-- Loop cập nhật HP cho tất cả người chơi
 task.spawn(function()
     while true do
-        task.wait(1)
-        Scroll:ClearAllChildren()
-        local y = 0
+        task.wait(0.2)
         for _,plr in pairs(Players:GetPlayers()) do
-            if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-                local hp = math.floor(plr.Character.Humanoid.Health)
-                local maxhp = math.floor(plr.Character.Humanoid.MaxHealth)
-
-                local label = Instance.new("TextLabel", Scroll)
-                label.Position = UDim2.new(0,0,0,y)
-                label.Size = UDim2.new(1,0,0,20)
-                label.BackgroundTransparency = 1
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.TextColor3 = Color3.fromRGB(255,255,255)
-                label.Text = plr.Name.." - "..hp.."/"..maxhp
-                label.Font = Enum.Font.SourceSans
-                label.TextSize = 16
-
-                y += 20
+            if plr ~= player then
+                updatePlayerHP(plr)
             end
         end
-        Scroll.CanvasSize = UDim2.new(0,0,0,y)
     end
 end)
