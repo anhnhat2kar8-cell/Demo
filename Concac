@@ -1,15 +1,14 @@
---// Auto Click + Infinite Speed (Fix Lag/Khựng Camera)
+--// Auto Attack (Tool) + Infinite Speed + GUI
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
 -- Cài đặt
-local autoClick = false
+local autoAttack = false
 local infiniteSpeed = false
 local walkSpeedValue = 100
-local clickDelay = 0.2 -- delay giữa các đòn đánh, giảm lag (0.1-0.2s hợp lý)
+local attackDelay = 0.2 -- delay giữa các đòn đánh (tùy game, chỉnh cho hợp lý)
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
@@ -30,13 +29,13 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
 
-local ToggleClick = Instance.new("TextButton", Frame)
-ToggleClick.Position = UDim2.new(0.1, 0, 0.3, 0)
-ToggleClick.Size = UDim2.new(0.8, 0, 0, 40)
-ToggleClick.Text = "Auto Click: OFF"
-ToggleClick.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-ToggleClick.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", ToggleClick)
+local ToggleAttack = Instance.new("TextButton", Frame)
+ToggleAttack.Position = UDim2.new(0.1, 0, 0.3, 0)
+ToggleAttack.Size = UDim2.new(0.8, 0, 0, 40)
+ToggleAttack.Text = "Auto Attack: OFF"
+ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+ToggleAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", ToggleAttack)
 
 local ToggleSpeed = Instance.new("TextButton", Frame)
 ToggleSpeed.Position = UDim2.new(0.1, 0, 0.65, 0)
@@ -46,10 +45,10 @@ ToggleSpeed.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ToggleSpeed)
 
--- Auto click tối ưu (không gây khựng camera)
+-- Auto attack khi có vũ khí (Tool)
 task.spawn(function()
 	while true do
-		if autoClick and player.Character then
+		if autoAttack and player.Character then
 			local tool = player.Character:FindFirstChildOfClass("Tool")
 			if tool then
 				pcall(function()
@@ -57,7 +56,7 @@ task.spawn(function()
 				end)
 			end
 		end
-		task.wait(clickDelay) -- delay hợp lý
+		task.wait(attackDelay)
 	end
 end)
 
@@ -81,14 +80,14 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 -- Toggle buttons
-ToggleClick.MouseButton1Click:Connect(function()
-	autoClick = not autoClick
-	if autoClick then
-		ToggleClick.Text = "Auto Click: ON"
-		ToggleClick.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+ToggleAttack.MouseButton1Click:Connect(function()
+	autoAttack = not autoAttack
+	if autoAttack then
+		ToggleAttack.Text = "Auto Attack: ON"
+		ToggleAttack.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 	else
-		ToggleClick.Text = "Auto Click: OFF"
-		ToggleClick.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+		ToggleAttack.Text = "Auto Attack: OFF"
+		ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 	end
 end)
 
