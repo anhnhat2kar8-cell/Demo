@@ -3,83 +3,18 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local lp = Players.LocalPlayer
-local guiParent = lp:WaitForChild("PlayerGui")
-
--- === Character refs ===
-local function getCharacter()
-    return lp.Character or lp.CharacterAdded:Wait()
-end
-local chr = getCharacter()
+local chr = lp.Character or lp.CharacterAdded:Wait()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- === Config toggle ===
-local farming = false
-local autoAttack = true
-local autoHeal = false
-local autoLoot = false
+-- === Config (bật/tắt ở đây) ===
+local farming = true       -- auto farm boss (bay + đánh)
+local autoAttack = true    -- auto đánh boss
+local autoHeal = true      -- tự dùng Bandage
+local autoLoot = true      -- auto nhặt item
 
 local radius = 25   -- bán kính bay quanh boss
 local height = 10   -- độ cao bay quanh boss
-
--- === GUI ===
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ZENX_GUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = guiParent
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 280, 0, 250)
-MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-MainFrame.BackgroundTransparency = 0.28
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 36)
-Title.Position = UDim2.new(0, 0, 0, 6)
-Title.BackgroundTransparency = 1
-Title.Text = "💀 ZENX FARM MENU 💀"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Parent = MainFrame
-
--- Helper tạo nút
-local function makeButton(yPos, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -24, 0, 40)
-    btn.Position = UDim2.new(0, 12, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.BackgroundTransparency = 0.38
-    btn.Text = text
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 18
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Parent = MainFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
-local farmBtn = makeButton(50, "Bật Farm Boss", function()
-    farming = not farming
-    farmBtn.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
-end)
-
-local healBtn = makeButton(100, "Bật Auto Heal", function()
-    autoHeal = not autoHeal
-    healBtn.Text = autoHeal and "Tắt Auto Heal" or "Bật Auto Heal"
-end)
-
-local lootBtn = makeButton(150, "Bật Auto Loot", function()
-    autoLoot = not autoLoot
-    lootBtn.Text = autoLoot and "Tắt Auto Loot" or "Bật Auto Loot"
-end)
 
 -- === Tìm boss gần nhất ===
 local function findBoss()
