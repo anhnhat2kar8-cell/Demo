@@ -1,174 +1,94 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local lp = Players.LocalPlayer
-local guiParent = lp:WaitForChild("PlayerGui")
+local char = lp.Character or lp.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
 
--- === Character refs ===
-local function getCharacter()
-    return lp.Character or lp.CharacterAdded:Wait()
-end
-
-local chr = getCharacter()
-local hum = chr:WaitForChild("Humanoid")
-local hrp = chr:WaitForChild("HumanoidRootPart")
-
--- === Config ===
-local farming = false
-local radius = 22
-local speed = 2
-local autoAttack = true
-local currentBoss = nil
+-- === Biến chức năng ===
+local autoClick = false
+local autoRotate = false
+local speedHack = false
+local speedValue = 100
 
 -- === GUI ===
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ZENX_GUI"
+local ScreenGui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = guiParent
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 280, 0, 150)
-MainFrame.Position = UDim2.new(0.04, 0, 0.25, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-MainFrame.BackgroundTransparency = 0.28
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 160)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Frame.Active = true
+Frame.Draggable = true
+Frame.BorderSizePixel = 2
+Frame.Visible = true
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 36)
-Title.Position = UDim2.new(0, 0, 0, 6)
-Title.BackgroundTransparency = 1
-Title.Text = "💀 ZENX 💀"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 20
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextXAlignment = Enum.TextXAlignment.Center
-Title.Parent = MainFrame
+local UIListLayout = Instance.new("UIListLayout", Frame)
+UIListLayout.Padding = UDim.new(0,5)
 
-local FarmButton = Instance.new("TextButton")
-FarmButton.Size = UDim2.new(1, -24, 0, 40)
-FarmButton.Position = UDim2.new(0, 12, 0, 48)
-FarmButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-FarmButton.BackgroundTransparency = 0.38
-FarmButton.Text = "Bật Farm Boss"
-FarmButton.Font = Enum.Font.GothamBold
-FarmButton.TextSize = 18
-FarmButton.TextColor3 = Color3.fromRGB(255,255,255)
-FarmButton.Parent = MainFrame
-Instance.new("UICorner", FarmButton).CornerRadius = UDim.new(0, 8)
+-- Hàm tạo nút toggle
+local function createToggle(name, callback)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Size = UDim2.new(1, -10, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Text = name.." : OFF"
 
-local function createEditableLabel(yPos, labelText, getValue, setValue)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -24, 0, 34)
-    btn.Position = UDim2.new(0, 12, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.BackgroundTransparency = 0.38
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(245, 245, 245)
-    btn.TextXAlignment = Enum.TextXAlignment.Center
-    btn.Text = labelText .. " (vd: " .. tostring(getValue()) .. ")"
-    btn.Parent = MainFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-
+    local state = false
     btn.MouseButton1Click:Connect(function()
-        local tb = Instance.new("TextBox")
-        tb.Size = btn.Size
-        tb.Position = btn.Position
-        tb.BackgroundColor3 = btn.BackgroundColor3
-        tb.BackgroundTransparency = btn.BackgroundTransparency
-        tb.Font = btn.Font
-        tb.TextSize = btn.TextSize
-        tb.TextColor3 = btn.TextColor3
-        tb.ClearTextOnFocus = false
-        tb.TextXAlignment = Enum.TextXAlignment.Center
-        tb.Text = tostring(getValue())
-        tb.Parent = MainFrame
-        Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 8)
-        tb:CaptureFocus()
-        tb.FocusLost:Connect(function()
-            local num = tonumber(tb.Text)
-            if num then setValue(num) end
-            btn.Text = labelText .. " (vd: " .. tostring(getValue()) .. ")"
-            tb:Destroy()
-        end)
+        state = not state
+        btn.Text = name.." : "..(state and "ON" or "OFF")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,0) or Color3.fromRGB(60,60,60)
+        callback(state)
     end)
 end
 
-createEditableLabel(96, "Khoảng cách", function() return radius end, function(v) radius = v end)
-createEditableLabel(136, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
-
-FarmButton.MouseButton1Click:Connect(function()
-    farming = not farming
-    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+-- === Auto Click ===
+createToggle("Auto Click", function(state)
+    autoClick = state
+    if state then
+        spawn(function()
+            while autoClick do
+                task.wait(0.1)
+                VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                task.wait(0.05)
+                VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            end
+        end)
+    end
 end)
 
--- === Boss Finder ===
-local function findBoss()
-    local chosen = nil
-    local myPos = hrp.Position
-    local shortest = math.huge
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-            local humv = v:FindFirstChild("Humanoid")
-            if humv and humv.Health > 0 then
-                local owner = Players:GetPlayerFromCharacter(v)
-                if not owner then
-                    local d = (v.HumanoidRootPart.Position - myPos).Magnitude
-                    if d < shortest then
-                        chosen = v
-                        shortest = d
-                    end
+-- === Auto Xoay ===
+createToggle("Auto Xoay", function(state)
+    autoRotate = state
+    if state then
+        spawn(function()
+            while autoRotate do
+                task.wait()
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(5), 0)
                 end
             end
-        end
+        end)
     end
-    return chosen
-end
+end)
 
--- === Auto Attack ===
-local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then
-        pcall(function() tool:Activate() end)
-    end
-end
-
--- === Farm vòng quanh Boss ===
-RunService.Heartbeat:Connect(function()
-    if farming then
-        local target = currentBoss or findBoss()
-        if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
-            local thrp = target.HumanoidRootPart
-            local angle = tick() * speed
-            local off = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-            local goalPos = thrp.Position + off
-            local ok, tween = pcall(function()
-                return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
-            end)
-            if ok and tween then
-                tween:Play()
-            else
-                hrp.CFrame = CFrame.new(goalPos, thrp.Position)
+-- === Speed Hack ===
+createToggle("Speed Hack", function(state)
+    speedHack = state
+    if state then
+        hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+            if speedHack then
+                hum.WalkSpeed = speedValue
             end
-            hum.AutoRotate = false
-            if autoAttack then attack() end
-        else
-            hum.AutoRotate = true
-        end
+        end)
+        hum.WalkSpeed = speedValue
     else
-        hum.AutoRotate = true
+        hum.WalkSpeed = 16 -- reset về mặc định
     end
 end)
 
--- === Respawn Handler ===
-lp.CharacterAdded:Connect(function(char)
-    chr = char
-    hum = chr:WaitForChild("Humanoid")
-    hrp = chr:WaitForChild("HumanoidRootPart")
-end)
+print("✅ Menu Auto đã bật! Có thể kéo thả và bật/tắt từng chức năng.")
