@@ -1,288 +1,103 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 
-local LocalPlayer = Players.LocalPlayer
+-- ⚙️ Cài đặt
+local attackInterval = 0.2 -- tốc độ đánh
+local customWalkSpeed = 30 -- tốc độ chạy
 
---== Safe CoreGui parent ==--
-local function getGuiParent()
-    local ok, core = pcall(function() return game:GetService("CoreGui") end)
-    if ok and core then return core end
-    return LocalPlayer:WaitForChild("PlayerGui")
-end
+-- Trạng thái bật/tắt
+local autoAttack = false
+local speedBoost = false
 
---== State ==--
-local farmBoss = false
-local orbitRadius = 10
-local orbitSpeed = 2        
-local attackDelay = 0.12
-local smoothFollow = 10     
-local yOffset = 0           
-local currentBoss = nil
-local angle = 0
-local lastAttack = 0
-local retargetInterval = 0.7
-local lastRetarget = 0
-local noclip = true
-
---== Utils ==--
-local function isAliveModel(model)
-    if not model or not model.Parent then return false end
-    local hum = model:FindFirstChildOfClass("Humanoid")
-    local hrp = model:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return false end
-    if hum.Health <= 0 then return false end
-    return true
-end
-
-local function getNearestBoss(originPos)
-    local nearest, shortest = nil, math.huge
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            if not Players:GetPlayerFromCharacter(obj) then
-                local hum = obj:FindFirstChildOfClass("Humanoid")
-                local hrp = obj:FindFirstChild("HumanoidRootPart")
-                if hum and hrp and hum.Health > 0 then
-                    local d = (hrp.Position - originPos).Magnitude
-                    if d < shortest then
-                        shortest, nearest = d, obj
-                    end
-                end
-            end
-        end
-    end
-    return nearest
-end
-
-local function getHRP()
-    local char = LocalPlayer.Character
-    if char then return char:FindFirstChild("HumanoidRootPart") end
-    return nil
-end
-
-local function setNoClip(enabled)
-    local char = LocalPlayer.Character
-    if not char then return end
-    for _, p in ipairs(char:GetDescendants()) do
-        if p:IsA("BasePart") then
-            p.CanCollide = not enabled
-        end
-    end
-end
-
---== GUI ==--
-local ScreenGui = Instance.new("ScreenGui")
+-- 📌 GUI đơn giản
+local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Name = "PrimeVip_SmoothOrbit"
-ScreenGui.Parent = getGuiParent()
 
-local IconButton = Instance.new("TextButton")
-IconButton.Size = UDim2.new(0, 40, 0, 40)
-IconButton.Position = UDim2.new(0, 10, 0, 10)
-IconButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-IconButton.Text = "☠️"
-IconButton.TextSize = 22
-IconButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-IconButton.Font = Enum.Font.GothamBold
-IconButton.BorderSizePixel = 0
-IconButton.Parent = ScreenGui
-Instance.new("UICorner", IconButton).CornerRadius = UDim.new(0, 8)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 200, 0, 120)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 180, 0, 250)
-MainFrame.Position = UDim2.new(0, -190, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainFrame.Visible = false
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+local UIStroke = Instance.new("UIStroke", Frame)
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(0, 200, 255)
 
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, -10, 0, 26)
-Title.Position = UDim2.new(0, 10, 0, 6)
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.Text = "☠️Mất Nhận Thức☠️"
-Title.TextSize = 16
-Title.Font = Enum.Font.GothamBold
-Title.TextColor3 = Color3.fromRGB(255, 230, 0)
-Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Text = "⚔️ Auto Script Menu"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextScaled = true
 
--- Farm button
-local FarmBossButton = Instance.new("TextButton", MainFrame)
-FarmBossButton.Size = UDim2.new(0, 160, 0, 30)
-FarmBossButton.Position = UDim2.new(0, 10, 0, 38)
-FarmBossButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-FarmBossButton.Text = "👹 Farm Boss: OFF"
-FarmBossButton.TextSize = 14
-FarmBossButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FarmBossButton.Font = Enum.Font.Gotham
-Instance.new("UICorner", FarmBossButton).CornerRadius = UDim.new(0, 8)
+-- Nút Auto Attack
+local AttackBtn = Instance.new("TextButton", Frame)
+AttackBtn.Size = UDim2.new(1, -20, 0, 30)
+AttackBtn.Position = UDim2.new(0, 10, 0, 40)
+AttackBtn.Text = "Auto Attack: OFF"
+AttackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AttackBtn.TextColor3 = Color3.new(1,1,1)
+AttackBtn.TextScaled = true
 
--- Input boxes
-local DistanceBox = Instance.new("TextBox", MainFrame)
-DistanceBox.Size = UDim2.new(0, 160, 0, 28)
-DistanceBox.Position = UDim2.new(0, 10, 0, 78)
-DistanceBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-DistanceBox.PlaceholderText = "Khoảng cách (mặc định 10)"
-DistanceBox.Text = ""
-DistanceBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-DistanceBox.Font = Enum.Font.Gotham
-DistanceBox.TextSize = 14
-Instance.new("UICorner", DistanceBox).CornerRadius = UDim.new(0, 8)
+-- Nút Speed
+local SpeedBtn = Instance.new("TextButton", Frame)
+SpeedBtn.Size = UDim2.new(1, -20, 0, 30)
+SpeedBtn.Position = UDim2.new(0, 10, 0, 80)
+SpeedBtn.Text = "Speed Boost: OFF"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SpeedBtn.TextColor3 = Color3.new(1,1,1)
+SpeedBtn.TextScaled = true
 
-local SpeedBox = Instance.new("TextBox", MainFrame)
-SpeedBox.Size = UDim2.new(0, 160, 0, 28)
-SpeedBox.Position = UDim2.new(0, 10, 0, 112)
-SpeedBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-SpeedBox.PlaceholderText = "Tốc độ quay (mặc định 2)"
-SpeedBox.Text = ""
-SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBox.Font = Enum.Font.Gotham
-SpeedBox.TextSize = 14
-Instance.new("UICorner", SpeedBox).CornerRadius = UDim.new(0, 8)
-
-local HeightBox = Instance.new("TextBox", MainFrame)
-HeightBox.Size = UDim2.new(0, 160, 0, 28)
-HeightBox.Position = UDim2.new(0, 10, 0, 146)
-HeightBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-HeightBox.PlaceholderText = "Độ cao so với boss (mặc định 0)"
-HeightBox.Text = ""
-HeightBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeightBox.Font = Enum.Font.Gotham
-HeightBox.TextSize = 14
-Instance.new("UICorner", HeightBox).CornerRadius = UDim.new(0, 8)
-
--- Boss label
-local BossLabel = Instance.new("TextLabel", MainFrame)
-BossLabel.Size = UDim2.new(0, 160, 0, 20)
-BossLabel.Position = UDim2.new(0, 10, 0, 180)
-BossLabel.BackgroundTransparency = 1
-BossLabel.Text = "Boss: (chưa chọn)"
-BossLabel.TextSize = 13
-BossLabel.Font = Enum.Font.Gotham
-BossLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
-BossLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- 🔴 Thanh máu boss
-local HealthFrame = Instance.new("Frame", MainFrame)
-HealthFrame.Size = UDim2.new(0, 160, 0, 18)
-HealthFrame.Position = UDim2.new(0, 10, 0, 200)
-HealthFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Instance.new("UICorner", HealthFrame).CornerRadius = UDim.new(0, 6)
-
-local HealthBar = Instance.new("Frame", HealthFrame)
-HealthBar.Size = UDim2.new(0, 0, 1, 0)
-HealthBar.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-Instance.new("UICorner", HealthBar).CornerRadius = UDim.new(0, 6)
-
-local HealthText = Instance.new("TextLabel", HealthFrame)
-HealthText.Size = UDim2.new(1, 0, 1, 0)
-HealthText.BackgroundTransparency = 1
-HealthText.Text = "HP: 0%"
-HealthText.TextColor3 = Color3.fromRGB(255, 255, 255)
-HealthText.TextSize = 12
-HealthText.Font = Enum.Font.Gotham
-
--- Noclip toggle
-local NoClipToggle = Instance.new("TextButton", MainFrame)
-NoClipToggle.Size = UDim2.new(0, 160, 0, 24)
-NoClipToggle.Position = UDim2.new(0, 10, 0, 225)
-NoClipToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-NoClipToggle.Text = "🚫 Noclip: ON"
-NoClipToggle.TextSize = 13
-NoClipToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-NoClipToggle.Font = Enum.Font.Gotham
-Instance.new("UICorner", NoClipToggle).CornerRadius = UDim.new(0, 8)
-
---== Menu toggle ==--
-local menuVisible = false
-IconButton.MouseButton1Click:Connect(function()
-    menuVisible = not menuVisible
-    if menuVisible then
-        MainFrame.Visible = true
-        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Position = UDim2.new(0, 10, MainFrame.Position.Y.Scale, MainFrame.Position.Y.Offset)}):Play()
-    else
-        local t = TweenService:Create(MainFrame, TweenInfo.new(0.25), {Position = UDim2.new(0, -190, MainFrame.Position.Y.Scale, MainFrame.Position.Y.Offset)})
-        t:Play()
-        t.Completed:Once(function() MainFrame.Visible = false end)
-    end
-end)
-
---== Inputs ==--
-FarmBossButton.MouseButton1Click:Connect(function()
-    farmBoss = not farmBoss
-    FarmBossButton.Text = "👹 Farm Boss: " .. (farmBoss and "ON" or "OFF")
-    if farmBoss then
-        local hrp = getHRP()
-        if hrp then
-            currentBoss = getNearestBoss(hrp.Position)
-            if currentBoss and isAliveModel(currentBoss) then
-                BossLabel.Text = "Boss: " .. (currentBoss.Name or "(?)")
-            else
-                BossLabel.Text = "Boss: (không thấy)"
+-- 📌 Chức năng Auto Attack
+task.spawn(function()
+    while task.wait(attackInterval) do
+        if autoAttack then
+            local tool = character:FindFirstChildOfClass("Tool")
+            if tool then
+                pcall(function()
+                    tool:Activate()
+                end)
             end
         end
-        if noclip then setNoClip(true) end
-    else
-        BossLabel.Text = "Boss: (tắt)"
-        setNoClip(false)
     end
 end)
 
-NoClipToggle.MouseButton1Click:Connect(function()
-    noclip = not noclip
-    NoClipToggle.Text = "🚫 Noclip: " .. (noclip and "ON" or "OFF")
-    setNoClip(noclip and farmBoss)
-end)
-
-DistanceBox.FocusLost:Connect(function()
-    local n = tonumber(DistanceBox.Text)
-    if n and n > 0 then orbitRadius = math.clamp(n, 2, 200) end
-    DistanceBox.Text = ""
-end)
-
-SpeedBox.FocusLost:Connect(function()
-    local n = tonumber(SpeedBox.Text)
-    if n and n > 0 then orbitSpeed = math.clamp(n, 0.2, 12) end
-    SpeedBox.Text = ""
-end)
-
-HeightBox.FocusLost:Connect(function()
-    local n = tonumber(HeightBox.Text)
-    if n then yOffset = math.clamp(n, -50, 50) end
-    HeightBox.Text = ""
-end)
-
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        FarmBossButton:Activate()
+-- 📌 Speed Boost
+humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+    if speedBoost then
+        humanoid.WalkSpeed = customWalkSpeed
     end
 end)
 
---== Core orbit ==--
-RunService.Heartbeat:Connect(function(dt)
-    if not farmBoss then return end
-    local hrp = getHRP()
-    if not hrp then return end
-
-    lastRetarget = lastRetarget + dt
-    if (not currentBoss) or (not isAliveModel(currentBoss)) or lastRetarget >= retargetInterval then
-        lastRetarget = 0
-        local nearest = getNearestBoss(hrp.Position)
-        if nearest ~= currentBoss and isAliveModel(nearest) then
-            currentBoss = nearest
-            BossLabel.Text = "Boss: " .. (currentBoss.Name or "(?)")
-        end
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    task.wait(1)
+    if speedBoost then
+        humanoid.WalkSpeed = customWalkSpeed
     end
-    if not (currentBoss and isAliveModel(currentBoss)) then return end
+end)
 
-    local bossHRP = currentBoss:FindFirstChild("HumanoidRootPart")
-    local hum = currentBoss:FindFirstChildOfClass("Humanoid")
-    if not bossHRP or not hum then return end
+-- 📌 Bật tắt bằng nút
+AttackBtn.MouseButton1Click:Connect(function()
+    autoAttack = not autoAttack
+    AttackBtn.Text = "Auto Attack: " .. (autoAttack and "ON" or "OFF")
+    AttackBtn.BackgroundColor3 = autoAttack and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+end)
+
+SpeedBtn.MouseButton1Click:Connect(function()
+    speedBoost = not speedBoost
+    if speedBoost then
+        humanoid.WalkSpeed = customWalkSpeed
+    end
+    SpeedBtn.Text = "Speed Boost: " .. (speedBoost and "ON" or "OFF")
+    SpeedBtn.BackgroundColor3 = speedBoost and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+end)or not hum then return end
 
     -- 🔴 Update thanh máu
     local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
