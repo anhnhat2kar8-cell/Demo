@@ -46,9 +46,9 @@ local function createButton(text, posY)
     return btn
 end
 
-local ClickButton = createButton("⚔ Click: 🔄", 40)
-local SpinButton = createButton("🔄 Xoay: 🔄", 85)
-local SpeedButton = createButton("🏃‍♂️ Tốc độ: 🔄", 130)
+local ClickButton = createButton(" Click: ⚔️", 40)
+local SpinButton = createButton(" Xoay: 🔄", 85)
+local SpeedButton = createButton(" Tốc độ: 🏃", 130)
 
 -- Variables
 local AutoClick = false
@@ -62,17 +62,17 @@ local BoostSpeed = 32
 -- Button Logic với ký hiệu mới
 ClickButton.MouseButton1Click:Connect(function()
     AutoClick = not AutoClick
-    ClickButton.Text = "⚔ Click: "..(AutoClick and "✅" or "🔄")
+    ClickButton.Text = " Click: "..(AutoClick and "✅" or "⚔️")
 end)
 
 SpinButton.MouseButton1Click:Connect(function()
     AutoSpin = not AutoSpin
-    SpinButton.Text = "🔄 Xoay: "..(AutoSpin and "✅" or "🔄")
+    SpinButton.Text = " Xoay: "..(AutoSpin and "✅" or "🔄")
 end)
 
 SpeedButton.MouseButton1Click:Connect(function()
     SpeedBoost = not SpeedBoost
-    SpeedButton.Text = "🏃‍♂️ Tốc độ: "..(SpeedBoost and "✅" or "🔄")
+    SpeedButton.Text = " Tốc độ: "..(SpeedBoost and "✅" or "🏃")
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
