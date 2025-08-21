@@ -2,41 +2,47 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 local UserInputService = game:GetService("UserInputService")
 
 local lp = Players.LocalPlayer
 local guiParent = lp:WaitForChild("PlayerGui")
 
--- Nhân vật
+--// Nhân vật
 local function getCharacter()
     return lp.Character or lp.CharacterAdded:Wait()
 end
 local chr = getCharacter()
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- =============== GUI MENU ===============
+lp.CharacterAdded:Connect(function(c)
+    chr = c
+    hrp = chr:WaitForChild("HumanoidRootPart")
+end)
+
+--// GUI Menu
 local gui = Instance.new("ScreenGui", guiParent)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0, 220, 0, 300)
 frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 frame.Active = true
 frame.Draggable = true
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1,0,0,30)
 title.Text = "Menu Auto"
-title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+title.BackgroundColor3 = Color3.fromRGB(25,25,25)
 title.TextColor3 = Color3.new(1,1,1)
 
 local function createButton(text, y)
     local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.Position = UDim2.new(0, 5, 0, y)
+    btn.Size = UDim2.new(1,-10,0,30)
+    btn.Position = UDim2.new(0,5,0,y)
     btn.Text = text.." OFF"
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.TextColor3 = Color3.new(1,1,1)
     return btn
 end
@@ -45,17 +51,38 @@ local btnFarm = createButton("Auto Farm Boss", 40)
 local btnWaypoint = createButton("Bay Waypoint", 80)
 local btnItem = createButton("Auto Nhặt Item", 120)
 
--- =============== FIND BOSS ===============
+--// Hàm nhận diện Boss
+local function isBossModel(m)
+    if not (m and m:IsA("Model")) then return false end
+    local hum = m:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    if Players:GetPlayerFromCharacter(m) then return false end
+    if not (m.PrimaryPart or m:FindFirstChild("HumanoidRootPart")) then return false end
+
+    if m.Name:lower():find("boss") then return true end
+    if m.Parent and m.Parent.Name:lower():match("^boss") then return true end
+    if pcall(function() return CollectionService:HasTag(m,"Boss") or CollectionService:HasTag(m,"BOSS") end) then
+        return true
+    end
+    for _, d in ipairs(m:GetDescendants()) do
+        if d:IsA("TextLabel") then
+            local t = tostring(d.Text or ""):lower()
+            if t:find("boss") then return true end
+        end
+    end
+    return false
+end
+
 local function getNearestBoss()
     local nearest, dist = nil, math.huge
-    for _, v in ipairs(Workspace:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Name:lower():find("boss") then
-            local bossHRP = v:FindFirstChild("HumanoidRootPart")
-            if bossHRP then
-                local d = (bossHRP.Position - hrp.Position).Magnitude
+    for _, m in ipairs(Workspace:GetDescendants()) do
+        if isBossModel(m) then
+            local part = m.PrimaryPart or m:FindFirstChild("HumanoidRootPart")
+            if part and hrp then
+                local d = (part.Position - hrp.Position).Magnitude
                 if d < dist then
                     dist = d
-                    nearest = v
+                    nearest = m
                 end
             end
         end
@@ -63,7 +90,7 @@ local function getNearestBoss()
     return nearest
 end
 
--- =============== AUTO FARM BOSS ===============
+--// Auto Farm Boss
 local autoFarm = false
 btnFarm.MouseButton1Click:Connect(function()
     autoFarm = not autoFarm
@@ -74,7 +101,6 @@ btnFarm.MouseButton1Click:Connect(function()
                 local boss = getNearestBoss()
                 if boss and boss:FindFirstChild("HumanoidRootPart") then
                     hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5)
-                    -- Auto đánh (giả lập click chuột trái)
                     game:GetService("VirtualUser"):ClickButton1(Vector2.new())
                 end
                 task.wait(0.2)
@@ -83,43 +109,33 @@ btnFarm.MouseButton1Click:Connect(function()
     end
 end)
 
--- =============== BAY WAYPOINT ===============
+--// Bay Waypoint quanh Boss
 local flying = false
-local tween
-local function createWaypoints(bossHRP, radius)
-    local wp = {}
-    for i = 1, 6 do
-        local angle = math.rad((i/6)*360)
-        local pos = bossHRP.Position + Vector3.new(math.cos(angle)*radius, 15, math.sin(angle)*radius)
-        table.insert(wp, pos)
-    end
-    return wp
-end
-local function flyLoop()
-    local boss = getNearestBoss()
-    if not boss or not boss:FindFirstChild("HumanoidRootPart") then return end
-    local bossHRP = boss.HumanoidRootPart
-    local wps = createWaypoints(bossHRP, 25)
-    local idx = 1
-    while flying and boss.Parent do
-        local info = TweenInfo.new(2, Enum.EasingStyle.Linear)
-        tween = TweenService:Create(hrp, info, {CFrame = CFrame.new(wps[idx])})
-        tween:Play()
-        tween.Completed:Wait()
-        idx = idx % #wps + 1
-    end
-end
 btnWaypoint.MouseButton1Click:Connect(function()
     flying = not flying
     btnWaypoint.Text = "Bay Waypoint "..(flying and "ON" or "OFF")
     if flying then
-        task.spawn(flyLoop)
-    elseif tween then
-        tween:Cancel()
+        task.spawn(function()
+            local t0 = tick()
+            while flying do
+                local boss = getNearestBoss()
+                if boss then
+                    local part = boss.PrimaryPart or boss:FindFirstChild("HumanoidRootPart")
+                    if part and chr then
+                        local t = tick()-t0
+                        local angle = t * math.pi*2*0.6 -- tốc độ vòng/giây
+                        local offset = Vector3.new(math.cos(angle)*25, 15, math.sin(angle)*25)
+                        local targetPos = part.Position + offset
+                        chr:PivotTo(CFrame.new(targetPos, part.Position))
+                    end
+                end
+                RunService.Heartbeat:Wait()
+            end
+        end)
     end
 end)
 
--- =============== AUTO NHẶT ITEM ===============
+--// Auto Nhặt Item
 local autoItem = false
 btnItem.MouseButton1Click:Connect(function()
     autoItem = not autoItem
@@ -129,7 +145,10 @@ btnItem.MouseButton1Click:Connect(function()
             while autoItem do
                 for _, v in ipairs(Workspace:GetDescendants()) do
                     if v:IsA("Tool") or v.Name:lower():find("item") then
-                        v.Handle.CFrame = hrp.CFrame
+                        local handle = v:FindFirstChild("Handle")
+                        if handle then
+                            handle.CFrame = hrp.CFrame
+                        end
                     end
                 end
                 task.wait(0.5)
@@ -138,7 +157,7 @@ btnItem.MouseButton1Click:Connect(function()
     end
 end)
 
--- =============== HIỂN THỊ MÁU NHÂN VẬT ===============
+--// Hiển thị máu nhân vật
 local hpLabel = Instance.new("TextLabel", gui)
 hpLabel.Size = UDim2.new(0,200,0,30)
 hpLabel.Position = UDim2.new(0.05,0,0.05,0)
@@ -153,7 +172,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- =============== HIỂN THỊ MÁU BOSS ===============
+--// Hiển thị máu Boss
 local bossLabel = Instance.new("TextLabel", gui)
 bossLabel.Size = UDim2.new(0,250,0,30)
 bossLabel.Position = UDim2.new(0.05,0,0.1,0)
@@ -163,8 +182,8 @@ bossLabel.TextScaled = true
 
 RunService.RenderStepped:Connect(function()
     local boss = getNearestBoss()
-    if boss and boss:FindFirstChild("Humanoid") then
-        local hum = boss.Humanoid
+    if boss and boss:FindFirstChildOfClass("Humanoid") then
+        local hum = boss:FindFirstChildOfClass("Humanoid")
         bossLabel.Text = boss.Name.." : "..math.floor(hum.Health).."/"..hum.MaxHealth
     else
         bossLabel.Text = "Không có boss gần"
