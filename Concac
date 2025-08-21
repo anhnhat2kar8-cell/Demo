@@ -26,7 +26,7 @@ Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 -- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Position = UDim2.new(0, 0, 0, 0)
+Title.Position = UDim2.new(0, 0, 0, 10) -- Dịch xuống 10px thay vì 0
 Title.BackgroundTransparency = 1
 Title.Text = "☠️ Mất Nhận Thức ☠️"
 Title.Font = Enum.Font.GothamBold
