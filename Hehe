@@ -1,13 +1,10 @@
---// Infinite Stamina + Auto Attack + Show Player Health
+--// Infinite Stamina + Auto Attack (No Delay) + Hiển thị HP Player
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 -- Cài đặt
 local infiniteStamina = false
 local autoAttack = false
-local showHealth = false
-local attackDelay = 0.15 -- tốc độ đánh (giây)
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
@@ -16,7 +13,7 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
-Frame.Size = UDim2.new(0, 240, 0, 190)
+Frame.Size = UDim2.new(0, 220, 0, 180)
 Frame.Active, Frame.Draggable = true, true
 Instance.new("UICorner", Frame)
 
@@ -39,21 +36,21 @@ Instance.new("UICorner", ToggleStamina)
 
 -- Toggle Auto Attack
 local ToggleAttack = Instance.new("TextButton", Frame)
-ToggleAttack.Position = UDim2.new(0.1, 0, 0.45, 0)
+ToggleAttack.Position = UDim2.new(0.1, 0, 0.55, 0)
 ToggleAttack.Size = UDim2.new(0.8, 0, 0, 30)
 ToggleAttack.Text = "Auto Attack: OFF"
 ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ToggleAttack)
 
--- Toggle Show Health
-local ToggleHealth = Instance.new("TextButton", Frame)
-ToggleHealth.Position = UDim2.new(0.1, 0, 0.65, 0)
-ToggleHealth.Size = UDim2.new(0.8, 0, 0, 30)
-ToggleHealth.Text = "Show Health: OFF"
-ToggleHealth.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-ToggleHealth.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", ToggleHealth)
+-- Label hiển thị HP player
+local HpLabel = Instance.new("TextLabel", Frame)
+HpLabel.Position = UDim2.new(0.05, 0, 0.8, 0)
+HpLabel.Size = UDim2.new(0.9, 0, 0, 30)
+HpLabel.TextColor3 = Color3.fromRGB(255,255,255)
+HpLabel.TextScaled = true
+HpLabel.BackgroundTransparency = 1
+HpLabel.Text = "HP Players:"
 
 -- Hàm giữ stamina luôn max
 local function keepStamina()
@@ -69,60 +66,36 @@ local function keepStamina()
     end
 end
 
--- Hàm auto attack khi cầm vũ khí
+-- Hàm auto attack khi cầm vũ khí (không delay)
 local function autoAttackLoop()
     while autoAttack do
-        task.wait(attackDelay)
-        if player.Character and player.Character:FindFirstChildOfClass("Tool") then
-            VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end
-    end
-end
-
--- Hàm hiện máu trên đầu người chơi
-local function updateHealthDisplay(plr)
-    if not plr.Character then return end
-    local head = plr.Character:FindFirstChild("Head")
-    if not head then return end
-
-    local billboard = head:FindFirstChild("HealthDisplay")
-    if not billboard then
-        billboard = Instance.new("BillboardGui")
-        billboard.Name = "HealthDisplay"
-        billboard.Adornee = head
-        billboard.Size = UDim2.new(0,100,0,20)
-        billboard.StudsOffset = Vector3.new(0,2,0)
-        billboard.AlwaysOnTop = true
-        billboard.Parent = head
-
-        local text = Instance.new("TextLabel", billboard)
-        text.Size = UDim2.new(1,0,1,0)
-        text.BackgroundTransparency = 1
-        text.TextColor3 = Color3.fromRGB(0,255,0)
-        text.Font = Enum.Font.SourceSansBold
-        text.TextScaled = true
-    end
-
-    local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        local text = billboard:FindFirstChildOfClass("TextLabel")
-        if text then
-            text.Text = math.floor(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth)
-        end
-    end
-end
-
-local function healthLoop()
-    while showHealth do
-        for _,plr in pairs(Players:GetPlayers()) do
-            if plr ~= player then
-                updateHealthDisplay(plr)
+        task.wait() -- no delay
+        if player.Character then
+            local tool = player.Character:FindFirstChildOfClass("Tool")
+            if tool then
+                pcall(function()
+                    tool:Activate()
+                end)
             end
         end
-        task.wait(0.2)
     end
 end
+
+-- Cập nhật HP từng player
+task.spawn(function()
+    while true do
+        task.wait(1)
+        local txt = {}
+        for _,plr in pairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+                local hp = math.floor(plr.Character.Humanoid.Health)
+                local maxhp = math.floor(plr.Character.Humanoid.MaxHealth)
+                table.insert(txt, plr.Name.." ["..hp.."/"..maxhp.."]")
+            end
+        end
+        HpLabel.Text = "HP Players:\n"..table.concat(txt, " | ")
+    end
+end)
 
 -- Toggle stamina
 ToggleStamina.MouseButton1Click:Connect(function()
@@ -147,25 +120,5 @@ ToggleAttack.MouseButton1Click:Connect(function()
     else
         ToggleAttack.Text = "Auto Attack: OFF"
         ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-    end
-end)
-
--- Toggle show health
-ToggleHealth.MouseButton1Click:Connect(function()
-    showHealth = not showHealth
-    if showHealth then
-        ToggleHealth.Text = "Show Health: ON"
-        ToggleHealth.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        task.spawn(healthLoop)
-    else
-        ToggleHealth.Text = "Show Health: OFF"
-        ToggleHealth.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-        -- ẩn khi tắt
-        for _,plr in pairs(Players:GetPlayers()) do
-            if plr.Character and plr.Character:FindFirstChild("Head") then
-                local gui = plr.Character.Head:FindFirstChild("HealthDisplay")
-                if gui then gui:Destroy() end
-            end
-        end
     end
 end)
