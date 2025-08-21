@@ -1,9 +1,7 @@
---// Infinite Stamina + Auto Attack (No Delay) + Hiển thị HP Player
+--// Auto Attack + Hiển thị HP Player
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Cài đặt
-local infiniteStamina = false
 local autoAttack = false
 
 -- GUI chính
@@ -13,39 +11,30 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
-Frame.Size = UDim2.new(0, 260, 0, 280)
+Frame.Size = UDim2.new(0, 240, 0, 300)
 Frame.Active, Frame.Draggable = true, true
 Instance.new("UICorner", Frame)
 
 local Title = Instance.new("TextLabel", Frame)
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "Farm Menu"
+Title.Text = "Auto Farm Menu"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
 
--- Toggle Stamina
-local ToggleStamina = Instance.new("TextButton", Frame)
-ToggleStamina.Position = UDim2.new(0.1, 0, 0.15, 0)
-ToggleStamina.Size = UDim2.new(0.8, 0, 0, 30)
-ToggleStamina.Text = "Infinite Stamina: OFF"
-ToggleStamina.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-ToggleStamina.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", ToggleStamina)
-
 -- Toggle Auto Attack
 local ToggleAttack = Instance.new("TextButton", Frame)
-ToggleAttack.Position = UDim2.new(0.1, 0, 0.3, 0)
+ToggleAttack.Position = UDim2.new(0.1, 0, 0.1, 0)
 ToggleAttack.Size = UDim2.new(0.8, 0, 0, 30)
 ToggleAttack.Text = "Auto Attack: OFF"
 ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ToggleAttack)
 
--- Title HP Players
+-- Label HP Players
 local HpTitle = Instance.new("TextLabel", Frame)
-HpTitle.Position = UDim2.new(0,0,0.45,0)
+HpTitle.Position = UDim2.new(0,0,0.25,0)
 HpTitle.Size = UDim2.new(1,0,0,25)
 HpTitle.Text = "HP Players:"
 HpTitle.TextColor3 = Color3.fromRGB(255,255,255)
@@ -53,31 +42,17 @@ HpTitle.Font = Enum.Font.SourceSansBold
 HpTitle.TextSize = 16
 HpTitle.BackgroundTransparency = 1
 
--- ScrollingFrame chứa danh sách HP player
+-- ScrollingFrame để hiển thị từng player
 local Scroll = Instance.new("ScrollingFrame", Frame)
-Scroll.Position = UDim2.new(0.05,0,0.55,0)
-Scroll.Size = UDim2.new(0.9,0,0.4,0)
+Scroll.Position = UDim2.new(0.05,0,0.3,0)
+Scroll.Size = UDim2.new(0.9,0,0.65,0)
 Scroll.CanvasSize = UDim2.new(0,0,0,0)
 Scroll.ScrollBarThickness = 6
 Scroll.BackgroundTransparency = 0.2
 Scroll.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", Scroll)
 
--- Hàm giữ stamina luôn max
-local function keepStamina()
-    while infiniteStamina do
-        local stats = player:FindFirstChild("Stats") or player:FindFirstChild("leaderstats")
-        if stats then
-            local stamina = stats:FindFirstChild("Stamina") or stats:FindFirstChild("Energy")
-            if stamina and stamina.Value < (stamina.MaxValue or stamina.Value) then
-                stamina.Value = stamina.MaxValue or 100
-            end
-        end
-        task.wait(0.1)
-    end
-end
-
--- Hàm auto attack khi cầm vũ khí (spam liên tục)
+-- Hàm auto attack khi cầm vũ khí
 local function autoAttackLoop()
     while autoAttack do
         task.wait()
@@ -92,7 +67,20 @@ local function autoAttackLoop()
     end
 end
 
--- Cập nhật HP từng player
+-- Toggle Auto Attack
+ToggleAttack.MouseButton1Click:Connect(function()
+    autoAttack = not autoAttack
+    if autoAttack then
+        ToggleAttack.Text = "Auto Attack: ON"
+        ToggleAttack.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        task.spawn(autoAttackLoop)
+    else
+        ToggleAttack.Text = "Auto Attack: OFF"
+        ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    end
+end)
+
+-- Cập nhật HP Player
 task.spawn(function()
     while true do
         task.wait(1)
@@ -117,31 +105,5 @@ task.spawn(function()
             end
         end
         Scroll.CanvasSize = UDim2.new(0,0,0,y)
-    end
-end)
-
--- Toggle stamina
-ToggleStamina.MouseButton1Click:Connect(function()
-    infiniteStamina = not infiniteStamina
-    if infiniteStamina then
-        ToggleStamina.Text = "Infinite Stamina: ON"
-        ToggleStamina.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        task.spawn(keepStamina)
-    else
-        ToggleStamina.Text = "Infinite Stamina: OFF"
-        ToggleStamina.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-    end
-end)
-
--- Toggle auto attack
-ToggleAttack.MouseButton1Click:Connect(function()
-    autoAttack = not autoAttack
-    if autoAttack then
-        ToggleAttack.Text = "Auto Attack: ON"
-        ToggleAttack.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        task.spawn(autoAttackLoop)
-    else
-        ToggleAttack.Text = "Auto Attack: OFF"
-        ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
     end
 end)
