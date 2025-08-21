@@ -1,59 +1,76 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
+local RunService = game:GetService("RunService")
 
--- ⚙️ Cài đặt
+-- Đợi PlayerGui load
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Nếu có GUI cũ thì xóa
+if playerGui:FindFirstChild("AutoFarmGUI") then
+    playerGui:FindFirstChild("AutoFarmGUI"):Destroy()
+end
+
+-- Cài đặt
 local attackInterval = 0.2 -- tốc độ đánh
 local customWalkSpeed = 30 -- tốc độ chạy
 
--- Trạng thái bật/tắt
+-- Trạng thái
 local autoAttack = false
 local speedBoost = false
 
--- 📌 GUI đơn giản
-local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-ScreenGui.ResetOnSpawn = false
+-- Lấy nhân vật
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 
-local Frame = Instance.new("Frame", ScreenGui)
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutoFarmGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = playerGui
+
+local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0, 200, 0, 120)
 Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Frame.BorderSizePixel = 0
 Frame.Active = true
 Frame.Draggable = true
+Frame.Parent = ScreenGui
 
-local UIStroke = Instance.new("UIStroke", Frame)
+local UIStroke = Instance.new("UIStroke")
 UIStroke.Thickness = 2
 UIStroke.Color = Color3.fromRGB(0, 200, 255)
+UIStroke.Parent = Frame
 
-local Title = Instance.new("TextLabel", Frame)
+local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.BackgroundTransparency = 1
 Title.Text = "⚔️ Auto Script Menu"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.TextScaled = true
+Title.Parent = Frame
 
 -- Nút Auto Attack
-local AttackBtn = Instance.new("TextButton", Frame)
+local AttackBtn = Instance.new("TextButton")
 AttackBtn.Size = UDim2.new(1, -20, 0, 30)
 AttackBtn.Position = UDim2.new(0, 10, 0, 40)
 AttackBtn.Text = "Auto Attack: OFF"
 AttackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 AttackBtn.TextColor3 = Color3.new(1,1,1)
 AttackBtn.TextScaled = true
+AttackBtn.Parent = Frame
 
 -- Nút Speed
-local SpeedBtn = Instance.new("TextButton", Frame)
+local SpeedBtn = Instance.new("TextButton")
 SpeedBtn.Size = UDim2.new(1, -20, 0, 30)
 SpeedBtn.Position = UDim2.new(0, 10, 0, 80)
 SpeedBtn.Text = "Speed Boost: OFF"
 SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 SpeedBtn.TextColor3 = Color3.new(1,1,1)
 SpeedBtn.TextScaled = true
+SpeedBtn.Parent = Frame
 
--- 📌 Chức năng Auto Attack
+--  Auto Attack
 task.spawn(function()
     while task.wait(attackInterval) do
         if autoAttack then
@@ -67,7 +84,7 @@ task.spawn(function()
     end
 end)
 
--- 📌 Speed Boost
+-- Speed Boost
 humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
     if speedBoost then
         humanoid.WalkSpeed = customWalkSpeed
@@ -83,7 +100,7 @@ player.CharacterAdded:Connect(function(char)
     end
 end)
 
--- 📌 Bật tắt bằng nút
+-- Bật / Tắt bằng nút
 AttackBtn.MouseButton1Click:Connect(function()
     autoAttack = not autoAttack
     AttackBtn.Text = "Auto Attack: " .. (autoAttack and "ON" or "OFF")
@@ -97,37 +114,4 @@ SpeedBtn.MouseButton1Click:Connect(function()
     end
     SpeedBtn.Text = "Speed Boost: " .. (speedBoost and "ON" or "OFF")
     SpeedBtn.BackgroundColor3 = speedBoost and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
-end)or not hum then return end
-
-    -- 🔴 Update thanh máu
-    local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-    HealthBar.Size = UDim2.new(ratio, 0, 1, 0)
-    HealthText.Text = string.format("HP: %d%%", math.floor(ratio * 100))
-
-    angle = (angle + orbitSpeed * dt) % (math.pi * 2)
-    local orbitOffset = Vector3.new(math.cos(angle) * orbitRadius, yOffset, math.sin(angle) * orbitRadius)
-    local targetPos = bossHRP.Position + orbitOffset
-    local alpha = 1 - math.exp(-smoothFollow * dt)
-    local newPos = hrp.Position:Lerp(targetPos, alpha)
-    hrp.CFrame = CFrame.new(newPos, bossHRP.Position)
-    hrp.AssemblyLinearVelocity = Vector3.zero
-    hrp.AssemblyAngularVelocity = Vector3.zero
-
-    lastAttack = lastAttack + dt
-    if lastAttack >= attackDelay then
-        lastAttack = 0
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton1(Vector2.new())
-        end)
-    end
 end)
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    char:WaitForChild("HumanoidRootPart", 10)
-    if farmBoss and noclip then
-        task.defer(function() setNoClip(true) end)
-    end
-end)
-
-print("[PrimeVip] Smooth Orbit + HealthBar loaded. Phím F bật/tắt nhanh.")
