@@ -1,120 +1,139 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
+local ContextActionService = game:GetService("ContextActionService")
 
-local lp = Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
-local hum = char:WaitForChild("Humanoid")
+local player = Players.LocalPlayer
+local character = player.Character
+local hrp = nil
+local humanoid = nil
 
--- cập nhật khi respawn
-lp.CharacterAdded:Connect(function(c)
-	char = c
-	hrp = c:WaitForChild("HumanoidRootPart")
-	hum = c:WaitForChild("Humanoid")
-end)
+local autoEnabled = true        -- master enable (phím P để toggle)
+local spinWhenHolding = true    -- chỉ xoay khi cầm tool
+local spinSpeedDegPerSec = 360  -- tốc độ quay (độ / giây)
+local clickInterval = 0.12      -- khoảng thời gian giữa 2 click (giây)
 
--- trạng thái
-local autoClick = false
-local autoRotate = false
-local speedHack = false
-local speedValue = 16 -- mặc định
+local currentTool = nil
+local clicking = false
+local lastClick = 0
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui", lp.PlayerGui)
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 250, 0, 200)
-Frame.Position = UDim2.new(0, 50, 0, 200)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.Active = true
-Frame.Draggable = true
-
-local UIListLayout = Instance.new("UIListLayout", Frame)
-UIListLayout.Padding = UDim.new(0, 5)
-
--- helper tạo nút toggle
-local function createButton(txt, callback)
-	local btn = Instance.new("TextButton", Frame)
-	btn.Size = UDim2.new(1, -10, 0, 30)
-	btn.Position = UDim2.new(0, 5, 0, 0)
-	btn.Text = txt
-	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.MouseButton1Click:Connect(function()
-		callback(btn)
-	end)
-	return btn
+local function setupCharacter(char)
+    character = char
+    hrp = character:WaitForChild("HumanoidRootPart", 5)
+    humanoid = character:FindFirstChildOfClass("Humanoid")
 end
 
--- Auto Click
-createButton("Auto Click: OFF", function(btn)
-	autoClick = not autoClick
-	btn.Text = "Auto Click: " .. (autoClick and "ON" or "OFF")
+if not character then
+    player.CharacterAdded:Wait()
+    setupCharacter(player.Character)
+else
+    setupCharacter(character)
+end
+
+-- theo dõi thay đổi tool
+local function onToolAdded(tool)
+    if tool and tool:IsA("Tool") then
+        currentTool = tool
+    end
+end
+
+local function onToolRemoved(tool)
+    if currentTool == tool then
+        currentTool = nil
+    end
+end
+
+local function refreshTools()
+    -- tìm tool đang equip (nằm trong character) nếu có
+    currentTool = nil
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("Tool") then
+            currentTool = v
+            break
+        end
+    end
+end
+
+-- kết nối sự kiện
+character.ChildAdded:Connect(function(child)
+    if child:IsA("Tool") then
+        onToolAdded(child)
+    end
+end)
+character.ChildRemoved:Connect(function(child)
+    if child:IsA("Tool") then
+        onToolRemoved(child)
+    end
 end)
 
--- Auto Rotate quanh boss
-createButton("Auto Rotate: OFF", function(btn)
-	autoRotate = not autoRotate
-	btn.Text = "Auto Rotate: " .. (autoRotate and "ON" or "OFF")
+player.CharacterAdded:Connect(function(char)
+    setupCharacter(char)
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then onToolAdded(child) end
+    end)
+    char.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") then onToolRemoved(child) end
+    end)
+    refreshTools()
 end)
 
--- Speed Hack toggle
-createButton("Speed Hack: OFF", function(btn)
-	speedHack = not speedHack
-	btn.Text = "Speed Hack: " .. (speedHack and "ON" or "OFF")
-	if speedHack then
-		hum.WalkSpeed = speedValue
-	else
-		hum.WalkSpeed = 16
-	end
+-- Toggle bằng phím (P)
+local TOGGLE_ACTION = "ToggleAutoSpin"
+local function toggleAction(name, state, input)
+    if state == Enum.UserInputState.Begin then
+        autoEnabled = not autoEnabled
+        -- thông báo nhanh
+        local msg = autoEnabled and "AutoSpin Bật" or "AutoSpin Tắt"
+        -- dùng HUD nhỏ (print) -- bạn có thể thay bằng GUI
+        print(msg)
+    end
+end
+ContextActionService:BindActionAtPriority(TOGGLE_ACTION, toggleAction, false, Enum.ContextActionPriority.Default.Value, Enum.KeyCode.P)
+
+-- Hàm kích hoạt click lên tool (nếu tool có phương thức Activate)
+local function tryClickTool(tool)
+    if not tool then return end
+    -- nhiều tool client có method :Activate()
+    local ok, err = pcall(function()
+        if tool and tool.Parent then
+            if tool.Activate then
+                tool:Activate()
+            else
+                -- nếu tool không expose Activate trên client, thử kích hoạt qua event "Remote" thường thấy (không đảm bảo)
+                -- nothing here — tránh gọi remote game-specific
+            end
+        end
+    end)
+    if not ok then
+        --  nếu lỗi thì in ra (dùng để debug)
+        -- print("Click error:", err)
+    end
+end
+
+-- Loop xoay và auto click (dùng RenderStepped để xoay mượt)
+local lastTick = tick()
+RunService.RenderStepped:Connect(function(dt)
+    if not autoEnabled then return end
+    if not character or not hrp then return end
+
+    -- logic: nếu người chơi đang cầm tool (hoặc spinWhenHolding == false) thì quay
+    local holding = currentTool ~= nil
+    if spinWhenHolding and not holding then return end
+
+    -- xoay nhẹ HRP quanh trục Y
+    local angleDeg = spinSpeedDegPerSec * dt
+    local cf = hrp.CFrame
+    -- xoay quanh trục Y ở vị trí HRP
+    hrp.CFrame = cf * CFrame.Angles(0, math.rad(angleDeg), 0)
+
+    -- xử lý auto-click theo interval
+    if holding and currentTool then
+        local now = tick()
+        if now - lastClick >= clickInterval then
+            lastClick = now
+            tryClickTool(currentTool)
+        end
+    end
 end)
 
--- Ô nhập tốc độ
-local speedBox = Instance.new("TextBox", Frame)
-speedBox.Size = UDim2.new(1, -10, 0, 30)
-speedBox.Position = UDim2.new(0, 5, 0, 0)
-speedBox.PlaceholderText = "Nhập tốc độ chạy"
-speedBox.Text = ""
-speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-speedBox.TextColor3 = Color3.new(1,1,1)
-speedBox.FocusLost:Connect(function()
-	local val = tonumber(speedBox.Text)
-	if val and val > 0 then
-		speedValue = val
-		if speedHack then
-			hum.WalkSpeed = speedValue
-		end
-	end
-end)
-
--- Auto Click mượt (RenderStepped)
-RunService.RenderStepped:Connect(function()
-	if autoClick then
-		VirtualUser:Button1Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-		VirtualUser:Button1Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-	end
-end)
-
--- Auto Rotate quanh boss (ví dụ tìm NPC gần nhất)
-local radius = 10
-RunService.Heartbeat:Connect(function()
-	if autoRotate and hrp then
-		local nearestBoss, dist = nil, math.huge
-		for _, mob in ipairs(workspace:GetChildren()) do
-			if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Humanoid.Health > 0 then
-				local d = (mob.HumanoidRootPart.Position - hrp.Position).Magnitude
-				if d < dist then
-					dist = d
-					nearestBoss = mob
-				end
-			end
-		end
-		if nearestBoss then
-			local angle = tick() * 2 -- tốc độ xoay
-			local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius
-			local targetPos = nearestBoss.HumanoidRootPart.Position + offset
-			hrp.CFrame = CFrame.new(targetPos, nearestBoss.HumanoidRootPart.Position)
-		end
-	end
-end)
+-- khởi tạo lần đầu
+refreshTools()
