@@ -1,101 +1,88 @@
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local lp = Players.LocalPlayer
 local chr = lp.Character or lp.CharacterAdded:Wait()
-local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- === Config (bật/tắt ở đây) ===
-local farming = true       -- auto farm boss (bay + đánh)
-local autoAttack = true    -- auto đánh boss
-local autoHeal = true      -- tự dùng Bandage
-local autoLoot = true      -- auto nhặt item
+local flying = false
+local waypoints = {}
+local currentIndex = 1
+local tween
 
-local radius = 25   -- bán kính bay quanh boss
-local height = 10   -- độ cao bay quanh boss
-
--- === Tìm boss gần nhất ===
-local function findBoss()
-    local chosen, shortest = nil, math.huge
-    local myPos = hrp.Position
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-            local humv = v:FindFirstChild("Humanoid")
-            if humv and humv.Health > 0 then
-                local owner = Players:GetPlayerFromCharacter(v)
-                if not owner then
-                    local d = (v.HumanoidRootPart.Position - myPos).Magnitude
-                    if d < shortest then
-                        chosen = v
-                        shortest = d
-                    end
+-- tìm boss gần nhất
+local function getNearestBoss()
+    local nearest, dist = nil, math.huge
+    for _, v in ipairs(Workspace:GetChildren()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Name:lower():find("boss") then
+            local bossHRP = v:FindFirstChild("HumanoidRootPart")
+            if bossHRP then
+                local d = (bossHRP.Position - hrp.Position).Magnitude
+                if d < dist then
+                    dist = d
+                    nearest = bossHRP
                 end
             end
         end
     end
-    return chosen
+    return nearest
 end
 
--- === Auto Attack ===
-local function attack()
-    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
-    if tool then
-        pcall(function() tool:Activate() end)
+-- tạo waypoint quanh boss
+local function createWaypoints(bossHRP, radius)
+    local wp = {}
+    for i = 1, 6 do
+        local angle = math.rad((i / 6) * 360)
+        local pos = bossHRP.Position + Vector3.new(math.cos(angle) * radius, 15, math.sin(angle) * radius)
+        table.insert(wp, pos)
+    end
+    return wp
+end
+
+-- bay tới waypoint
+local function flyTo(pos)
+    if tween then tween:Cancel() end
+    local info = TweenInfo.new(2, Enum.EasingStyle.Linear)
+    tween = TweenService:Create(hrp, info, {CFrame = CFrame.new(pos)})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+-- loop bay quanh boss
+local function startFlying()
+    flying = true
+    local bossHRP = getNearestBoss()
+    if not bossHRP then return end
+    waypoints = createWaypoints(bossHRP, 25)
+    currentIndex = 1
+    while flying and bossHRP and bossHRP.Parent do
+        flyTo(waypoints[currentIndex])
+        currentIndex = currentIndex % #waypoints + 1
     end
 end
 
--- === Auto Heal ===
-task.spawn(function()
-    while task.wait(1) do
-        if autoHeal and hum and hum.Health > 0 then
-            if hum.Health < hum.MaxHealth * 0.5 then
-                local bandage = lp.Backpack:FindFirstChild("Bandage") or (chr and chr:FindFirstChild("Bandage"))
-                if bandage then
-                    hum:EquipTool(bandage)
-                    task.wait(0.2)
-                    pcall(function() bandage:Activate() end)
-                end
-            end
-        end
-    end
-end)
+local function stopFlying()
+    flying = false
+    if tween then tween:Cancel() end
+end
 
--- === Auto Loot ===
-task.spawn(function()
-    while task.wait(0.8) do
-        if autoLoot and hrp then
-            for _, prompt in pairs(Workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local ok, pos = pcall(function() return prompt.Parent.Position end)
-                    if ok and (hrp.Position - pos).Magnitude <= 15 then
-                        pcall(function() fireproximityprompt(prompt) end)
-                    end
-                end
-            end
-        end
-    end
-end)
+-- GUI toggle
+local gui = Instance.new("ScreenGui", lp:WaitForChild("PlayerGui"))
+local button = Instance.new("TextButton", gui)
+button.Size = UDim2.new(0, 120, 0, 40)
+button.Position = UDim2.new(0.05, 0, 0.1, 0)
+button.Text = "Bay Waypoint: OFF"
+button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- === Bay theo waypoint quanh boss + đánh ===
-RunService.Heartbeat:Connect(function()
-    if farming and hum and hum.Health > 0 then
-        local target = findBoss()
-        if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
-            local thrp = target.HumanoidRootPart
-            local t = tick() * 1.5
-            local offset = Vector3.new(math.cos(t) * radius, height, math.sin(t) * radius)
-            local goalPos = thrp.Position + offset
-            hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(goalPos, thrp.Position), 0.2)
-            if autoAttack then attack() end
-        end
+button.MouseButton1Click:Connect(function()
+    if flying then
+        stopFlying()
+        button.Text = "Bay Waypoint: OFF"
+    else
+        task.spawn(startFlying)
+        button.Text = "Bay Waypoint: ON"
     end
-end)
-
--- === Respawn Handler ===
-lp.CharacterAdded:Connect(function(char)
-    chr = char
-    hum = chr:WaitForChild("Humanoid")
-    hrp = chr:WaitForChild("HumanoidRootPart")
 end)
