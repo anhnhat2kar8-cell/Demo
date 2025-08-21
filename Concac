@@ -1,191 +1,176 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local CollectionService = game:GetService("CollectionService")
-local UserInputService = game:GetService("UserInputService")
-
+local TweenService = game:GetService("TweenService")
 local lp = Players.LocalPlayer
 local guiParent = lp:WaitForChild("PlayerGui")
 
---// Nhân vật
+-- ==== Character refs (update khi respawn) ====
 local function getCharacter()
     return lp.Character or lp.CharacterAdded:Wait()
 end
-local chr = getCharacter()
-local hrp = chr:WaitForChild("HumanoidRootPart")
 
-lp.CharacterAdded:Connect(function(c)
-    chr = c
-    hrp = chr:WaitForChild("HumanoidRootPart")
-end)
+-- ==== GUI ====
+local ScreenGui = Instance.new("ScreenGui", guiParent)
+ScreenGui.ResetOnSpawn = false
 
---// GUI Menu
-local gui = Instance.new("ScreenGui", guiParent)
-gui.ResetOnSpawn = false
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 220, 0, 180)
+Frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Frame.BackgroundTransparency = 0.2
+Frame.Active = true
+Frame.Draggable = true
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 220, 0, 300)
-frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
-frame.Active = true
-frame.Draggable = true
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0,30)
+local title = Instance.new("TextLabel", Frame)
 title.Text = "Menu Auto"
-title.BackgroundColor3 = Color3.fromRGB(25,25,25)
-title.TextColor3 = Color3.new(1,1,1)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
 
-local function createButton(text, y)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1,-10,0,30)
-    btn.Position = UDim2.new(0,5,0,y)
-    btn.Text = text.." OFF"
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+local function makeBtn(text, order)
+    local btn = Instance.new("TextButton", Frame)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, 30 + (order * 35))
+    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
     btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 18
+    btn.Text = text.." OFF"
     return btn
 end
 
-local btnFarm = createButton("Auto Farm Boss", 40)
-local btnWaypoint = createButton("Bay Waypoint", 80)
-local btnItem = createButton("Auto Nhặt Item", 120)
+local farmBtn = makeBtn("Auto Farm Boss",0)
+local flyBtn = makeBtn("Bay Waypoint",1)
+local itemBtn = makeBtn("Auto Nhặt Item",2)
 
---// Hàm nhận diện Boss
-local function isBossModel(m)
-    if not (m and m:IsA("Model")) then return false end
-    local hum = m:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-    if Players:GetPlayerFromCharacter(m) then return false end
-    if not (m.PrimaryPart or m:FindFirstChild("HumanoidRootPart")) then return false end
+-- ==== Biến toggle ====
+_G.AutoFarm = false
+_G.FlyWaypoint = false
+_G.AutoItem = false
 
-    if m.Name:lower():find("boss") then return true end
-    if m.Parent and m.Parent.Name:lower():match("^boss") then return true end
-    if pcall(function() return CollectionService:HasTag(m,"Boss") or CollectionService:HasTag(m,"BOSS") end) then
-        return true
-    end
-    for _, d in ipairs(m:GetDescendants()) do
-        if d:IsA("TextLabel") then
-            local t = tostring(d.Text or ""):lower()
-            if t:find("boss") then return true end
-        end
-    end
-    return false
-end
-
+-- ==== Hàm tìm boss gần nhất ====
 local function getNearestBoss()
     local nearest, dist = nil, math.huge
-    for _, m in ipairs(Workspace:GetDescendants()) do
-        if isBossModel(m) then
-            local part = m.PrimaryPart or m:FindFirstChild("HumanoidRootPart")
-            if part and hrp then
-                local d = (part.Position - hrp.Position).Magnitude
-                if d < dist then
-                    dist = d
-                    nearest = m
-                end
+    for _,npc in pairs(Workspace:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") and npc.Name:find("NPC") then
+            local d = (npc.HumanoidRootPart.Position - getCharacter().HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist = d
+                nearest = npc
             end
         end
     end
     return nearest
 end
 
---// Auto Farm Boss
-local autoFarm = false
-btnFarm.MouseButton1Click:Connect(function()
-    autoFarm = not autoFarm
-    btnFarm.Text = "Auto Farm Boss "..(autoFarm and "ON" or "OFF")
-    if autoFarm then
-        task.spawn(function()
-            while autoFarm do
-                local boss = getNearestBoss()
-                if boss and boss:FindFirstChild("HumanoidRootPart") then
-                    hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,0,5)
-                    game:GetService("VirtualUser"):ClickButton1(Vector2.new())
-                end
-                task.wait(0.2)
+-- ==== Auto Farm Boss ====
+coroutine.wrap(function()
+    while task.wait(0.2) do
+        if _G.AutoFarm then
+            local boss = getNearestBoss()
+            if boss and boss:FindFirstChild("HumanoidRootPart") then
+                local hrp = getCharacter():WaitForChild("HumanoidRootPart")
+                hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0,0, -5)
+                -- đánh boss (giả lập click)
+                mouse1click()
             end
-        end)
+        end
     end
-end)
+end)()
 
---// Bay Waypoint quanh Boss
-local flying = false
-btnWaypoint.MouseButton1Click:Connect(function()
-    flying = not flying
-    btnWaypoint.Text = "Bay Waypoint "..(flying and "ON" or "OFF")
-    if flying then
-        task.spawn(function()
-            local t0 = tick()
-            while flying do
-                local boss = getNearestBoss()
-                if boss then
-                    local part = boss.PrimaryPart or boss:FindFirstChild("HumanoidRootPart")
-                    if part and chr then
-                        local t = tick()-t0
-                        local angle = t * math.pi*2*0.6 -- tốc độ vòng/giây
-                        local offset = Vector3.new(math.cos(angle)*25, 15, math.sin(angle)*25)
-                        local targetPos = part.Position + offset
-                        chr:PivotTo(CFrame.new(targetPos, part.Position))
-                    end
+-- ==== Bay quanh boss ngang tầm ====
+local function flyAroundBoss(boss)
+    local chr = getCharacter()
+    local hrp = chr:WaitForChild("HumanoidRootPart")
+
+    coroutine.wrap(function()
+        local radius = 15
+        local heightOffset = 3
+        local speed = 2
+        while _G.FlyWaypoint and boss and boss.Parent do
+            local bossPos = boss.HumanoidRootPart.Position
+            local angle = tick() * speed
+            local x = bossPos.X + math.cos(angle) * radius
+            local z = bossPos.Z + math.sin(angle) * radius
+            local y = bossPos.Y + heightOffset
+            hrp.CFrame = CFrame.new(Vector3.new(x, y, z), bossPos)
+            task.wait(0.05)
+        end
+    end)()
+end
+
+-- ==== Auto nhặt item rơi ====
+coroutine.wrap(function()
+    while task.wait(0.5) do
+        if _G.AutoItem then
+            for _,v in pairs(Workspace:GetChildren()) do
+                if v:IsA("Tool") or v.Name:lower():find("item") then
+                    local hrp = getCharacter():WaitForChild("HumanoidRootPart")
+                    hrp.CFrame = v.CFrame
+                    firetouchinterest(hrp, v, 0)
+                    firetouchinterest(hrp, v, 1)
                 end
-                RunService.Heartbeat:Wait()
             end
-        end)
+        end
     end
-end)
+end)()
 
---// Auto Nhặt Item
-local autoItem = false
-btnItem.MouseButton1Click:Connect(function()
-    autoItem = not autoItem
-    btnItem.Text = "Auto Nhặt Item "..(autoItem and "ON" or "OFF")
-    if autoItem then
-        task.spawn(function()
-            while autoItem do
-                for _, v in ipairs(Workspace:GetDescendants()) do
-                    if v:IsA("Tool") or v.Name:lower():find("item") then
-                        local handle = v:FindFirstChild("Handle")
-                        if handle then
-                            handle.CFrame = hrp.CFrame
-                        end
-                    end
-                end
-                task.wait(0.5)
-            end
-        end)
-    end
-end)
-
---// Hiển thị máu nhân vật
-local hpLabel = Instance.new("TextLabel", gui)
-hpLabel.Size = UDim2.new(0,200,0,30)
-hpLabel.Position = UDim2.new(0.05,0,0.05,0)
+-- ==== Hiện máu Boss & máu người chơi ====
+local hpLabel = Instance.new("TextLabel", ScreenGui)
+hpLabel.Size = UDim2.new(0,400,0,30)
+hpLabel.Position = UDim2.new(0.3,0,0.05,0)
+hpLabel.TextColor3 = Color3.new(1,0,0)
 hpLabel.BackgroundTransparency = 1
-hpLabel.TextColor3 = Color3.new(1,1,1)
 hpLabel.TextScaled = true
 
-RunService.RenderStepped:Connect(function()
-    local hum = getCharacter():FindFirstChildOfClass("Humanoid")
-    if hum then
-        hpLabel.Text = string.format("%d/%d", hum.Health, hum.MaxHealth)
+coroutine.wrap(function()
+    while task.wait(0.2) do
+        local boss = getNearestBoss()
+        if boss and boss:FindFirstChild("Humanoid") then
+            local hp = math.floor(boss.Humanoid.Health)
+            local maxhp = math.floor(boss.Humanoid.MaxHealth)
+            hpLabel.Text = boss.Name.." : "..hp.."/"..maxhp
+        else
+            hpLabel.Text = "Không thấy Boss"
+        end
+    end
+end)()
+
+local playerHp = Instance.new("TextLabel", ScreenGui)
+playerHp.Size = UDim2.new(0,200,0,30)
+playerHp.Position = UDim2.new(0.7,0,0.05,0)
+playerHp.TextColor3 = Color3.fromRGB(0,255,0)
+playerHp.BackgroundTransparency = 1
+playerHp.TextScaled = true
+
+coroutine.wrap(function()
+    while task.wait(0.2) do
+        local hum = getCharacter():FindFirstChild("Humanoid")
+        if hum then
+            playerHp.Text = tostring(math.floor(hum.Health)).."/"..tostring(math.floor(hum.MaxHealth))
+        end
+    end
+end)()
+
+-- ==== Nút bấm ====
+farmBtn.MouseButton1Click:Connect(function()
+    _G.AutoFarm = not _G.AutoFarm
+    farmBtn.Text = "Auto Farm Boss "..(_G.AutoFarm and "ON" or "OFF")
+end)
+
+flyBtn.MouseButton1Click:Connect(function()
+    _G.FlyWaypoint = not _G.FlyWaypoint
+    flyBtn.Text = "Bay Waypoint "..(_G.FlyWaypoint and "ON" or "OFF")
+    if _G.FlyWaypoint then
+        local boss = getNearestBoss()
+        if boss then flyAroundBoss(boss) end
     end
 end)
 
---// Hiển thị máu Boss
-local bossLabel = Instance.new("TextLabel", gui)
-bossLabel.Size = UDim2.new(0,250,0,30)
-bossLabel.Position = UDim2.new(0.05,0,0.1,0)
-bossLabel.BackgroundTransparency = 1
-bossLabel.TextColor3 = Color3.fromRGB(255,100,100)
-bossLabel.TextScaled = true
-
-RunService.RenderStepped:Connect(function()
-    local boss = getNearestBoss()
-    if boss and boss:FindFirstChildOfClass("Humanoid") then
-        local hum = boss:FindFirstChildOfClass("Humanoid")
-        bossLabel.Text = boss.Name.." : "..math.floor(hum.Health).."/"..hum.MaxHealth
-    else
-        bossLabel.Text = "Không có boss gần"
-    end
+itemBtn.MouseButton1Click:Connect(function()
+    _G.AutoItem = not _G.AutoItem
+    itemBtn.Text = "Auto Nhặt Item "..(_G.AutoItem and "ON" or "OFF")
 end)
