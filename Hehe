@@ -6,14 +6,14 @@ local player = Players.LocalPlayer
 local infiniteStamina = false
 local autoAttack = false
 
--- GUI
+-- GUI chính
 local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
-Frame.Size = UDim2.new(0, 220, 0, 180)
+Frame.Size = UDim2.new(0, 260, 0, 280)
 Frame.Active, Frame.Draggable = true, true
 Instance.new("UICorner", Frame)
 
@@ -27,7 +27,7 @@ Title.TextSize = 18
 
 -- Toggle Stamina
 local ToggleStamina = Instance.new("TextButton", Frame)
-ToggleStamina.Position = UDim2.new(0.1, 0, 0.25, 0)
+ToggleStamina.Position = UDim2.new(0.1, 0, 0.15, 0)
 ToggleStamina.Size = UDim2.new(0.8, 0, 0, 30)
 ToggleStamina.Text = "Infinite Stamina: OFF"
 ToggleStamina.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
@@ -36,21 +36,32 @@ Instance.new("UICorner", ToggleStamina)
 
 -- Toggle Auto Attack
 local ToggleAttack = Instance.new("TextButton", Frame)
-ToggleAttack.Position = UDim2.new(0.1, 0, 0.55, 0)
+ToggleAttack.Position = UDim2.new(0.1, 0, 0.3, 0)
 ToggleAttack.Size = UDim2.new(0.8, 0, 0, 30)
 ToggleAttack.Text = "Auto Attack: OFF"
 ToggleAttack.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleAttack.TextColor3 = Color3.fromRGB(255, 255, 255)
 Instance.new("UICorner", ToggleAttack)
 
--- Label hiển thị HP player
-local HpLabel = Instance.new("TextLabel", Frame)
-HpLabel.Position = UDim2.new(0.05, 0, 0.8, 0)
-HpLabel.Size = UDim2.new(0.9, 0, 0, 30)
-HpLabel.TextColor3 = Color3.fromRGB(255,255,255)
-HpLabel.TextScaled = true
-HpLabel.BackgroundTransparency = 1
-HpLabel.Text = "HP Players:"
+-- Title HP Players
+local HpTitle = Instance.new("TextLabel", Frame)
+HpTitle.Position = UDim2.new(0,0,0.45,0)
+HpTitle.Size = UDim2.new(1,0,0,25)
+HpTitle.Text = "HP Players:"
+HpTitle.TextColor3 = Color3.fromRGB(255,255,255)
+HpTitle.Font = Enum.Font.SourceSansBold
+HpTitle.TextSize = 16
+HpTitle.BackgroundTransparency = 1
+
+-- ScrollingFrame chứa danh sách HP player
+local Scroll = Instance.new("ScrollingFrame", Frame)
+Scroll.Position = UDim2.new(0.05,0,0.55,0)
+Scroll.Size = UDim2.new(0.9,0,0.4,0)
+Scroll.CanvasSize = UDim2.new(0,0,0,0)
+Scroll.ScrollBarThickness = 6
+Scroll.BackgroundTransparency = 0.2
+Scroll.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Instance.new("UICorner", Scroll)
 
 -- Hàm giữ stamina luôn max
 local function keepStamina()
@@ -66,10 +77,10 @@ local function keepStamina()
     end
 end
 
--- Hàm auto attack khi cầm vũ khí (không delay)
+-- Hàm auto attack khi cầm vũ khí (spam liên tục)
 local function autoAttackLoop()
     while autoAttack do
-        task.wait() -- no delay
+        task.wait()
         if player.Character then
             local tool = player.Character:FindFirstChildOfClass("Tool")
             if tool then
@@ -85,15 +96,27 @@ end
 task.spawn(function()
     while true do
         task.wait(1)
-        local txt = {}
+        Scroll:ClearAllChildren()
+        local y = 0
         for _,plr in pairs(Players:GetPlayers()) do
             if plr.Character and plr.Character:FindFirstChild("Humanoid") then
                 local hp = math.floor(plr.Character.Humanoid.Health)
                 local maxhp = math.floor(plr.Character.Humanoid.MaxHealth)
-                table.insert(txt, plr.Name.." ["..hp.."/"..maxhp.."]")
+
+                local label = Instance.new("TextLabel", Scroll)
+                label.Position = UDim2.new(0,0,0,y)
+                label.Size = UDim2.new(1,0,0,20)
+                label.BackgroundTransparency = 1
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.TextColor3 = Color3.fromRGB(255,255,255)
+                label.Text = plr.Name.." - "..hp.."/"..maxhp
+                label.Font = Enum.Font.SourceSans
+                label.TextSize = 16
+
+                y += 20
             end
         end
-        HpLabel.Text = "HP Players:\n"..table.concat(txt, " | ")
+        Scroll.CanvasSize = UDim2.new(0,0,0,y)
     end
 end)
 
