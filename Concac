@@ -1,183 +1,172 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local player = Players.LocalPlayer
 
--- ====== BIẾN BẬT/TẮT ======
-local autoFarm = false
-local autoHeal = false
-local autoLoot = false
+local lp = Players.LocalPlayer
+local guiParent = lp:WaitForChild("PlayerGui")
 
--- ====== TẠO GUI THANH MÁU BOSS ======
-local billboardGui = Instance.new("BillboardGui")
-billboardGui.Name = "BossHealthBar"
-billboardGui.Size = UDim2.new(6, 0, 1.2, 0)
-billboardGui.AlwaysOnTop = true
-billboardGui.ExtentsOffset = Vector3.new(0, 4.5, 0)
-billboardGui.Adornee = nil
-billboardGui.Enabled = false
-billboardGui.Parent = Workspace
+-- === Character refs ===
+local function getCharacter()
+    return lp.Character or lp.CharacterAdded:Wait()
+end
+local chr = getCharacter()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- Label BOSS
-local bossLabel = Instance.new("TextLabel")
-bossLabel.Size = UDim2.new(1, 0, 0.45, 0)
-bossLabel.Position = UDim2.new(0, 0, 0, -20)
-bossLabel.BackgroundTransparency = 1
-bossLabel.Text = "BOSS"
-bossLabel.TextColor3 = Color3.fromRGB(220, 30, 30)
-bossLabel.Font = Enum.Font.GothamBold
-bossLabel.TextScaled = true
-bossLabel.Parent = billboardGui
-bossLabel.TextStrokeTransparency = 0.6
+-- === Config ===
+local farming = false
+local radius = 22
+local speed = 2
+local autoAttack = true
+local autoLoot = true
+local autoHeal = true
+local healThreshold = 50 -- % máu
 
--- Nền thanh máu
-local bgFrame = Instance.new("Frame")
-bgFrame.Size = UDim2.new(0.9, 0, 0.35, 0)
-bgFrame.Position = UDim2.new(0.05, 0, 0.5, 0)
-bgFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-bgFrame.BackgroundTransparency = 0.15
-bgFrame.BorderSizePixel = 0
-bgFrame.Parent = billboardGui
-Instance.new("UICorner", bgFrame).CornerRadius = UDim.new(0, 8)
+-- === GUI ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ZENX_GUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = guiParent
 
--- Thanh máu
-local healthBar = Instance.new("Frame")
-healthBar.Size = UDim2.new(1, 0, 1, 0)
-healthBar.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-healthBar.BorderSizePixel = 0
-healthBar.Parent = bgFrame
-Instance.new("UICorner", healthBar).CornerRadius = UDim.new(0, 8)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 200)
+MainFrame.Position = UDim2.new(0.04, 0, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BackgroundTransparency = 0.28
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
 
--- HP / Max
-local hpText = Instance.new("TextLabel")
-hpText.Size = UDim2.new(1, 0, 0.4, 0)
-hpText.Position = UDim2.new(0, 0, 1.1, 0)
-hpText.BackgroundTransparency = 1
-hpText.TextColor3 = Color3.new(1, 1, 1)
-hpText.Font = Enum.Font.GothamBold
-hpText.TextScaled = true
-hpText.TextStrokeTransparency = 0.7
-hpText.Parent = billboardGui
-hpText.Text = "0 / 0"
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 36)
+Title.Position = UDim2.new(0, 0, 0, 6)
+Title.BackgroundTransparency = 1
+Title.Text = "💀 ZENX 💀"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Center
+Title.Parent = MainFrame
 
--- % máu
-local pctText = Instance.new("TextLabel")
-pctText.Size = UDim2.new(0.25, 0, 0.55, 0)
-pctText.Position = UDim2.new(0.735, 0, 1.05, 0)
-pctText.BackgroundTransparency = 1
-pctText.TextColor3 = Color3.new(1, 1, 1)
-pctText.Font = Enum.Font.GothamBold
-pctText.TextScaled = true
-pctText.TextStrokeTransparency = 0.7
-pctText.Parent = billboardGui
+local FarmButton = Instance.new("TextButton")
+FarmButton.Size = UDim2.new(1, -24, 0, 40)
+FarmButton.Position = UDim2.new(0, 12, 0, 48)
+FarmButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FarmButton.BackgroundTransparency = 0.38
+FarmButton.Text = "Bật Farm Boss"
+FarmButton.Font = Enum.Font.GothamBold
+FarmButton.TextSize = 18
+FarmButton.TextColor3 = Color3.fromRGB(255,255,255)
+FarmButton.Parent = MainFrame
+Instance.new("UICorner", FarmButton).CornerRadius = UDim.new(0, 8)
 
--- ====== HÀM TÌM BOSS GẦN NHẤT ======
-local function getNearestBoss()
-    local nearest, dist = nil, math.huge
-    for _, mob in ipairs(Workspace:GetDescendants()) do
-        if mob:FindFirstChild("Humanoid") and mob:FindFirstChild("HumanoidRootPart") and mob.Name:lower():find("boss") then
-            local d = (player.Character.HumanoidRootPart.Position - mob.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                nearest = mob
+FarmButton.MouseButton1Click:Connect(function()
+    farming = not farming
+    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+end)
+
+-- === Helper: tìm boss gần nhất ===
+local function findBoss()
+    local chosen, shortest = nil, math.huge
+    local myPos = hrp.Position
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            local humv = v:FindFirstChild("Humanoid")
+            if humv and humv.Health > 0 then
+                local owner = Players:GetPlayerFromCharacter(v)
+                if not owner then
+                    local d = (v.HumanoidRootPart.Position - myPos).Magnitude
+                    if d < shortest then
+                        chosen = v
+                        shortest = d
+                    end
+                end
             end
         end
     end
-    return nearest
+    return chosen
 end
 
--- ====== CẬP NHẬT THANH MÁU BOSS ======
-RunService.RenderStepped:Connect(function()
-    local boss = getNearestBoss()
-    if boss and boss:FindFirstChild("Humanoid") then
-        local humanoid = boss.Humanoid
-        local cur = humanoid.Health
-        local max = humanoid.MaxHealth
-        billboardGui.Adornee = boss:FindFirstChild("Head") or boss:FindFirstChild("HumanoidRootPart")
-        healthBar.Size = UDim2.new(cur / max, 0, 1, 0)
-        healthBar.BackgroundColor3 = Color3.fromRGB(255 - (cur / max) * 255, (cur / max) * 255, 0)
-        hpText.Text = string.format("%d / %d", math.floor(cur), math.floor(max))
-        pctText.Text = string.format("%d%%", math.floor((cur / max) * 100))
-        billboardGui.Enabled = true
-    else
-        billboardGui.Enabled = false
-    end
-end)
-
--- ====== AUTO FARM BOSS ======
-spawn(function()
-    while task.wait(0.2) do
-        if autoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local boss = getNearestBoss()
-            if boss and boss:FindFirstChild("HumanoidRootPart") then
-                player.Character:MoveTo(boss.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
-            end
-        end
-    end
-end)
-
--- ====== AUTO HEAL ======
-spawn(function()
-    while task.wait(1) do
-        if autoHeal and player.Character and player.Character:FindFirstChild("Humanoid") then
-            if player.Character.Humanoid.Health < (player.Character.Humanoid.MaxHealth * 0.5) then
-                local bandage = player.Backpack:FindFirstChild("Bandage") or player.Character:FindFirstChild("Bandage")
-                if bandage and bandage:FindFirstChild("RemoteEvent") then
-                    bandage.RemoteEvent:FireServer()
+-- === Auto Heal ===
+task.spawn(function()
+    while task.wait(0.6) do
+        if autoHeal then
+            chr = getCharacter()
+            hum = chr:FindFirstChild("Humanoid") or hum
+            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
+            if hum and hum.Health > 0 and hum.MaxHealth > 0 then
+                local curPct = hum.Health / hum.MaxHealth * 100
+                if curPct <= healThreshold then
+                    for _, t in ipairs(lp.Backpack:GetChildren()) do
+                        if t:IsA("Tool") and (t.Name:lower():find("băng") or t.Name:lower():find("bandage")) then
+                            t.Parent = lp.Character
+                            task.wait(0.12)
+                            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
+                            if healTool then
+                                pcall(function() healTool:Activate() end)
+                                task.wait(1)
+                            end
+                            break
+                        end
+                    end
                 end
             end
         end
     end
 end)
 
--- ====== AUTO LOOT ITEM ======
-spawn(function()
-    while task.wait(0.3) do
-        if autoLoot then
-            for _, item in ipairs(Workspace:GetChildren()) do
-                if item:IsA("Tool") or item:IsA("Model") and item:FindFirstChild("Handle") then
-                    firetouchinterest(player.Character.HumanoidRootPart, item.Handle, 0)
-                    task.wait()
-                    firetouchinterest(player.Character.HumanoidRootPart, item.Handle, 1)
+-- === Auto Loot ===
+task.spawn(function()
+    while task.wait(0.8) do -- delay chậm hơn để tránh spam
+        if autoLoot and hrp then
+            for _, prompt in pairs(Workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    local ok, pos = pcall(function() return prompt.Parent.Position end)
+                    if ok and (hrp.Position - pos).Magnitude <= 16 then
+                        pcall(function() fireproximityprompt(prompt) end)
+                    end
                 end
             end
         end
     end
 end)
 
--- ====== MENU GUI ======
-local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 150)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Frame.Active = true
-Frame.Draggable = true
-
-local UIListLayout = Instance.new("UIListLayout", Frame)
-UIListLayout.Padding = UDim.new(0, 5)
-
--- Nút tạo toggle
-local function createToggle(name, callback)
-    local btn = Instance.new("TextButton", Frame)
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Text = name .. ": OFF"
-    btn.MouseButton1Click:Connect(function()
-        callback()
-        if btn.Text:find("OFF") then
-            btn.Text = name .. ": ON"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-        else
-            btn.Text = name .. ": OFF"
-            btn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-        end
-    end)
+-- === Auto Attack ===
+local function attack()
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function() tool:Activate() end)
+    end
 end
 
--- Tạo nút chức năng
-createToggle("Auto Farm", function() autoFarm = not autoFarm end)
-createToggle("Auto Heal", function() autoHeal = not autoHeal end)
-createToggle("Auto Loot", function() autoLoot = not autoLoot end)
+-- === Di chuyển vòng quanh boss (dùng MoveTo) ===
+RunService.Heartbeat:Connect(function()
+    if farming and hum and hum.Health > 0 then
+        local target = findBoss()
+        if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+            local thrp = target.HumanoidRootPart
+            local angle = tick() * (speed or 2)
+            local off = Vector3.new(
+                math.cos(angle) * (radius + math.random(-2,2)),
+                0,
+                math.sin(angle) * (radius + math.random(-2,2))
+            )
+            local goalPos = thrp.Position + off
+
+            -- dùng MoveTo để an toàn hơn
+            hum:MoveTo(goalPos)
+            hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+
+            if autoAttack then attack() end
+        end
+    end
+end)
+
+-- === Respawn Handler ===
+lp.CharacterAdded:Connect(function(char)
+    chr = char
+    hum = chr:WaitForChild("Humanoid")
+    hrp = chr:WaitForChild("HumanoidRootPart")
+end)
