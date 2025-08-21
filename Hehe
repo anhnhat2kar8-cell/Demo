@@ -2,7 +2,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -13,26 +12,91 @@ ScreenGui.ResetOnSpawn = false
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 150, 0, 180)
-MainFrame.Position = UDim2.new(1, -170, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 200, 0, 180)
+MainFrame.Position = UDim2.new(1, -220, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
-local corner = Instance.new("UICorner", MainFrame)
-corner.CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
--- Shadow
-local Shadow = Instance.new("Frame")
-Shadow.Size = UDim2.new(1, 10, 1, 10)
-Shadow.Position = UDim2.new(0, -5, 0, -5)
-Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.BackgroundTransparency = 0.6
-Shadow.ZIndex = 0
-Shadow.Parent = MainFrame
-Instance.new("UICorner", Shadow).CornerRadius = UDim.new(0, 12)
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Prime Vip"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Parent = MainFrame
 
--- Gradient
-local Gradient = Instance.new("UIGradient", MainFrame)
-Gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0
+-- Buttons
+local function createButton(text, posY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 160, 0, 35)
+    btn.Position = UDim2.new(0, 20, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = text
+    btn.TextSize = 14
+    btn.Font = Enum.Font.Gotham
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Parent = MainFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    return btn
+end
+
+local ClickButton = createButton("⚔ Click: ✅", 40)
+local SpinButton = createButton("🔄 Xoay: ✅", 85)
+local SpeedButton = createButton("🏃‍♂️ Tốc độ: ✅", 130)
+
+-- Variables
+local AutoClick = false
+local AutoSpin = false
+local SpeedBoost = false
+local SpinSpeed = 2500
+local ClickDelay = 0.08
+local NormalSpeed = 16
+local BoostSpeed = 32
+
+-- Button Logic với ký hiệu mới
+ClickButton.MouseButton1Click:Connect(function()
+    AutoClick = not AutoClick
+    ClickButton.Text = "⚔ Click: "..(AutoClick and "🔄" or "✅")
+end)
+
+SpinButton.MouseButton1Click:Connect(function()
+    AutoSpin = not AutoSpin
+    SpinButton.Text = "🔄 Xoay: "..(AutoSpin and "🔄" or "✅")
+end)
+
+SpeedButton.MouseButton1Click:Connect(function()
+    SpeedBoost = not SpeedBoost
+    SpeedButton.Text = "🏃‍♂️ Tốc độ: "..(SpeedBoost and "🔄" or "✅")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
+    end
+end)
+
+-- Đảm bảo respawn vẫn giữ tốc độ
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
+end)
+
+-- Loops
+task.spawn(function()
+    while true do
+        if AutoClick then
+            VirtualUser:ClickButton1(Vector2.new())
+        end
+        task.wait(ClickDelay)
+    end
+end)
+
+RunService.RenderStepped:Connect(function(deltaTime)
+    if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
+    end
+end)
