@@ -2,6 +2,8 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -10,12 +12,12 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame (hơi trong suốt)
+-- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Size = UDim2.new(0, 220, 0, 260) -- tăng chiều cao để thêm nút băng gạc
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.3 -- chỉnh trong suốt nhẹ
+MainFrame.BackgroundTransparency = 0.3
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -30,15 +32,17 @@ Title.Text = "☠️ Mất Nhận Thức ☠️"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Center
+Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = MainFrame
 
--- Buttons (nền hơi trong suốt)
+-- Create Button Function
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 180, 0, 35)
     btn.Position = UDim2.new(0, 20, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.BackgroundTransparency = 0.2 -- nút hơi trong suốt
+    btn.BackgroundTransparency = 0.2
     btn.Text = text
     btn.TextSize = 14
     btn.Font = Enum.Font.Gotham
@@ -48,18 +52,40 @@ local function createButton(text, posY)
     return btn
 end
 
+-- Buttons
 local AttackButton = createButton(" Auto Attack ⚔️", 40)
 local SpinButton = createButton(" Xoay 🔄", 85)
 local SpeedButton = createButton(" Tốc độ 🏃", 130)
+local ShowHPButton = createButton(" Hiện HP Player ❤️", 175)
+local BandageButton = createButton(" 🎒 Lấy băng gạc", 220)
 
 -- Variables
 local AutoAttack = false
 local AutoSpin = false
 local SpeedBoost = false
+local ShowHP = false
 local SpinSpeed = 2500
 local AttackDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
+
+local BandageCooldown = 6
+local LastBandageTime = 0
+local BandageBusy = false
+
+-- Helper function
+local function findServicePath(pathArray)
+    local obj = pathArray[1]
+    for i = 2, #pathArray do
+        if not obj then return nil end
+        obj = obj:FindFirstChild(pathArray[i])
+    end
+    return obj
+end
+
+local function setLabelText(label, text)
+    if label then label.Text = text end
+end
 
 -- Button Logic
 AttackButton.MouseButton1Click:Connect(function()
@@ -79,6 +105,11 @@ SpeedButton.MouseButton1Click:Connect(function()
     if humanoid then
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
     end
+end)
+
+ShowHPButton.MouseButton1Click:Connect(function()
+    ShowHP = not ShowHP
+    ShowHPButton.Text = " Hiện HP Player "..(ShowHP and "✅" or "❤️")
 end)
 
 -- Giữ tốc độ khi respawn
@@ -102,4 +133,100 @@ RunService.RenderStepped:Connect(function(deltaTime)
     if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
     end
+end)
+
+-- Hiển thị HP Player trên đầu
+local PlayerHPGuis = {}
+RunService.RenderStepped:Connect(function()
+    if ShowHP then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if not PlayerHPGuis[player] then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Size = UDim2.new(0, 100, 0, 30)
+                    billboard.Adornee = head
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = head
+
+                    local hpLabel = Instance.new("TextLabel")
+                    hpLabel.Size = UDim2.new(1,0,1,0)
+                    hpLabel.BackgroundTransparency = 1
+                    hpLabel.TextColor3 = Color3.fromRGB(255,0,0)
+                    hpLabel.Font = Enum.Font.GothamBold
+                    hpLabel.TextSize = 14
+                    hpLabel.TextStrokeTransparency = 0
+                    hpLabel.Parent = billboard
+
+                    PlayerHPGuis[player] = hpLabel
+                end
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    PlayerHPGuis[player].Text = string.format("%d / %d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+                end
+            end
+        end
+    else
+        for player, gui in pairs(PlayerHPGuis) do
+            if gui and gui.Parent then
+                gui.Parent:Destroy()
+            end
+        end
+        PlayerHPGuis = {}
+    end
+end)
+
+-- Lấy băng gạc Logic
+BandageButton.MouseButton1Click:Connect(function()
+    if BandageBusy then return end
+    if tick() < LastBandageTime then
+        BandageButton.Text = "⏳ Chờ "..math.floor(LastBandageTime - tick()).."s"
+        return
+    end
+
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChildOfClass("Tool") then
+        BandageButton.Text = "⚠ Bỏ vũ khí xuống!"
+        return
+    end
+
+    BandageBusy = true
+    BandageButton.Text = "Đang lấy băng gạc..."
+
+    task.spawn(function()
+        pcall(function()
+            ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0").knit.Services.InventoryService.RE.updateInventory:FireServer("refresh")
+        end)
+        task.wait(0.3)
+        local invService = findServicePath({
+            ReplicatedStorage,
+            "KnitPackages",
+            "_Index",
+            "sleitnick_knit@1.7.0",
+            "knit",
+            "Services",
+            "InventoryService",
+            "RE",
+            "updateInventory"
+        })
+        if invService then
+            local success = pcall(function()
+                invService:FireServer("eue","băng gạc")
+            end)
+            if success then
+                BandageButton.Text = "✔ Đã lấy băng gạc!"
+                LastBandageTime = tick() + BandageCooldown
+                for i = BandageCooldown, 1, -1 do
+                    BandageButton.Text = "🎒 ("..i..")"
+                    task.wait(1)
+                end
+                BandageButton.Text = "🎒 Lấy băng gạc"
+            else
+                BandageButton.Text = "❌ Lỗi lấy băng gạc"
+            end
+        else
+            BandageButton.Text = "❌ Không tìm thấy InventoryService"
+        end
+        BandageBusy = false
+    end)
 end)
