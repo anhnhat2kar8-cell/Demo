@@ -1,180 +1,174 @@
-local Players=game:GetService("Players")
-local RunService=game:GetService("RunService")
-local Workspace=game:GetService("Workspace")
-local UserInputService=game:GetService("UserInputService")
-local CollectionService=game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
-local lp=Players.LocalPlayer
-local guiParent=lp:WaitForChild("PlayerGui")
+local lp = Players.LocalPlayer
+local guiParent = lp:WaitForChild("PlayerGui")
 
-local function getChar() return lp.Character or lp.CharacterAdded:Wait() end
-local function getHRP(m)
-    if not m then return nil end
-    return m.PrimaryPart or m:FindFirstChild("HumanoidRootPart") or m:FindFirstChild("Torso") or m:FindFirstChild("UpperTorso")
+-- === Character refs ===
+local function getCharacter()
+    return lp.Character or lp.CharacterAdded:Wait()
 end
 
--- ================= GUI =================
-local gui=Instance.new("ScreenGui",guiParent); gui.ResetOnSpawn=false
-local frame=Instance.new("Frame",gui); frame.Size=UDim2.new(0,260,0,220); frame.Position=UDim2.new(0.05,0,0.35,0)
-frame.BackgroundColor3=Color3.fromRGB(60,0,0); frame.Active=true; frame.Draggable=true
-local corner=Instance.new("UICorner",frame); corner.CornerRadius=UDim.new(0,12)
+local chr = getCharacter()
+local hum = chr:WaitForChild("Humanoid")
+local hrp = chr:WaitForChild("HumanoidRootPart")
 
-local title=Instance.new("TextLabel",frame); title.Size=UDim2.new(1,0,0,34); title.BackgroundTransparency=1
-title.Text="Menu Auto"; title.TextColor3=Color3.new(1,1,1); title.Font=Enum.Font.SourceSansBold; title.TextSize=20
+-- === Config ===
+local farming = false
+local radius = 22
+local speed = 2
+local autoAttack = true
+local currentBoss = nil
 
-local function mkBtn(text,y)
-    local b=Instance.new("TextButton",frame)
-    b.Size=UDim2.new(1,-20,0,34); b.Position=UDim2.new(0,10,0,y)
-    b.Text=text.." OFF"; b.BackgroundColor3=Color3.fromRGB(140,0,0); b.TextColor3=Color3.new(1,1,1)
-    b.Font=Enum.Font.SourceSansBold; b.TextSize=18; Instance.new("UICorner",b).CornerRadius=UDim.new(0,10)
-    return b
+-- === GUI ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ZENX_GUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = guiParent
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 150)
+MainFrame.Position = UDim2.new(0.04, 0, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BackgroundTransparency = 0.28
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 36)
+Title.Position = UDim2.new(0, 0, 0, 6)
+Title.BackgroundTransparency = 1
+Title.Text = "💀 ZENX 💀"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Center
+Title.Parent = MainFrame
+
+local FarmButton = Instance.new("TextButton")
+FarmButton.Size = UDim2.new(1, -24, 0, 40)
+FarmButton.Position = UDim2.new(0, 12, 0, 48)
+FarmButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FarmButton.BackgroundTransparency = 0.38
+FarmButton.Text = "Bật Farm Boss"
+FarmButton.Font = Enum.Font.GothamBold
+FarmButton.TextSize = 18
+FarmButton.TextColor3 = Color3.fromRGB(255,255,255)
+FarmButton.Parent = MainFrame
+Instance.new("UICorner", FarmButton).CornerRadius = UDim.new(0, 8)
+
+local function createEditableLabel(yPos, labelText, getValue, setValue)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -24, 0, 34)
+    btn.Position = UDim2.new(0, 12, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundTransparency = 0.38
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 16
+    btn.TextColor3 = Color3.fromRGB(245, 245, 245)
+    btn.TextXAlignment = Enum.TextXAlignment.Center
+    btn.Text = labelText .. " (vd: " .. tostring(getValue()) .. ")"
+    btn.Parent = MainFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+    btn.MouseButton1Click:Connect(function()
+        local tb = Instance.new("TextBox")
+        tb.Size = btn.Size
+        tb.Position = btn.Position
+        tb.BackgroundColor3 = btn.BackgroundColor3
+        tb.BackgroundTransparency = btn.BackgroundTransparency
+        tb.Font = btn.Font
+        tb.TextSize = btn.TextSize
+        tb.TextColor3 = btn.TextColor3
+        tb.ClearTextOnFocus = false
+        tb.TextXAlignment = Enum.TextXAlignment.Center
+        tb.Text = tostring(getValue())
+        tb.Parent = MainFrame
+        Instance.new("UICorner", tb).CornerRadius = UDim.new(0, 8)
+        tb:CaptureFocus()
+        tb.FocusLost:Connect(function()
+            local num = tonumber(tb.Text)
+            if num then setValue(num) end
+            btn.Text = labelText .. " (vd: " .. tostring(getValue()) .. ")"
+            tb:Destroy()
+        end)
+    end)
 end
-local btnFarm=mkBtn("Auto Farm Boss",45)
-local btnFly =mkBtn("Bay Waypoint",  90)
-local btnItem=mkBtn("Auto Nhặt Item",135)
 
-local lblLock=Instance.new("TextLabel",frame)
-lblLock.Size=UDim2.new(1,-20,0,24); lblLock.Position=UDim2.new(0,10,0,175)
-lblLock.BackgroundTransparency=1; lblLock.TextColor3=Color3.fromRGB(255,220,120); lblLock.Text="Boss: (chưa lock)"
+createEditableLabel(96, "Khoảng cách", function() return radius end, function(v) radius = v end)
+createEditableLabel(136, "Tốc độ vòng", function() return speed end, function(v) speed = v end)
 
--- HUD
-local hudBoss=Instance.new("TextLabel",gui); hudBoss.Size=UDim2.new(0,360,0,28); hudBoss.Position=UDim2.new(0.05,0,0.08,0)
-hudBoss.BackgroundTransparency=1; hudBoss.TextColor3=Color3.fromRGB(255,100,100); hudBoss.TextScaled=true; hudBoss.Text="Không thấy Boss"
-local hudMe=Instance.new("TextLabel",gui); hudMe.Size=UDim2.new(0,180,0,28); hudMe.Position=UDim2.new(0.32,0,0.08,0)
-hudMe.BackgroundTransparency=1; hudMe.TextColor3=Color3.fromRGB(120,255,120); hudMe.TextScaled=true
+FarmButton.MouseButton1Click:Connect(function()
+    farming = not farming
+    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+end)
 
--- =============== Tìm boss linh hoạt ===============
-local NAME_HINTS={"boss","npc","quai","monster"}
-local FOLDER_HINTS={"boss","bosses","npc","enemies","mobs"}
-local function isEnemyModel(m)
-    if not (m and m:IsA("Model")) then return false end
-    local hum=m:FindFirstChildOfClass("Humanoid"); if not hum or hum.Health<=0 then return false end
-    if Players:GetPlayerFromCharacter(m) then return false end
-    if not getHRP(m) then return false end
-    local name=m.Name:lower()
-    for _,k in ipairs(NAME_HINTS) do if name:find(k) then return true end end
-    for _,d in ipairs(m:GetDescendants()) do
-        if d:IsA("TextLabel") or d:IsA("TextBox") then
-            local t=tostring(d.Text or ""):lower()
-            if t:find("boss") then return true end
-        end
-    end
-    local p=m.Parent
-    while p do
-        local pn=p.Name:lower()
-        for _,fh in ipairs(FOLDER_HINTS) do if pn==fh or pn:find(fh) then return true end end
-        p=p.Parent
-    end
-    return true -- fallback: mọi NPC có Humanoid
-end
-
-local function nearestBoss()
-    local meHRP=getHRP(getChar()); if not meHRP then return nil end
-    local best,dist=nil,math.huge
-    for _,d in ipairs(Workspace:GetDescendants()) do
-        if d:IsA("Model") and isEnemyModel(d) then
-            local p=getHRP(d); if p then
-                local dd=(p.Position-meHRP.Position).Magnitude
-                if dd<dist then dist=dd; best=d end
+-- === Boss Finder ===
+local function findBoss()
+    local chosen = nil
+    local myPos = hrp.Position
+    local shortest = math.huge
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
+            local humv = v:FindFirstChild("Humanoid")
+            if humv and humv.Health > 0 then
+                local owner = Players:GetPlayerFromCharacter(v)
+                if not owner then
+                    local d = (v.HumanoidRootPart.Position - myPos).Magnitude
+                    if d < shortest then
+                        chosen = v
+                        shortest = d
+                    end
+                end
             end
         end
     end
-    return best
+    return chosen
 end
 
--- =============== Toggles ===============
-local AutoFarm=false; local FlyOn=false; local AutoItem=false
-
--- =============== Đánh (ưu tiên Tool) ===============
-local function attackNow()
-    local c=getChar()
-    local used=false
-    for _,t in ipairs(c:GetChildren()) do
-        if t:IsA("Tool") then used=true; pcall(function() t:Activate() end) end
-    end
-    if not used then
-        local bp=lp:FindFirstChildOfClass("Backpack")
-        if bp then
-            local tool=bp:FindFirstChildWhichIsA("Tool")
-            if tool then tool.Parent=c; task.wait(); pcall(function() tool:Activate() end) end
-        end
+-- === Auto Attack ===
+local function attack()
+    local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function() tool:Activate() end)
     end
 end
 
--- =============== Loops ===============
--- HUD
-task.spawn(function()
-    while true do
-        task.wait(0.15)
-        local hum=getChar():FindFirstChildOfClass("Humanoid")
-        if hum then hudMe.Text=("%d/%d"):format(hum.Health,hum.MaxHealth) end
-        local b=nearestBoss()
-        if b then
-            local h=b:FindFirstChildOfClass("Humanoid")
-            if h then hudBoss.Text=("%s : %d/%d"):format(b.Name,math.floor(h.Health),math.floor(h.MaxHealth)) end
-            lblLock.Text="Boss: "..b.Name
+-- === Farm vòng quanh Boss ===
+RunService.Heartbeat:Connect(function()
+    if farming then
+        local target = currentBoss or findBoss()
+        if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
+            local thrp = target.HumanoidRootPart
+            local angle = tick() * speed
+            local off = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+            local goalPos = thrp.Position + off
+            local ok, tween = pcall(function()
+                return TweenService:Create(hrp, TweenInfo.new(0.12, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos, thrp.Position)})
+            end)
+            if ok and tween then
+                tween:Play()
+            else
+                hrp.CFrame = CFrame.new(goalPos, thrp.Position)
+            end
+            hum.AutoRotate = false
+            if autoAttack then attack() end
         else
-            hudBoss.Text="Không thấy Boss"; lblLock.Text="Boss: (chưa lock)"
+            hum.AutoRotate = true
         end
+    else
+        hum.AutoRotate = true
     end
 end)
 
--- Auto Farm: nếu KHÔNG bay thì áp sát; nếu đang bay thì chỉ kích hoạt đòn đánh
-task.spawn(function()
-    while true do
-        task.wait(0.08)
-        if not AutoFarm then continue end
-        local b=nearestBoss(); if not b then continue end
-        local bp=getHRP(b); local me=getHRP(getChar()); if not (bp and me) then continue end
-        if not FlyOn then
-            local target=bp.CFrame*CFrame.new(0,0,-5)
-            getChar():PivotTo(CFrame.new(target.Position,bp.Position))
-        end
-        attackNow()
-    end
+-- === Respawn Handler ===
+lp.CharacterAdded:Connect(function(char)
+    chr = char
+    hum = chr:WaitForChild("Humanoid")
+    hrp = chr:WaitForChild("HumanoidRootPart")
 end)
-
--- Bay waypoint: xa 32 studs, ngang tầm Y của boss (+5)
-task.spawn(function()
-    local t0=tick(); local R=32; local H=5; local rev=0.7
-    while true do
-        RunService.Heartbeat:Wait()
-        if not FlyOn then continue end
-        local b=nearestBoss(); if not b then continue end
-        local bp=getHRP(b); local me=getHRP(getChar()); if not (bp and me) then continue end
-        local a=(tick()-t0)*math.pi*2*rev
-        local bossPos=bp.Position
-        local x=bossPos.X+math.cos(a)*R; local z=bossPos.Z+math.sin(a)*R
-        local y=bossPos.Y+H
-        getChar():PivotTo(CFrame.new(Vector3.new(x,y,z), bossPos))
-    end
-end)
-
--- Auto nhặt: ưu tiên ProximityPrompt/Touch, không kéo item đi xa
-task.spawn(function()
-    while true do
-        task.wait(0.4)
-        if not AutoItem then continue end
-        local me=getHRP(getChar()); if not me then continue end
-        for _,d in ipairs(Workspace:GetDescendants()) do
-            if d:IsA("ProximityPrompt") and d.Enabled then
-                local part=(d.Parent and d.Parent:IsA("BasePart")) and d.Parent or nil
-                if part and (part.Position-me.Position).Magnitude <= (d.MaxActivationDistance or 12) then
-                    pcall(function() fireproximityprompt(d) end)
-                end
-            elseif d:IsA("BasePart") and (d.Name:lower():find("drop") or d.Name:lower():find("item")) then
-                if (d.Position-me.Position).Magnitude<=22 then
-                    pcall(function() firetouchinterest(me,d,0) end); pcall(function() firetouchinterest(me,d,1) end)
-                end
-            end
-        end
-    end
-end)
-
--- Buttons
-btnFarm.MouseButton1Click:Connect(function() AutoFarm=not AutoFarm; btnFarm.Text="Auto Farm Boss "..(AutoFarm and "ON" or "OFF") end)
-btnFly.MouseButton1Click:Connect(function() FlyOn=not FlyOn; btnFly.Text="Bay Waypoint "..(FlyOn and "ON" or "OFF") end)
-btnItem.MouseButton1Click:Connect(function() AutoItem=not AutoItem; btnItem.Text="Auto Nhặt Item "..(AutoItem and "ON" or "OFF") end)
-
--- Ẩn/hiện menu bằng phím M (nếu chơi PC)
-UserInputService.InputBegan:Connect(function(i,gpe) if gpe then return end; if i.KeyCode==Enum.KeyCode.M then frame.Visible=not frame.Visible end end)
