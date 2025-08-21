@@ -10,11 +10,12 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame
+-- Main Frame (hơi trong suốt)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 180) -- kéo dài ngang
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.3 -- chỉnh trong suốt nhẹ
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -25,18 +26,21 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "☠️ Mất Nhận Thức ☠️"
+Title.Text = " Mất Nhận Thức "
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Center -- căn giữa ngang
+Title.TextYAlignment = Enum.TextYAlignment.Center -- căn giữa dọc
 Title.Parent = MainFrame
 
--- Buttons
+-- Buttons (nền hơi trong suốt)
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 180, 0, 35)
     btn.Position = UDim2.new(0, 20, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundTransparency = 0.2 -- nút hơi trong suốt
     btn.Text = text
     btn.TextSize = 14
     btn.Font = Enum.Font.Gotham
@@ -46,23 +50,23 @@ local function createButton(text, posY)
     return btn
 end
 
-local ClickButton = createButton(" Click ⚔️", 40)
+local AttackButton = createButton(" Auto Attack ⚔️", 40)
 local SpinButton = createButton(" Xoay 🔄", 85)
 local SpeedButton = createButton(" Tốc độ 🏃", 130)
 
 -- Variables
-local AutoClick = false
+local AutoAttack = false
 local AutoSpin = false
 local SpeedBoost = false
 local SpinSpeed = 2500
-local ClickDelay = 0.08
+local AttackDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
 
 -- Button Logic
-ClickButton.MouseButton1Click:Connect(function()
-    AutoClick = not AutoClick
-    ClickButton.Text = " Click "..(AutoClick and "✅" or "⚔️")
+AttackButton.MouseButton1Click:Connect(function()
+    AutoAttack = not AutoAttack
+    AttackButton.Text = " Auto Attack "..(AutoAttack and "✅" or "⚔️")
 end)
 
 SpinButton.MouseButton1Click:Connect(function()
@@ -79,19 +83,19 @@ SpeedButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Đảm bảo respawn vẫn giữ tốc độ
+-- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
 end)
 
--- Auto Click Loop
+-- Auto Attack Loop
 task.spawn(function()
     while true do
-        if AutoClick then
+        if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
             VirtualUser:ClickButton1(Vector2.new())
         end
-        task.wait(ClickDelay)
+        task.wait(AttackDelay)
     end
 end)
 
