@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -15,12 +16,9 @@ local hrp = chr:WaitForChild("HumanoidRootPart")
 
 -- === Config ===
 local farming = false
-local radius = 22
-local speed = 2
+local radius = 25   -- bán kính bay quanh boss
+local height = 10   -- độ cao so với boss
 local autoAttack = true
-local autoLoot = true
-local autoHeal = true
-local healThreshold = 50 -- % máu
 
 -- === GUI ===
 local ScreenGui = Instance.new("ScreenGui")
@@ -29,8 +27,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = guiParent
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 280, 0, 200)
-MainFrame.Position = UDim2.new(0.04, 0, 0.25, 0)
+MainFrame.Size = UDim2.new(0, 280, 0, 160)
+MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BackgroundTransparency = 0.28
 MainFrame.BorderSizePixel = 0
@@ -43,16 +41,15 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 36)
 Title.Position = UDim2.new(0, 0, 0, 6)
 Title.BackgroundTransparency = 1
-Title.Text = "💀 ZENX 💀"
+Title.Text = "💀 ZENX FARM 💀"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextXAlignment = Enum.TextXAlignment.Center
 Title.Parent = MainFrame
 
 local FarmButton = Instance.new("TextButton")
 FarmButton.Size = UDim2.new(1, -24, 0, 40)
-FarmButton.Position = UDim2.new(0, 12, 0, 48)
+FarmButton.Position = UDim2.new(0, 12, 0, 50)
 FarmButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 FarmButton.BackgroundTransparency = 0.38
 FarmButton.Text = "Bật Farm Boss"
@@ -67,7 +64,7 @@ FarmButton.MouseButton1Click:Connect(function()
     FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
 end)
 
--- === Helper: tìm boss gần nhất ===
+-- === Tìm boss gần nhất ===
 local function findBoss()
     local chosen, shortest = nil, math.huge
     local myPos = hrp.Position
@@ -89,50 +86,6 @@ local function findBoss()
     return chosen
 end
 
--- === Auto Heal ===
-task.spawn(function()
-    while task.wait(0.6) do
-        if autoHeal then
-            chr = getCharacter()
-            hum = chr:FindFirstChild("Humanoid") or hum
-            hrp = chr:FindFirstChild("HumanoidRootPart") or hrp
-            if hum and hum.Health > 0 and hum.MaxHealth > 0 then
-                local curPct = hum.Health / hum.MaxHealth * 100
-                if curPct <= healThreshold then
-                    for _, t in ipairs(lp.Backpack:GetChildren()) do
-                        if t:IsA("Tool") and (t.Name:lower():find("băng") or t.Name:lower():find("bandage")) then
-                            t.Parent = lp.Character
-                            task.wait(0.12)
-                            local healTool = lp.Character:FindFirstChildWhichIsA("Tool")
-                            if healTool then
-                                pcall(function() healTool:Activate() end)
-                                task.wait(1)
-                            end
-                            break
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- === Auto Loot ===
-task.spawn(function()
-    while task.wait(0.8) do -- delay chậm hơn để tránh spam
-        if autoLoot and hrp then
-            for _, prompt in pairs(Workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local ok, pos = pcall(function() return prompt.Parent.Position end)
-                    if ok and (hrp.Position - pos).Magnitude <= 16 then
-                        pcall(function() fireproximityprompt(prompt) end)
-                    end
-                end
-            end
-        end
-    end
-end)
-
 -- === Auto Attack ===
 local function attack()
     local tool = lp.Character and lp.Character:FindFirstChildOfClass("Tool")
@@ -141,25 +94,27 @@ local function attack()
     end
 end
 
--- === Di chuyển vòng quanh boss (dùng MoveTo) ===
+-- === Bay theo waypoint quanh boss ===
 RunService.Heartbeat:Connect(function()
     if farming and hum and hum.Health > 0 then
         local target = findBoss()
         if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
             local thrp = target.HumanoidRootPart
-            local angle = tick() * (speed or 2)
-            local off = Vector3.new(
-                math.cos(angle) * (radius + math.random(-2,2)),
-                0,
-                math.sin(angle) * (radius + math.random(-2,2))
+            local t = tick() * 1.5 -- tốc độ quay
+            local offset = Vector3.new(
+                math.cos(t) * radius,
+                height,
+                math.sin(t) * radius
             )
-            local goalPos = thrp.Position + off
+            local goalPos = thrp.Position + offset
 
-            -- dùng MoveTo để an toàn hơn
-            hum:MoveTo(goalPos)
-            hrp.CFrame = CFrame.new(hrp.Position, thrp.Position)
+            -- di chuyển mượt theo waypoint
+            hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(goalPos, thrp.Position), 0.2)
 
-            if autoAttack then attack() end
+            -- tự động đánh boss
+            if autoAttack then
+                attack()
+            end
         end
     end
 end)
