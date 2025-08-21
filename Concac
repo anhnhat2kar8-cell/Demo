@@ -1,5 +1,6 @@
---// Auto Click + Infinite WalkSpeed + GUI (Fix không bị khựng khi xoay camera)
+--// Auto Click + Infinite Speed (Fix Lag/Khựng Camera)
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
@@ -8,28 +9,20 @@ local humanoid = character:WaitForChild("Humanoid")
 local autoClick = false
 local infiniteSpeed = false
 local walkSpeedValue = 100
+local clickDelay = 0.2 -- delay giữa các đòn đánh, giảm lag (0.1-0.2s hợp lý)
 
 -- GUI
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local UICorner = Instance.new("UICorner")
-local ToggleClick = Instance.new("TextButton")
-local ToggleSpeed = Instance.new("TextButton")
-local Title = Instance.new("TextLabel")
-
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+local ScreenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-Frame.Parent = ScreenGui
+local Frame = Instance.new("Frame", ScreenGui)
 Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
 Frame.Size = UDim2.new(0, 180, 0, 150)
-Frame.Active = true
-Frame.Draggable = true
+Frame.Active, Frame.Draggable = true, true
+Instance.new("UICorner", Frame)
 
-UICorner.Parent = Frame
-
-Title.Parent = Frame
+local Title = Instance.new("TextLabel", Frame)
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "Auto Script Menu"
@@ -37,25 +30,25 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
 
-ToggleClick.Parent = Frame
+local ToggleClick = Instance.new("TextButton", Frame)
 ToggleClick.Position = UDim2.new(0.1, 0, 0.3, 0)
 ToggleClick.Size = UDim2.new(0.8, 0, 0, 40)
 ToggleClick.Text = "Auto Click: OFF"
-ToggleClick.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleClick.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleClick.TextColor3 = Color3.fromRGB(255, 255, 255)
-UICorner:Clone().Parent = ToggleClick
+Instance.new("UICorner", ToggleClick)
 
-ToggleSpeed.Parent = Frame
+local ToggleSpeed = Instance.new("TextButton", Frame)
 ToggleSpeed.Position = UDim2.new(0.1, 0, 0.65, 0)
 ToggleSpeed.Size = UDim2.new(0.8, 0, 0, 40)
 ToggleSpeed.Text = "Speed: OFF"
-ToggleSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleSpeed.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 ToggleSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
-UICorner:Clone().Parent = ToggleSpeed
+Instance.new("UICorner", ToggleSpeed)
 
--- Auto click (dùng Tool:Activate để không khựng camera)
+-- Auto click tối ưu (không gây khựng camera)
 task.spawn(function()
-	while task.wait(0.1) do
+	while true do
 		if autoClick and player.Character then
 			local tool = player.Character:FindFirstChildOfClass("Tool")
 			if tool then
@@ -64,23 +57,23 @@ task.spawn(function()
 				end)
 			end
 		end
+		task.wait(clickDelay) -- delay hợp lý
 	end
 end)
 
--- Speed control
-local function applySpeed(humanoid)
+-- Speed giữ cố định
+local function applySpeed(h)
 	if infiniteSpeed then
-		humanoid.WalkSpeed = walkSpeedValue
-		humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+		h.WalkSpeed = walkSpeedValue
+		h:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
 			if infiniteSpeed then
-				humanoid.WalkSpeed = walkSpeedValue
+				h.WalkSpeed = walkSpeedValue
 			end
 		end)
 	end
 end
 
 applySpeed(humanoid)
-
 player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoid = character:WaitForChild("Humanoid")
@@ -106,7 +99,7 @@ ToggleSpeed.MouseButton1Click:Connect(function()
 		ToggleSpeed.Text = "Speed: ON (" .. walkSpeedValue .. ")"
 		ToggleSpeed.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 	else
-		humanoid.WalkSpeed = 16 -- tốc độ mặc định
+		humanoid.WalkSpeed = 16
 		ToggleSpeed.Text = "Speed: OFF"
 		ToggleSpeed.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 	end
