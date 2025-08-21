@@ -79,7 +79,7 @@ SpeedButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Đảm bảo respawn vẫn giữ tốc độ
+-- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
@@ -88,7 +88,8 @@ end)
 -- Auto Attack Loop
 task.spawn(function()
     while true do
-        if AutoAttack then
+        if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+            -- chỉ auto attack khi đang cầm vũ khí (Tool)
             VirtualUser:ClickButton1(Vector2.new())
         end
         task.wait(AttackDelay)
