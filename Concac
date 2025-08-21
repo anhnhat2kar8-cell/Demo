@@ -57,7 +57,7 @@ local AttackButton = createButton(" Auto Attack ⚔️", 40)
 local SpinButton = createButton(" Xoay 🔄", 85)
 local SpeedButton = createButton(" Tốc độ 🏃", 130)
 local ShowHPButton = createButton(" Hiện HP Player ❤️", 175)
-local BandageButton = createButton(" 🎒 Lấy băng gạc", 220)
+local BandageButton = createButton("  Lấy băng gạc 🩹", 220)
 
 -- Variables
 local AutoAttack = false
@@ -214,13 +214,13 @@ BandageButton.MouseButton1Click:Connect(function()
                 invService:FireServer("eue","băng gạc")
             end)
             if success then
-                BandageButton.Text = "✔ Đã lấy băng gạc!"
+                BandageButton.Text = "✅ Đã lấy băng gạc!"
                 LastBandageTime = tick() + BandageCooldown
                 for i = BandageCooldown, 1, -1 do
-                    BandageButton.Text = "🎒 ("..i..")"
+                    BandageButton.Text = "🩹 ("..i..")"
                     task.wait(1)
                 end
-                BandageButton.Text = "🎒 Lấy băng gạc"
+                BandageButton.Text = " Lấy băng gạc 🩹"
             else
                 BandageButton.Text = "❌ Lỗi lấy băng gạc"
             end
