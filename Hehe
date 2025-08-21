@@ -1,10 +1,38 @@
-  local v0 = game: GetService("Players");local v1 = v0.LocalPlayer;local v2 = game: GetService("RunService");local v3 = game: GetService("VirtualUser");local v4 = game: GetService("TweenService");local v5 = Instance.new("ScreenGui");v5.Parent = game.CoreGui;v5.ResetOnSpawn = false;local v9 = Instance.new("TextButton");v9.Size = UDim2.new(0, 40, 0, 40);v9.Position = UDim2.new(1, -50, 0, 10);v9.BackgroundColor3 = Color3.fromRGB(25, 25, 25);v9.Text = "👑";v9.TextSize = 22;v9.Font = Enum.Font.GothamBold;v9.TextColor3 = Color3.fromRGB(0, 255, 127);v9.Parent = v5;v9.BorderSizePixel = 0;Instance.new("UICorner", v9).CornerRadius = UDim.new(1, 0);local v21 = Instance.new("Frame");v21.Size = UDim2.new(0, 110, 0, 130);v21.Position = UDim2.new(1, 150, 0.3, 0);v21.BackgroundColor3 = Color3.fromRGB(20, 20, 20);v21.Visible = false;v21.Active = true;v21.Draggable = true;v21.Parent = v5;Instance.new("UICorner", v21).CornerRadius = UDim.new(0, 8);local v30 = Instance.new("TextLabel");v30.Parent = v21;v30.Size = UDim2.new(1, 0, 0, 20);v30.BackgroundTransparency = 1;v30.Text = "Prime Vip";v30.Font = Enum.Font.GothamBold;v30.TextSize = 16;v30.TextColor3 = Color3.fromRGB(0, 255, 127);local v38 = Instance.new("TextButton");v38.Size = UDim2.new(0, 90, 0, 30);v38.Position = UDim2.new(0, 10, 0, 25);v38.BackgroundColor3 = Color3.fromRGB(40, 40, 40);v38.Text = "⚔ Click: OFF";v38.TextSize = 12;v38.Font = Enum.Font.Gotham;v38.TextColor3 = Color3.fromRGB(255, 255, 255);v38.Parent = v21;Instance.new("UICorner", v38).CornerRadius = UDim.new(0, 5);local v49 = Instance.new("TextButton");v49.Size = UDim2.new(0, 90, 0, 30);v49.Position = UDim2.new(0, 10, 0, 60);v49.BackgroundColor3 = Color3.fromRGB(40, 40, 40);v49.Text = "🔄 Xoay: OFF";v49.TextSize = 12;v49.Font = Enum.Font.Gotham;v49.TextColor3 = Color3.fromRGB(255, 255, 255);v49.Parent = v21;Instance.new("UICorner", v49).CornerRadius = UDim.new(0, 5);local v59 = Instance.new("TextButton");v59.Size = UDim2.new(0, 90, 0, 30);v59.Position = UDim2.new(0, 10, 0, 95);v59.BackgroundColor3 = Color3.fromRGB(40, 40, 40);v59.Text = "🏃‍♂️ Tốc độ: OFF";v59.TextSize = 12;v59.Font = Enum.Font.Gotham;v59.TextColor3 = Color3.fromRGB(255, 255, 255);v59.Parent = v21;Instance.new("UICorner", v59).CornerRadius = UDim.new(0, 5);local v69 = false;local v70 = false;local v71 = false;local v72 = 2500;local v73 = 0.08;local v74 = 16;local v75 = 32;v38.MouseButton1Click: Connect(function() v69 = not v69; v38.Text = "⚔ Click: "..((v69 and "ON") or "OFF"); end);task.spawn(function() while true do
-            if v69
-        then v3: ClickButton1(Vector2.new()); end task.wait(v73); end end);v49.MouseButton1Click: Connect(function() v70 = not v70; v49.Text = "🔄 Xoay: "..((v70 and "ON") or "OFF"); end);v2.RenderStepped: Connect(function(v79) if (v70 and v1.Character and v1.Character: FindFirstChild("HumanoidRootPart")) then v1.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(v72 * v79), 0) end end);v59.MouseButton1Click: Connect(function() v71 = not v71; v59.Text = "🏃‍♂️ Tốc độ: "..((v71 and "ON") or "OFF"); local v81 = v1.Character and v1.Character: FindFirstChildOfClass("Humanoid");
-        if v81 then v81.WalkSpeed = (v71 and v75) or v74; end end);v1.CharacterAdded: Connect(function(v82) v82: WaitForChild("Humanoid").WalkSpeed = (v71 and v75) or v74; end);local v76 = false;v9.MouseButton1Click: Connect(function() v76 = not v76;
-        if v76 then v21.Visible = true; v4: Create(v21, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, -120, 0.3, 0)
-        }): Play();
-        else local v86 = v4: Create(v21, TweenInfo.new(0.3), {
-            Position = UDim2.new(1, 150, 0.3, 0)
-        }); v86: Play(); v86.Completed: Connect(function() v21.Visible = false; end); end end);
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 150, 0, 180)
+MainFrame.Position = UDim2.new(1, -170, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+local corner = Instance.new("UICorner", MainFrame)
+corner.CornerRadius = UDim.new(0, 12)
+
+-- Shadow
+local Shadow = Instance.new("Frame")
+Shadow.Size = UDim2.new(1, 10, 1, 10)
+Shadow.Position = UDim2.new(0, -5, 0, -5)
+Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.BackgroundTransparency = 0.6
+Shadow.ZIndex = 0
+Shadow.Parent = MainFrame
+Instance.new("UICorner", Shadow).CornerRadius = UDim.new(0, 12)
+
+-- Gradient
+local Gradient = Instance.new("UIGradient", MainFrame)
+Gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0
