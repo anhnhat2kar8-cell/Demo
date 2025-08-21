@@ -12,8 +12,8 @@ ScreenGui.ResetOnSpawn = false
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 200, 0, 180)
-MainFrame.Position = UDim2.new(1, -220, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 220, 0, 180) -- kéo dài ngang
+MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -25,7 +25,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Prime Vip"
+Title.Text = "☠️ Mất Nhận Thức ☠️"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -34,7 +34,7 @@ Title.Parent = MainFrame
 -- Buttons
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 160, 0, 35)
+    btn.Size = UDim2.new(0, 180, 0, 35)
     btn.Position = UDim2.new(0, 20, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     btn.Text = text
@@ -46,9 +46,9 @@ local function createButton(text, posY)
     return btn
 end
 
-local ClickButton = createButton("⚔ Click: ✅", 40)
-local SpinButton = createButton("🔄 Xoay: ✅", 85)
-local SpeedButton = createButton("🏃‍♂️ Tốc độ: ✅", 130)
+local ClickButton = createButton(" Click ⚔️", 40)
+local SpinButton = createButton(" Xoay 🔄", 85)
+local SpeedButton = createButton(" Tốc độ 🏃", 130)
 
 -- Variables
 local AutoClick = false
@@ -59,20 +59,20 @@ local ClickDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
 
--- Button Logic với ký hiệu mới
+-- Button Logic
 ClickButton.MouseButton1Click:Connect(function()
     AutoClick = not AutoClick
-    ClickButton.Text = "⚔ Click: "..(AutoClick and "🔄" or "✅")
+    ClickButton.Text = " Click "..(AutoClick and "✅" or "⚔️")
 end)
 
 SpinButton.MouseButton1Click:Connect(function()
     AutoSpin = not AutoSpin
-    SpinButton.Text = "🔄 Xoay: "..(AutoSpin and "🔄" or "✅")
+    SpinButton.Text = " Xoay "..(AutoSpin and "✅" or "🔄")
 end)
 
 SpeedButton.MouseButton1Click:Connect(function()
     SpeedBoost = not SpeedBoost
-    SpeedButton.Text = "🏃‍♂️ Tốc độ: "..(SpeedBoost and "🔄" or "✅")
+    SpeedButton.Text = " Tốc độ "..(SpeedBoost and "✅" or "🏃")
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
@@ -85,7 +85,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
 end)
 
--- Loops
+-- Auto Click Loop
 task.spawn(function()
     while true do
         if AutoClick then
@@ -95,6 +95,7 @@ task.spawn(function()
     end
 end)
 
+-- Auto Spin Loop
 RunService.RenderStepped:Connect(function(deltaTime)
     if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
