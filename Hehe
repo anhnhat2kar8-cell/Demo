@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage") -- nếu cần dùng RemoteEvent để heal
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -10,12 +11,12 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame (hơi trong suốt)
+-- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Size = UDim2.new(0, 220, 0, 220) -- tăng chiều cao để vừa nút mới
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.3 -- chỉnh trong suốt nhẹ
+MainFrame.BackgroundTransparency = 0.3
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -26,15 +27,114 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = " Mất Nhận Thức "
+Title.Text = "☠️ Mất Nhận Thức ☠️"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextXAlignment = Enum.TextXAlignment.Center -- căn giữa ngang
-Title.TextYAlignment = Enum.TextYAlignment.Center -- căn giữa dọc
+Title.TextXAlignment = Enum.TextXAlignment.Center
+Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = MainFrame
 
--- Buttons (nền hơi trong suốt)
+-- Buttons
+local function createButton(text, posY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 180, 0, 35)
+    btn.Position = UDim2.new(0, 20, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundTransparency = 0.2
+    btn.Text = text
+    btn.TextSize = 14
+    btn.Font = Enum.Font.Gotham
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Parent = MainFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    return btn
+end
+
+local AttackButton = createButton(" Auto Attack ⚔️", 40)
+local SpinButton = createButton(" Xoay 🔄", 85)
+local SpeedButton = createButton(" Tốc độ 🏃", 130)
+local BandageButton = createButton(" Auto Bandage 💊", 175) -- nút mới
+
+-- Variables
+local AutoAttack = false
+local AutoSpin = false
+local SpeedBoost = false
+local AutoBandage = false
+local SpinSpeed = 2500
+local AttackDelay = 0.08
+local NormalSpeed = 16
+local BoostSpeed = 32
+local HealThreshold = 50 -- máu dưới 50% thì dùng băng gạc
+
+-- Button Logic
+AttackButton.MouseButton1Click:Connect(function()
+    AutoAttack = not AutoAttack
+    AttackButton.Text = " Auto Attack "..(AutoAttack and "✅" or "⚔️")
+end)
+
+SpinButton.MouseButton1Click:Connect(function()
+    AutoSpin = not AutoSpin
+    SpinButton.Text = " Xoay "..(AutoSpin and "✅" or "🔄")
+end)
+
+SpeedButton.MouseButton1Click:Connect(function()
+    SpeedBoost = not SpeedBoost
+    SpeedButton.Text = " Tốc độ "..(SpeedBoost and "✅" or "🏃")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
+    end
+end)
+
+BandageButton.MouseButton1Click:Connect(function()
+    AutoBandage = not AutoBandage
+    BandageButton.Text = " Auto Bandage "..(AutoBandage and "✅" or "💊")
+end)
+
+-- Giữ tốc độ khi respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
+end)
+
+-- Auto Attack Loop
+task.spawn(function()
+    while true do
+        if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+            VirtualUser:ClickButton1(Vector2.new())
+        end
+        task.wait(AttackDelay)
+    end
+end)
+
+-- Auto Spin Loop
+RunService.RenderStepped:Connect(function(deltaTime)
+    if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
+    end
+end)
+
+-- Auto Bandage Loop
+task.spawn(function()
+    while true do
+        if AutoBandage and LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health < HealThreshold then
+                -- tìm bandage trong backpack
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                if backpack then
+                    local bandage = backpack:FindFirstChildWhichIsA("Tool") -- giả sử băng gạc là Tool
+                    if bandage then
+                        bandage.Parent = LocalPlayer.Character -- đưa vào tay
+                        bandage:Activate() -- sử dụng băng gạc
+                    end
+                end
+            end
+        end
+        task.wait(0.5) -- kiểm tra 2 lần mỗi giây
+    end
+end)-- Buttons (nền hơi trong suốt)
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 180, 0, 35)
