@@ -12,7 +12,7 @@ ScreenGui.ResetOnSpawn = false
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Size = UDim2.new(0, 220, 0, 220) -- tăng để vừa nút HP
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.3
@@ -53,11 +53,13 @@ end
 local AttackButton = createButton(" Auto Attack ⚔️", 40)
 local SpinButton = createButton(" Xoay 🔄", 85)
 local SpeedButton = createButton(" Tốc độ 🏃", 130)
+local ShowHPButton = createButton(" Hiện HP Player ❤️", 175)
 
 -- Variables
 local AutoAttack = false
 local AutoSpin = false
 local SpeedBoost = false
+local ShowHP = false
 local SpinSpeed = 2500
 local AttackDelay = 0.08
 local NormalSpeed = 16
@@ -83,6 +85,11 @@ SpeedButton.MouseButton1Click:Connect(function()
     end
 end)
 
+ShowHPButton.MouseButton1Click:Connect(function()
+    ShowHP = not ShowHP
+    ShowHPButton.Text = " Hiện HP Player "..(ShowHP and "✅" or "❤️")
+end)
+
 -- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
@@ -103,5 +110,48 @@ end)
 RunService.RenderStepped:Connect(function(deltaTime)
     if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
+    end
+end)
+
+-- Hiển thị HP Player trên đầu
+local PlayerHPGuis = {}
+
+RunService.RenderStepped:Connect(function()
+    if ShowHP then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local head = player.Character.Head
+                if not PlayerHPGuis[player] then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Size = UDim2.new(0, 100, 0, 30)
+                    billboard.Adornee = head
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = head
+
+                    local hpLabel = Instance.new("TextLabel")
+                    hpLabel.Size = UDim2.new(1,0,1,0)
+                    hpLabel.BackgroundTransparency = 1
+                    hpLabel.TextColor3 = Color3.fromRGB(255,0,0)
+                    hpLabel.Font = Enum.Font.GothamBold
+                    hpLabel.TextSize = 14
+                    hpLabel.TextStrokeTransparency = 0
+                    hpLabel.Parent = billboard
+
+                    PlayerHPGuis[player] = hpLabel
+                end
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    PlayerHPGuis[player].Text = string.format("%d / %d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
+                end
+            end
+        end
+    else
+        -- xóa Billboard khi tắt
+        for player, gui in pairs(PlayerHPGuis) do
+            if gui and gui.Parent then
+                gui.Parent:Destroy()
+            end
+        end
+        PlayerHPGuis = {}
     end
 end)
