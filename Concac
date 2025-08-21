@@ -1,117 +1,113 @@
+--// Auto Click + Infinite WalkSpeed + GUI
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
--- Đợi PlayerGui load
-local playerGui = player:WaitForChild("PlayerGui")
-
--- Nếu có GUI cũ thì xóa
-if playerGui:FindFirstChild("AutoFarmGUI") then
-    playerGui:FindFirstChild("AutoFarmGUI"):Destroy()
-end
-
--- Cài đặt
-local attackInterval = 0.2 -- tốc độ đánh
-local customWalkSpeed = 30 -- tốc độ chạy
-
--- Trạng thái
-local autoAttack = false
-local speedBoost = false
-
--- Lấy nhân vật
+local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
+-- Cài đặt mặc định
+local autoClick = false
+local infiniteSpeed = false
+local walkSpeedValue = 100 -- tốc độ chạy mặc định khi bật
+
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AutoFarmGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = playerGui
-
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 120)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Frame.BorderSizePixel = 0
+local UICorner = Instance.new("UICorner")
+local ToggleClick = Instance.new("TextButton")
+local ToggleSpeed = Instance.new("TextButton")
+local Title = Instance.new("TextLabel")
+
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.Position = UDim2.new(0.05, 0, 0.3, 0)
+Frame.Size = UDim2.new(0, 180, 0, 150)
 Frame.Active = true
 Frame.Draggable = true
-Frame.Parent = ScreenGui
 
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Thickness = 2
-UIStroke.Color = Color3.fromRGB(0, 200, 255)
-UIStroke.Parent = Frame
+UICorner.Parent = Frame
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundTransparency = 1
-Title.Text = "⚔️ Auto Script Menu"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.TextScaled = true
 Title.Parent = Frame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "Auto Script Menu"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
 
--- Nút Auto Attack
-local AttackBtn = Instance.new("TextButton")
-AttackBtn.Size = UDim2.new(1, -20, 0, 30)
-AttackBtn.Position = UDim2.new(0, 10, 0, 40)
-AttackBtn.Text = "Auto Attack: OFF"
-AttackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-AttackBtn.TextColor3 = Color3.new(1,1,1)
-AttackBtn.TextScaled = true
-AttackBtn.Parent = Frame
+ToggleClick.Parent = Frame
+ToggleClick.Position = UDim2.new(0.1, 0, 0.3, 0)
+ToggleClick.Size = UDim2.new(0.8, 0, 0, 40)
+ToggleClick.Text = "Auto Click: OFF"
+ToggleClick.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleClick.TextColor3 = Color3.fromRGB(255, 255, 255)
+UICorner:Clone().Parent = ToggleClick
 
--- Nút Speed
-local SpeedBtn = Instance.new("TextButton")
-SpeedBtn.Size = UDim2.new(1, -20, 0, 30)
-SpeedBtn.Position = UDim2.new(0, 10, 0, 80)
-SpeedBtn.Text = "Speed Boost: OFF"
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SpeedBtn.TextColor3 = Color3.new(1,1,1)
-SpeedBtn.TextScaled = true
-SpeedBtn.Parent = Frame
+ToggleSpeed.Parent = Frame
+ToggleSpeed.Position = UDim2.new(0.1, 0, 0.65, 0)
+ToggleSpeed.Size = UDim2.new(0.8, 0, 0, 40)
+ToggleSpeed.Text = "Speed: OFF"
+ToggleSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+UICorner:Clone().Parent = ToggleSpeed
 
---  Auto Attack
+-- Auto click function
 task.spawn(function()
-    while task.wait(attackInterval) do
-        if autoAttack then
-            local tool = character:FindFirstChildOfClass("Tool")
-            if tool then
-                pcall(function()
-                    tool:Activate()
-                end)
-            end
-        end
-    end
+	while task.wait(0.1) do
+		if autoClick and player.Character and player.Character:FindFirstChildOfClass("Tool") then
+			VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+			VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+		end
+	end
 end)
 
--- Speed Boost
-humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-    if speedBoost then
-        humanoid.WalkSpeed = customWalkSpeed
-    end
-end)
+-- Speed control
+local function applySpeed(humanoid)
+	if infiniteSpeed then
+		humanoid.WalkSpeed = walkSpeedValue
+		humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+			if infiniteSpeed then
+				humanoid.WalkSpeed = walkSpeedValue
+			end
+		end)
+	end
+end
+
+applySpeed(humanoid)
 
 player.CharacterAdded:Connect(function(char)
-    character = char
-    humanoid = char:WaitForChild("Humanoid")
-    task.wait(1)
-    if speedBoost then
-        humanoid.WalkSpeed = customWalkSpeed
-    end
+	character = char
+	humanoid = character:WaitForChild("Humanoid")
+	applySpeed(humanoid)
 end)
 
--- Bật / Tắt bằng nút
-AttackBtn.MouseButton1Click:Connect(function()
-    autoAttack = not autoAttack
-    AttackBtn.Text = "Auto Attack: " .. (autoAttack and "ON" or "OFF")
-    AttackBtn.BackgroundColor3 = autoAttack and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+-- Toggle buttons
+ToggleClick.MouseButton1Click:Connect(function()
+	autoClick = not autoClick
+	if autoClick then
+		ToggleClick.Text = "Auto Click: ON"
+		ToggleClick.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+	else
+		ToggleClick.Text = "Auto Click: OFF"
+		ToggleClick.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+	end
 end)
 
-SpeedBtn.MouseButton1Click:Connect(function()
-    speedBoost = not speedBoost
-    if speedBoost then
-        humanoid.WalkSpeed = customWalkSpeed
-    end
-    SpeedBtn.Text = "Speed Boost: " .. (speedBoost and "ON" or "OFF")
-    SpeedBtn.BackgroundColor3 = speedBoost and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+ToggleSpeed.MouseButton1Click:Connect(function()
+	infiniteSpeed = not infiniteSpeed
+	if infiniteSpeed then
+		humanoid.WalkSpeed = walkSpeedValue
+		ToggleSpeed.Text = "Speed: ON (" .. walkSpeedValue .. ")"
+		ToggleSpeed.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+	else
+		humanoid.WalkSpeed = 16 -- tốc độ mặc định
+		ToggleSpeed.Text = "Speed: OFF"
+		ToggleSpeed.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+	end
 end)
