@@ -1,17 +1,13 @@
---// Auto Click + Infinite WalkSpeed + GUI
+--// Auto Click + Infinite WalkSpeed + GUI (Fix không bị khựng khi xoay camera)
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- Cài đặt mặc định
+-- Cài đặt
 local autoClick = false
 local infiniteSpeed = false
-local walkSpeedValue = 100 -- tốc độ chạy mặc định khi bật
+local walkSpeedValue = 100
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -57,12 +53,16 @@ ToggleSpeed.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 ToggleSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
 UICorner:Clone().Parent = ToggleSpeed
 
--- Auto click function
+-- Auto click (dùng Tool:Activate để không khựng camera)
 task.spawn(function()
 	while task.wait(0.1) do
-		if autoClick and player.Character and player.Character:FindFirstChildOfClass("Tool") then
-			VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-			VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+		if autoClick and player.Character then
+			local tool = player.Character:FindFirstChildOfClass("Tool")
+			if tool then
+				pcall(function()
+					tool:Activate()
+				end)
+			end
 		end
 	end
 end)
