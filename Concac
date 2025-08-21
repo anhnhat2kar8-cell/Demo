@@ -1,5 +1,4 @@
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -14,11 +13,14 @@ local chr = getCharacter()
 local hum = chr:WaitForChild("Humanoid")
 local hrp = chr:WaitForChild("HumanoidRootPart")
 
--- === Config ===
+-- === Config toggle ===
 local farming = false
-local radius = 25   -- bán kính bay quanh boss
-local height = 10   -- độ cao so với boss
 local autoAttack = true
+local autoHeal = false
+local autoLoot = false
+
+local radius = 25   -- bán kính bay quanh boss
+local height = 10   -- độ cao bay quanh boss
 
 -- === GUI ===
 local ScreenGui = Instance.new("ScreenGui")
@@ -27,7 +29,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = guiParent
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 280, 0, 160)
+MainFrame.Size = UDim2.new(0, 280, 0, 250)
 MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BackgroundTransparency = 0.28
@@ -41,27 +43,42 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 36)
 Title.Position = UDim2.new(0, 0, 0, 6)
 Title.BackgroundTransparency = 1
-Title.Text = "💀 ZENX FARM 💀"
+Title.Text = "💀 ZENX FARM MENU 💀"
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Parent = MainFrame
 
-local FarmButton = Instance.new("TextButton")
-FarmButton.Size = UDim2.new(1, -24, 0, 40)
-FarmButton.Position = UDim2.new(0, 12, 0, 50)
-FarmButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-FarmButton.BackgroundTransparency = 0.38
-FarmButton.Text = "Bật Farm Boss"
-FarmButton.Font = Enum.Font.GothamBold
-FarmButton.TextSize = 18
-FarmButton.TextColor3 = Color3.fromRGB(255,255,255)
-FarmButton.Parent = MainFrame
-Instance.new("UICorner", FarmButton).CornerRadius = UDim.new(0, 8)
+-- Helper tạo nút
+local function makeButton(yPos, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -24, 0, 40)
+    btn.Position = UDim2.new(0, 12, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundTransparency = 0.38
+    btn.Text = text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 18
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Parent = MainFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
 
-FarmButton.MouseButton1Click:Connect(function()
+local farmBtn = makeButton(50, "Bật Farm Boss", function()
     farming = not farming
-    FarmButton.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+    farmBtn.Text = farming and "Tắt Farm Boss" or "Bật Farm Boss"
+end)
+
+local healBtn = makeButton(100, "Bật Auto Heal", function()
+    autoHeal = not autoHeal
+    healBtn.Text = autoHeal and "Tắt Auto Heal" or "Bật Auto Heal"
+end)
+
+local lootBtn = makeButton(150, "Bật Auto Loot", function()
+    autoLoot = not autoLoot
+    lootBtn.Text = autoLoot and "Tắt Auto Loot" or "Bật Auto Loot"
 end)
 
 -- === Tìm boss gần nhất ===
@@ -94,27 +111,49 @@ local function attack()
     end
 end
 
--- === Bay theo waypoint quanh boss ===
+-- === Auto Heal ===
+task.spawn(function()
+    while task.wait(1) do
+        if autoHeal and hum and hum.Health > 0 then
+            if hum.Health < hum.MaxHealth * 0.5 then
+                local bandage = lp.Backpack:FindFirstChild("Bandage") or (chr and chr:FindFirstChild("Bandage"))
+                if bandage then
+                    hum:EquipTool(bandage)
+                    task.wait(0.2)
+                    pcall(function() bandage:Activate() end)
+                end
+            end
+        end
+    end
+end)
+
+-- === Auto Loot ===
+task.spawn(function()
+    while task.wait(0.8) do
+        if autoLoot and hrp then
+            for _, prompt in pairs(Workspace:GetDescendants()) do
+                if prompt:IsA("ProximityPrompt") then
+                    local ok, pos = pcall(function() return prompt.Parent.Position end)
+                    if ok and (hrp.Position - pos).Magnitude <= 15 then
+                        pcall(function() fireproximityprompt(prompt) end)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- === Bay theo waypoint quanh boss + đánh ===
 RunService.Heartbeat:Connect(function()
     if farming and hum and hum.Health > 0 then
         local target = findBoss()
         if target and target:FindFirstChild("HumanoidRootPart") and target.Humanoid.Health > 0 then
             local thrp = target.HumanoidRootPart
-            local t = tick() * 1.5 -- tốc độ quay
-            local offset = Vector3.new(
-                math.cos(t) * radius,
-                height,
-                math.sin(t) * radius
-            )
+            local t = tick() * 1.5
+            local offset = Vector3.new(math.cos(t) * radius, height, math.sin(t) * radius)
             local goalPos = thrp.Position + offset
-
-            -- di chuyển mượt theo waypoint
             hrp.CFrame = hrp.CFrame:Lerp(CFrame.new(goalPos, thrp.Position), 0.2)
-
-            -- tự động đánh boss
-            if autoAttack then
-                attack()
-            end
+            if autoAttack then attack() end
         end
     end
 end)
