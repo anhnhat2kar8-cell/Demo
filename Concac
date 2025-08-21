@@ -10,11 +10,12 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame
+-- Main Frame (hơi trong suốt)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 180)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.3 -- chỉnh trong suốt nhẹ
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -31,12 +32,13 @@ Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Parent = MainFrame
 
--- Buttons
+-- Buttons (nền hơi trong suốt)
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 180, 0, 35)
     btn.Position = UDim2.new(0, 20, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundTransparency = 0.2 -- nút hơi trong suốt
     btn.Text = text
     btn.TextSize = 14
     btn.Font = Enum.Font.Gotham
@@ -89,7 +91,6 @@ end)
 task.spawn(function()
     while true do
         if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
-            -- chỉ auto attack khi đang cầm vũ khí (Tool)
             VirtualUser:ClickButton1(Vector2.new())
         end
         task.wait(AttackDelay)
