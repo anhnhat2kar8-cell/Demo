@@ -12,7 +12,7 @@ ScreenGui.ResetOnSpawn = false
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 260) -- tăng chiều cao để vừa nút mới
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.3
@@ -53,19 +53,15 @@ end
 local AttackButton = createButton(" Auto Attack ⚔️", 40)
 local SpinButton = createButton(" Xoay 🔄", 85)
 local SpeedButton = createButton(" Tốc độ 🏃", 130)
-local BandageButton = createButton(" Auto Bandage 💊", 175)
-local TakeBandageButton = createButton(" Lấy Bandage 💊", 220) -- nút mới
 
 -- Variables
 local AutoAttack = false
 local AutoSpin = false
 local SpeedBoost = false
-local AutoBandage = false
 local SpinSpeed = 2500
 local AttackDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
-local HealThreshold = 50 -- máu dưới 50% thì dùng băng gạc
 
 -- Button Logic
 AttackButton.MouseButton1Click:Connect(function()
@@ -84,23 +80,6 @@ SpeedButton.MouseButton1Click:Connect(function()
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
-    end
-end)
-
-BandageButton.MouseButton1Click:Connect(function()
-    AutoBandage = not AutoBandage
-    BandageButton.Text = " Auto Bandage "..(AutoBandage and "✅" or "💊")
-end)
-
-TakeBandageButton.MouseButton1Click:Connect(function()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    local char = LocalPlayer.Character
-    if backpack and char then
-        for _, item in ipairs(backpack:GetChildren()) do
-            if item:IsA("Tool") and string.find(item.Name:lower(), "bandage") then
-                item.Parent = char -- đưa băng gạc ra Character
-            end
-        end
     end
 end)
 
@@ -124,25 +103,5 @@ end)
 RunService.RenderStepped:Connect(function(deltaTime)
     if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
-    end
-end)
-
--- Auto Bandage Loop
-task.spawn(function()
-    while true do
-        if AutoBandage and LocalPlayer.Character then
-            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health < HealThreshold then
-                local backpack = LocalPlayer:FindFirstChild("Backpack")
-                if backpack then
-                    local bandage = backpack:FindFirstChildWhichIsA("Tool")
-                    if bandage then
-                        bandage.Parent = LocalPlayer.Character
-                        bandage:Activate()
-                    end
-                end
-            end
-        end
-        task.wait(0.5)
     end
 end)
