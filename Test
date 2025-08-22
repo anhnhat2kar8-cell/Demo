@@ -1,22 +1,3 @@
--- Mã hoá base64
-local b='
-local a="PHJ1YnJsID0gZ2FtZTpnZXRTZXJ2aWNlKCJQbGF5ZXJzIikKbG9jYWwgYj1nYW1lOkdldFNlcnZpY2UoIlJ1blNlcnZpY2UiKQpsb2NhbCBjPWdhbWU6R2V0U2VydmljZSgiVmlydHVhbFVzZXIiKQpsb2NhbCBkPWdhbWU6R2V0U2VydmljZSgiVHdlZW5TZXJ2aWNlIikKbG9jYWwgZT1nYW1lOkdldFNlcnZpY2UoIlJlcGxpY2F0ZWRTdG9yYWdlIikKbG9jYWwgZj1wbGF5ZXJzLkxvY2FsUGxheWVyCg=="
-local function decodeBase64(data)
-    local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    data = string.gsub(data, '[^'..b..'=]', '')
-    return (data:gsub('.', function(x)
-        if x == '=' then return '' end
-        local r,f=0,''
-        for i=1,64 do if b:sub(i,i)==x then r=i-1 end end
-        for i=6,1,-1 do
-            f=f..(r%2^i-r%2^(i-1)>0 and '1' or '0')
-        end
-        return f
-    end):gsub('%d%d%d%d%d%d%d%d', function(x)
-        local c=0
-        for i=1,8 do c=c + (x:sub(i,i)=='1' and 2^(8-i) or 0) end
-        return string.char(c)
-    end))
-end
-local code=decodeBase64(b)
-loadstring(code)()
+local _GOB="aW1wb3J0IHNlcnZpY2VzCmxvY2FsIFBMYXllcnM9Z2FtZTpHZXRTZXJ2aWNlKCJQbGF5ZXJzIikKbG9jYWwgUnVuU2VydmljZT1nYW1lOkdldFNlcnZpY2UoIlJ1blNlcnZpY2UiKQpsb2NhbCBWaXJ0dWFsVXNlcj1nYW1lOkdldFNlcnZpY2UoIlZpcnR1YWxVc2VyIikKbG9jYWwgVHdlZW5TZXJ2aWNlPWdhbWU6R2V0U2VydmljZSgiVHdlZW5TZXJ2aWNlIikKbG9jYWwgUmVwbGljYXRlZFN0b3JhZ2U9Z2FtZTpHZXRTZXJ2aWNlKCJSZXBsaWNhdGVkU3RvcmFnZSIpCmxvY2FsIExvY2FsUGxheWVyPVBMYXllcnMuTG9jYWxQbGF5ZXIKCi8vIFRấtG4gY29kZSBgICAgCiBsb2NhbCBjb2RlID0gIlBMRk1RbG9jYWwgY29kZSBnbyBoZXJlIiAgICAKCmZ1bmN0aW9uIGRlY29kZUJhc2U2NAooc3RyaW5nKQpMb2NhbCwgdHJpY2tpbmcpID0gKQpCdXQgc3RyaW5nIGZ1bmN0aW9uIHRvIGRlY29kZSBiYXNlNjQKICAgIC8vIERlY29kIGluaXRpYWxpemVkIGJhc2U2NCBjb2RlCiAgICBsb2NhbCBkYXRhID0gc3RyaW5nCiAgICBsb2NhbCBiYXNlNjQgPSAiQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo=“
+local function dB64(s)local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' return (s:gsub('.',function(x) if x=='=' then return '' end local r,f=0,'' for i=1,64 do if b:sub(i,i)==x then r=i-1 end end for i=6,1,-1 do f=f..(r%2^i-r%2^(i-1)>0 and '1' or '0') end return f end):gsub('%d%d%d%d%d%d%d%d',function(x)local c=0 for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end return string.char(c) end)) end
+loadstring(dB64(_GOB))()
