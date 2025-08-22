@@ -23,11 +23,12 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
--- Viền 7 màu chạy quanh MainFrame
+-- Viền 7 màu bo tròn 4 góc
 local border = Instance.new("Frame")
 border.Size = UDim2.new(1, 8, 1, 8)
 border.Position = UDim2.new(0, -4, 0, -4)
 border.BackgroundTransparency = 1
+border.ZIndex = MainFrame.ZIndex - 1
 border.Parent = MainFrame
 Instance.new("UICorner", border).CornerRadius = UDim.new(0, 12)
 
@@ -40,12 +41,13 @@ for i = 1, 4 do
     table.insert(sides, side)
 end
 
--- Top, Bottom, Left, Right
-sides[1].Size = UDim2.new(1, 0, 0, 4); sides[1].Position = UDim2.new(0, 0, 0, 0)
-sides[2].Size = UDim2.new(1, 0, 0, 4); sides[2].Position = UDim2.new(0, 0, 1, -4)
-sides[3].Size = UDim2.new(0, 4, 1, 0); sides[3].Position = UDim2.new(0, 0, 0, 0)
-sides[4].Size = UDim2.new(0, 4, 1, 0); sides[4].Position = UDim2.new(1, -4, 0, 0)
+-- Kích thước 4 cạnh
+sides[1].Size = UDim2.new(1, 0, 0, 4); sides[1].Position = UDim2.new(0, 0, 0, 0)      
+sides[2].Size = UDim2.new(1, 0, 0, 4); sides[2].Position = UDim2.new(0, 0, 1, -4)     
+sides[3].Size = UDim2.new(0, 4, 1, 0); sides[3].Position = UDim2.new(0, 0, 0, 0)      
+sides[4].Size = UDim2.new(0, 4, 1, 0); sides[4].Position = UDim2.new(1, -4, 0, 0)     
 
+-- Mảng 7 màu
 local colors = {
     Color3.fromRGB(255,0,0),
     Color3.fromRGB(255,127,0),
@@ -55,6 +57,8 @@ local colors = {
     Color3.fromRGB(75,0,130),
     Color3.fromRGB(148,0,211),
 }
+
+-- Animation viền
 local index = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     index = index + deltaTime * 5
