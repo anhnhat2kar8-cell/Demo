@@ -41,7 +41,7 @@ local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(1, 0, 0, 16)
 Subtitle.Position = UDim2.new(0, 0, 0, 32)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Phiên bản VIP Prime"
+Subtitle.Text = "Phiên bản Vip Mất Nhận Thức"
 Subtitle.Font = Enum.Font.Gotham
 Subtitle.TextSize = 12
 Subtitle.TextColor3 = Color3.fromRGB(180, 255, 200)
@@ -49,11 +49,11 @@ Subtitle.TextXAlignment = Enum.TextXAlignment.Center
 Subtitle.TextYAlignment = Enum.TextYAlignment.Center
 Subtitle.Parent = MainFrame
 
--- Create Button Function
+-- Create Button Function (dài hơn)
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 35)
-    btn.Position = UDim2.new(0, 20, 0, posY)
+    btn.Size = UDim2.new(0, 200, 0, 35) -- rộng 200px
+    btn.Position = UDim2.new(0, 10, 0, posY) -- căn trái 10px để cân MainFrame
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     btn.BackgroundTransparency = 0.2
     btn.Text = text
@@ -70,7 +70,7 @@ local AttackButton = createButton(" Auto Attack ⚔️", 55)
 local SpinButton = createButton(" Xoay 🔄", 100)
 local SpeedButton = createButton(" Tốc độ 🏃", 145)
 local ShowHPButton = createButton(" Hiện HP Player ❤️", 190)
-local BandageButton = createButton(" 🎒 Lấy băng gạc", 235)
+local BandageButton = createButton("  Lấy băng gạc 🩹", 235)
 
 -- Variables
 local AutoAttack = false
@@ -185,8 +185,8 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Lấy băng gạc Logic
-BandageButton.MouseButton1Click:Connect(function()
+-- Lấy băng gạc Logic an toàn
+local function takeBandage()
     if BandageBusy then return end
     if tick() < LastBandageTime then
         BandageButton.Text = "⏳ Chờ "..math.floor(LastBandageTime - tick()).."s"
@@ -203,39 +203,33 @@ BandageButton.MouseButton1Click:Connect(function()
     BandageButton.Text = "Đang lấy băng gạc..."
 
     task.spawn(function()
-        pcall(function()
-            ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0").knit.Services.InventoryService.RE.updateInventory:FireServer("refresh")
-        end)
-        task.wait(0.3)
-        local invService = findServicePath({
-            ReplicatedStorage,
-            "KnitPackages",
-            "_Index",
-            "sleitnick_knit@1.7.0",
-            "knit",
-            "Services",
-            "InventoryService",
-            "RE",
-            "updateInventory"
-        })
-        if invService then
-            local success = pcall(function()
-                invService:FireServer("eue","băng gạc")
-            end)
-            if success then
-                BandageButton.Text = "✅ Đã lấy băng gạc!"
-                LastBandageTime = tick() + BandageCooldown
-                for i = BandageCooldown, 1, -1 do
-                    BandageButton.Text = "🩹 ("..i..")"
-                    task.wait(1)
+        local success = pcall(function()
+            local knitIndex = ReplicatedStorage:FindFirstChild("KnitPackages") 
+                and ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0")
+            if knitIndex then
+                local invService = knitIndex.knit.Services.InventoryService.RE.updateInventory
+                if invService then
+                    invService:FireServer("refresh")
+                    task.wait(0.3)
+                    invService:FireServer("eue","băng gạc")
                 end
-                BandageButton.Text = " 🎒 Lấy băng gạc"
-            else
-                BandageButton.Text = "❌ Lỗi lấy băng gạc"
             end
+        end)
+
+        if success then
+            BandageButton.Text = "✅ Đã lấy băng gạc!"
+            LastBandageTime = tick() + BandageCooldown
+            for i = BandageCooldown, 1, -1 do
+                BandageButton.Text = "🩹 ("..i..")"
+                task.wait(1)
+            end
+            BandageButton.Text = " 🩹 Lấy băng gạc"
         else
-            BandageButton.Text = "❌ Không tìm thấy InventoryService"
+            BandageButton.Text = "❌ Lỗi lấy băng gạc"
         end
+
         BandageBusy = false
     end)
-end)
+end
+
+BandageButton.MouseButton1Click:Connect(takeBandage)
