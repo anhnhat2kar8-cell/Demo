@@ -12,7 +12,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame (nền bình thường, không nháy)
+-- Main Frame (nền tĩnh, không nháy)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
@@ -24,18 +24,7 @@ MainFrame.Parent = ScreenGui
 local mainUICorner = Instance.new("UICorner", MainFrame)
 mainUICorner.CornerRadius = UDim.new(0, 12)
 
--- Viền Rainbow
-local BorderFrame = Instance.new("Frame")
-BorderFrame.Size = UDim2.new(1, 4, 1, 4)
-BorderFrame.Position = UDim2.new(0, -2, 0, -2)
-BorderFrame.BackgroundTransparency = 1
-BorderFrame.BorderSizePixel = 0
-BorderFrame.ZIndex = MainFrame.ZIndex - 1
-BorderFrame.Parent = MainFrame
-
-local borderUICorner = Instance.new("UICorner", BorderFrame)
-borderUICorner.CornerRadius = UDim.new(0, 14)
-
+-- Viền Rainbow (chỉ viền nháy, không ảnh hưởng nền)
 local rainbowColors = {
     Color3.fromRGB(255, 0, 0),
     Color3.fromRGB(255, 127, 0),
@@ -46,14 +35,25 @@ local rainbowColors = {
     Color3.fromRGB(148, 0, 211),
 }
 
+local BorderFrame = Instance.new("Frame")
+BorderFrame.Size = UDim2.new(1, 4, 1, 4)
+BorderFrame.Position = UDim2.new(0, -2, 0, -2)
+BorderFrame.BackgroundColor3 = rainbowColors[1]
+BorderFrame.BackgroundTransparency = 0
+BorderFrame.BorderSizePixel = 0
+BorderFrame.ZIndex = MainFrame.ZIndex + 1
+BorderFrame.Parent = MainFrame
+
+local borderUICorner = Instance.new("UICorner", BorderFrame)
+borderUICorner.CornerRadius = UDim.new(0, 14)
+
 -- Hiệu ứng nháy viền
 task.spawn(function()
     local index = 1
     while BorderFrame.Parent do
         local nextIndex = index % #rainbowColors + 1
         local tween = TweenService:Create(BorderFrame, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {
-            BackgroundColor3 = rainbowColors[nextIndex],
-            BackgroundTransparency = 0
+            BackgroundColor3 = rainbowColors[nextIndex]
         })
         tween:Play()
         tween.Completed:Wait()
