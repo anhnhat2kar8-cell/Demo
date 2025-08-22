@@ -70,7 +70,7 @@ local AttackButton = createButton(" Auto Attack ⚔️", 55)
 local SpinButton = createButton(" Xoay 🔄", 100)
 local SpeedButton = createButton(" Tốc độ 🏃", 145)
 local ShowHPButton = createButton(" Hiện HP Player ❤️", 190)
-local BandageButton = createButton(" 🎒 Lấy băng gạc", 235)
+local BandageButton = createButton("  Lấy băng gạc 🩹", 235)
 
 -- Variables
 local AutoAttack = false
