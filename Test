@@ -10,7 +10,7 @@ local function xorDecode(data, key)
 end
 
 local encoded = [[
-<CHÈN_BASE64_CỦA_SCRIPT_BẠN_ĐÃ_XOR>
+QlpoOTFBWSZTWRbCz1UAA1fgEAQABwQAAP/f//+Z+AoAD8jU0tP9V2UAAAHQAqQ...
 ]]
 
 local key = "M4stNh4nThuc@2025" -- key bí mật, giữ kín
