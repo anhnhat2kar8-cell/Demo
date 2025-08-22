@@ -12,7 +12,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame (nền tĩnh, không nháy)
+-- Main Frame (nền tĩnh)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
@@ -24,7 +24,7 @@ MainFrame.Parent = ScreenGui
 local mainUICorner = Instance.new("UICorner", MainFrame)
 mainUICorner.CornerRadius = UDim.new(0, 12)
 
--- Viền Rainbow (chỉ viền nháy, không ảnh hưởng nền)
+-- Viền rainbow bằng UIStroke (chỉ viền nháy)
 local rainbowColors = {
     Color3.fromRGB(255, 0, 0),
     Color3.fromRGB(255, 127, 0),
@@ -35,26 +35,17 @@ local rainbowColors = {
     Color3.fromRGB(148, 0, 211),
 }
 
-local BorderFrame = Instance.new("Frame")
-BorderFrame.Size = UDim2.new(1, 4, 1, 4)
-BorderFrame.Position = UDim2.new(0, -2, 0, -2)
-BorderFrame.BackgroundColor3 = rainbowColors[1]
-BorderFrame.BackgroundTransparency = 0
-BorderFrame.BorderSizePixel = 0
-BorderFrame.ZIndex = MainFrame.ZIndex + 1
-BorderFrame.Parent = MainFrame
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Thickness = 4
+uiStroke.Parent = MainFrame
+uiStroke.Color = rainbowColors[1]
 
-local borderUICorner = Instance.new("UICorner", BorderFrame)
-borderUICorner.CornerRadius = UDim.new(0, 14)
-
--- Hiệu ứng nháy viền
+-- Tween màu viền
 task.spawn(function()
     local index = 1
-    while BorderFrame.Parent do
+    while uiStroke.Parent do
         local nextIndex = index % #rainbowColors + 1
-        local tween = TweenService:Create(BorderFrame, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {
-            BackgroundColor3 = rainbowColors[nextIndex]
-        })
+        local tween = TweenService:Create(uiStroke, TweenInfo.new(0.5, Enum.EasingStyle.Linear), {Color = rainbowColors[nextIndex]})
         tween:Play()
         tween.Completed:Wait()
         index = nextIndex
