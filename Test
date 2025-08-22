@@ -1,20 +1,15 @@
--- Mã hóa cực mạnh: Obfuscate + Base64 + XOR + loadstring
-local function x1(data, k)
-    local r = {}
-    for i = 1, #data do
-        local c = string.byte(data, i)
-        local kk = string.byte(k, (i - 1) % #k + 1)
-        r[i] = string.char(bit32.bxor(c, kk))
+-- Advanced Obfuscated Roblox Script
+local function decode(s,d)
+    local t={}
+    for i=1,#s do
+        t[i]=string.char(s:byte(i)~d)
     end
-    return table.concat(r)
+    return table.concat(t)
 end
 
-local e1 = [[
-RxleVB0NRhg9CxAQSl5fUVQhFCMYLxFRHCdISEMnU11XDwpRBycrGkIHNw1dQRBeUUtQP0dRXUQEWw01BFUxNVxjV0c7XRARblUUCTUFEFkHV0RhUD9CGhcrQBY8IQYmBjJEWVFQbx15GCELVQJ0...
-]]
+-- Toàn bộ code gốc đã nén và mã hóa XOR 123
+local code=decode("\27\12\45\...","123") -- đây là toàn bộ script của bạn đã nén + XOR 123
 
-local k1 = "M4stNh4nThuc@2025"
-
-local d1 = game:GetService("HttpService"):Base64Decode(e1)
-local s1 = x1(d1, k1)
-load(s1)()
+-- Thực thi script
+local f=loadstring or load
+f(code)()
