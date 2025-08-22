@@ -2,7 +2,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
@@ -23,31 +22,27 @@ MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
--- Viền 7 màu bo tròn 4 góc
-local border = Instance.new("Frame")
-border.Size = UDim2.new(1, 8, 1, 8)
-border.Position = UDim2.new(0, -4, 0, -4)
-border.BackgroundTransparency = 1
-border.ZIndex = MainFrame.ZIndex - 1
-border.Parent = MainFrame
-Instance.new("UICorner", border).CornerRadius = UDim.new(0, 12)
+-- Viền LED 7 màu chạy liên tục, bo tròn
+local ledBorder = Instance.new("Frame")
+ledBorder.Size = UDim2.new(1, 8, 1, 8)
+ledBorder.Position = UDim2.new(0, -4, 0, -4)
+ledBorder.BackgroundTransparency = 1
+ledBorder.ZIndex = MainFrame.ZIndex - 1
+ledBorder.Parent = MainFrame
+Instance.new("UICorner", ledBorder).CornerRadius = UDim.new(0, 12)
 
-local sides = {}
-for i = 1, 4 do
-    local side = Instance.new("Frame")
-    side.BackgroundColor3 = Color3.fromRGB(255,0,0)
-    side.BorderSizePixel = 0
-    side.Parent = border
-    table.insert(sides, side)
+local ledPoints = {}
+local numLEDs = 60
+for i = 1, numLEDs do
+    local point = Instance.new("Frame")
+    point.Size = UDim2.new(0, 4, 0, 4)
+    point.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    point.BorderSizePixel = 0
+    point.AnchorPoint = Vector2.new(0.5, 0.5)
+    point.Parent = ledBorder
+    table.insert(ledPoints, point)
 end
 
--- Kích thước 4 cạnh
-sides[1].Size = UDim2.new(1, 0, 0, 4); sides[1].Position = UDim2.new(0, 0, 0, 0)      
-sides[2].Size = UDim2.new(1, 0, 0, 4); sides[2].Position = UDim2.new(0, 0, 1, -4)     
-sides[3].Size = UDim2.new(0, 4, 1, 0); sides[3].Position = UDim2.new(0, 0, 0, 0)      
-sides[4].Size = UDim2.new(0, 4, 1, 0); sides[4].Position = UDim2.new(1, -4, 0, 0)     
-
--- Mảng 7 màu
 local colors = {
     Color3.fromRGB(255,0,0),
     Color3.fromRGB(255,127,0),
@@ -58,13 +53,31 @@ local colors = {
     Color3.fromRGB(148,0,211),
 }
 
--- Animation viền
-local index = 0
-RunService.RenderStepped:Connect(function(deltaTime)
-    index = index + deltaTime * 5
-    for i, side in ipairs(sides) do
-        local colorIndex = math.floor((index + i) % #colors) + 1
-        side.BackgroundColor3 = colors[colorIndex]
+local function updateLEDPositions()
+    local w, h = MainFrame.AbsoluteSize.X, MainFrame.AbsoluteSize.Y
+    local perimeter = 2*(w+h)
+    for i, point in ipairs(ledPoints) do
+        local t = (i/numLEDs) * perimeter
+        if t < w then
+            point.Position = UDim2.new(0, t, 0, 0)
+        elseif t < w+h then
+            point.Position = UDim2.new(1, 0, 0, t-w)
+        elseif t < 2*w+h then
+            point.Position = UDim2.new(1-(t-w-h)/w, 0, 1, 0)
+        else
+            point.Position = UDim2.new(0, 0, 1-(t-2*w-h)/h, 0)
+        end
+    end
+end
+MainFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateLEDPositions)
+updateLEDPositions()
+
+local ledIndex = 0
+RunService.RenderStepped:Connect(function(dt)
+    ledIndex = ledIndex + dt*15
+    for i, point in ipairs(ledPoints) do
+        local colorIndex = math.floor((i + ledIndex) % #colors) + 1
+        point.BackgroundColor3 = colors[colorIndex]
     end
 end)
 
@@ -126,7 +139,6 @@ local SpinSpeed = 2500
 local AttackDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
-
 local BandageCooldown = 6
 local LastBandageTime = 0
 local BandageBusy = false
@@ -136,12 +148,10 @@ AttackButton.MouseButton1Click:Connect(function()
     AutoAttack = not AutoAttack
     AttackButton.Text = "⚔️ Auto Attack "..(AutoAttack and "✅" or "")
 end)
-
 SpinButton.MouseButton1Click:Connect(function()
     AutoSpin = not AutoSpin
     SpinButton.Text = "🔄 Xoay "..(AutoSpin and "✅" or "")
 end)
-
 SpeedButton.MouseButton1Click:Connect(function()
     SpeedBoost = not SpeedBoost
     SpeedButton.Text = "🏃 Tốc độ "..(SpeedBoost and "✅" or "")
@@ -150,7 +160,6 @@ SpeedButton.MouseButton1Click:Connect(function()
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
     end
 end)
-
 ShowHPButton.MouseButton1Click:Connect(function()
     ShowHP = not ShowHP
     ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
@@ -233,31 +242,4 @@ local function takeBandage()
     end
     BandageBusy = true
     BandageButton.Text = "Đang lấy băng gạc..."
-    task.spawn(function()
-        local success = pcall(function()
-            local knitIndex = ReplicatedStorage:FindFirstChild("KnitPackages") 
-                and ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0")
-            if knitIndex then
-                local invService = knitIndex.knit.Services.InventoryService.RE.updateInventory
-                if invService then
-                    invService:FireServer("refresh")
-                    task.wait(0.3)
-                    invService:FireServer("eue","băng gạc")
-                end
-            end
-        end)
-        if success then
-            BandageButton.Text = "✅ Đã lấy băng gạc!"
-            LastBandageTime = tick() + BandageCooldown
-            for i = BandageCooldown, 1, -1 do
-                BandageButton.Text = "🩹 ("..i..")"
-                task.wait(1)
-            end
-            BandageButton.Text = "🩹 Lấy băng gạc"
-        else
-            BandageButton.Text = "❌ Lỗi lấy băng gạc"
-        end
-        BandageBusy = false
-    end)
-end
-BandageButton.MouseButton1Click:Connect(takeBandage)
+    task.spawn
