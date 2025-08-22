@@ -1,15 +1,15 @@
--- Advanced Obfuscated Roblox Script
-local function decode(s,d)
+-- Ultra Obfuscated Roblox Script
+local function xor_decode(s,key)
     local t={}
     for i=1,#s do
-        t[i]=string.char(s:byte(i)~d)
+        t[i]=string.char(s:byte(i)~key)
     end
     return table.concat(t)
 end
 
--- Toàn bộ code gốc đã nén và mã hóa XOR 123
-local code=decode("\27\12\45\...","123") -- đây là toàn bộ script của bạn đã nén + XOR 123
+-- Toàn bộ script đã nén + XOR 123
+local obf_code = xor_decode("\27\12\45\61\34\..." , 123)
 
--- Thực thi script
-local f=loadstring or load
-f(code)()
+-- Chạy script
+local run = loadstring or load
+run(obf_code)()
