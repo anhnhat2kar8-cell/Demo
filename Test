@@ -9,8 +9,11 @@ local function xorDecode(data, key)
     return table.concat(result)
 end
 
-local encoded = "HU9WQk1K..." -- đây là Base64 + XOR của script bạn
-local key = "SecretKey123" -- key bí mật
+local encoded = [[
+<CHÈN_BASE64_CỦA_SCRIPT_BẠN_ĐÃ_XOR>
+]]
+
+local key = "M4stNh4nThuc@2025" -- key bí mật, giữ kín
 
 local decodedBase64 = game:GetService("HttpService"):Base64Decode(encoded)
 local decodedScript = xorDecode(decodedBase64, key)
