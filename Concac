@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
@@ -20,68 +21,64 @@ MainFrame.BackgroundTransparency = 0.3
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+local mainUICorner = Instance.new("UICorner", MainFrame)
+mainUICorner.CornerRadius = UDim.new(0, 12)
 
--- Viền LED 7 màu chạy liên tục, bo tròn
-local ledBorder = Instance.new("Frame")
-ledBorder.Size = UDim2.new(1, 8, 1, 8)
-ledBorder.Position = UDim2.new(0, -4, 0, -4)
-ledBorder.BackgroundTransparency = 1
-ledBorder.ZIndex = MainFrame.ZIndex - 1
-ledBorder.Parent = MainFrame
-Instance.new("UICorner", ledBorder).CornerRadius = UDim.new(0, 12)
-
-local ledPoints = {}
-local numLEDs = 60
-for i = 1, numLEDs do
-    local point = Instance.new("Frame")
-    point.Size = UDim2.new(0, 4, 0, 4)
-    point.BackgroundColor3 = Color3.fromRGB(255,0,0)
-    point.BorderSizePixel = 0
-    point.AnchorPoint = Vector2.new(0.5, 0.5)
-    point.Parent = ledBorder
-    table.insert(ledPoints, point)
-end
-
-local colors = {
-    Color3.fromRGB(255,0,0),
-    Color3.fromRGB(255,127,0),
-    Color3.fromRGB(255,255,0),
-    Color3.fromRGB(0,255,0),
-    Color3.fromRGB(0,0,255),
-    Color3.fromRGB(75,0,130),
-    Color3.fromRGB(148,0,211),
+-- Rainbow Colors
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0),
+    Color3.fromRGB(255, 127, 0),
+    Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(0, 255, 0),
+    Color3.fromRGB(0, 0, 255),
+    Color3.fromRGB(75, 0, 130),
+    Color3.fromRGB(148, 0, 211),
 }
 
-local function updateLEDPositions()
-    local w, h = MainFrame.AbsoluteSize.X, MainFrame.AbsoluteSize.Y
-    local perimeter = 2*(w+h)
-    for i, point in ipairs(ledPoints) do
-        local t = (i/numLEDs) * perimeter
-        if t < w then
-            point.Position = UDim2.new(0, t, 0, 0)
-        elseif t < w+h then
-            point.Position = UDim2.new(1, 0, 0, t-w)
-        elseif t < 2*w+h then
-            point.Position = UDim2.new(1-(t-w-h)/w, 0, 1, 0)
-        else
-            point.Position = UDim2.new(0, 0, 1-(t-2*w-h)/h, 0)
+-- Function to animate rainbow background
+local function startRainbowFrame(frame, colors, duration)
+    local index = 1
+    task.spawn(function()
+        while frame.Parent do
+            local nextIndex = index % #colors + 1
+            local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+            local tween = TweenService:Create(frame, tweenInfo, {BackgroundColor3 = colors[nextIndex]})
+            tween:Play()
+            tween.Completed:Wait()
+            index = nextIndex
         end
-    end
+    end)
 end
-MainFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateLEDPositions)
-updateLEDPositions()
 
-local ledIndex = 0
-RunService.RenderStepped:Connect(function(dt)
-    ledIndex = ledIndex + dt*15
-    for i, point in ipairs(ledPoints) do
-        local colorIndex = math.floor((i + ledIndex) % #colors) + 1
-        point.BackgroundColor3 = colors[colorIndex]
-    end
-end)
+-- Start rainbow effect on MainFrame
+startRainbowFrame(MainFrame, rainbowColors, 0.5)
 
--- Title
+-- Rainbow border effect
+local BorderFrame = Instance.new("Frame")
+BorderFrame.Size = UDim2.new(1, 4, 1, 4)
+BorderFrame.Position = UDim2.new(0, -2, 0, -2)
+BorderFrame.BackgroundTransparency = 1
+BorderFrame.Parent = MainFrame
+local borderUICorner = Instance.new("UICorner", BorderFrame)
+borderUICorner.CornerRadius = UDim.new(0, 14)
+
+local function startRainbowBorder(frame, colors, duration)
+    local index = 1
+    task.spawn(function()
+        while frame.Parent do
+            local nextIndex = index % #colors + 1
+            local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+            local tween = TweenService:Create(frame, tweenInfo, {BackgroundColor3 = colors[nextIndex], BackgroundTransparency = 0})
+            tween:Play()
+            tween.Completed:Wait()
+            index = nextIndex
+        end
+    end)
+end
+
+startRainbowBorder(BorderFrame, rainbowColors, 0.5)
+
+-- Title chính
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.Position = UDim2.new(0, 0, 0, 5)
@@ -94,7 +91,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Center
 Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = MainFrame
 
--- Subtitle
+-- Tiêu đề phụ nhỏ
 local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(1, 0, 0, 16)
 Subtitle.Position = UDim2.new(0, 0, 0, 32)
@@ -107,7 +104,7 @@ Subtitle.TextXAlignment = Enum.TextXAlignment.Center
 Subtitle.TextYAlignment = Enum.TextYAlignment.Center
 Subtitle.Parent = MainFrame
 
--- Create Button
+-- Create Button Function
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 200, 0, 35)
@@ -139,6 +136,7 @@ local SpinSpeed = 2500
 local AttackDelay = 0.08
 local NormalSpeed = 16
 local BoostSpeed = 32
+
 local BandageCooldown = 6
 local LastBandageTime = 0
 local BandageBusy = false
@@ -148,10 +146,12 @@ AttackButton.MouseButton1Click:Connect(function()
     AutoAttack = not AutoAttack
     AttackButton.Text = "⚔️ Auto Attack "..(AutoAttack and "✅" or "")
 end)
+
 SpinButton.MouseButton1Click:Connect(function()
     AutoSpin = not AutoSpin
     SpinButton.Text = "🔄 Xoay "..(AutoSpin and "✅" or "")
 end)
+
 SpeedButton.MouseButton1Click:Connect(function()
     SpeedBoost = not SpeedBoost
     SpeedButton.Text = "🏃 Tốc độ "..(SpeedBoost and "✅" or "")
@@ -160,11 +160,13 @@ SpeedButton.MouseButton1Click:Connect(function()
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
     end
 end)
+
 ShowHPButton.MouseButton1Click:Connect(function()
     ShowHP = not ShowHP
     ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
 end)
 
+-- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
@@ -187,7 +189,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
--- Show HP Player
+-- Hiển thị HP Player trên đầu
 local PlayerHPGuis = {}
 RunService.RenderStepped:Connect(function()
     if ShowHP then
@@ -228,18 +230,51 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Take Bandage
+-- Lấy băng gạc Logic an toàn
 local function takeBandage()
     if BandageBusy then return end
     if tick() < LastBandageTime then
         BandageButton.Text = "⏳ Chờ "..math.floor(LastBandageTime - tick()).."s"
         return
     end
+
     local char = LocalPlayer.Character
     if char and char:FindFirstChildOfClass("Tool") then
         BandageButton.Text = "⚠ Bỏ vũ khí xuống!"
         return
     end
+
     BandageBusy = true
     BandageButton.Text = "Đang lấy băng gạc..."
-    task.spawn
+
+    task.spawn(function()
+        local success = pcall(function()
+            local knitIndex = ReplicatedStorage:FindFirstChild("KnitPackages") 
+                and ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0")
+            if knitIndex then
+                local invService = knitIndex.knit.Services.InventoryService.RE.updateInventory
+                if invService then
+                    invService:FireServer("refresh")
+                    task.wait(0.3)
+                    invService:FireServer("eue","băng gạc")
+                end
+            end
+        end)
+
+        if success then
+            BandageButton.Text = "✅ Đã lấy băng gạc!"
+            LastBandageTime = tick() + BandageCooldown
+            for i = BandageCooldown, 1, -1 do
+                BandageButton.Text = "🩹 ("..i..")"
+                task.wait(1)
+            end
+            BandageButton.Text = "🩹 Lấy băng gạc"
+        else
+            BandageButton.Text = "❌ Lỗi lấy băng gạc"
+        end
+
+        BandageBusy = false
+    end)
+end
+
+BandageButton.MouseButton1Click:Connect(takeBandage)
