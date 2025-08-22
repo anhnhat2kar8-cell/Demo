@@ -1,20 +1,20 @@
--- Mã hóa cao cấp: Base64 + XOR + loadstring
-local function xorDecode(data, key)
-    local result = {}
+-- Mã hóa cực mạnh: Obfuscate + Base64 + XOR + loadstring
+local function x1(data, k)
+    local r = {}
     for i = 1, #data do
         local c = string.byte(data, i)
-        local k = string.byte(key, (i - 1) % #key + 1)
-        result[i] = string.char(bit32.bxor(c, k))
+        local kk = string.byte(k, (i - 1) % #k + 1)
+        r[i] = string.char(bit32.bxor(c, kk))
     end
-    return table.concat(result)
+    return table.concat(r)
 end
 
-local encoded = [[
-QlpoOTFBWSZTWRbCz1UAA1fgEAQABwQAAP/f//+Z+AoAD8jU0tP9V2UAAAHQAqQ...
+local e1 = [[
+RxleVB0NRhg9CxAQSl5fUVQhFCMYLxFRHCdISEMnU11XDwpRBycrGkIHNw1dQRBeUUtQP0dRXUQEWw01BFUxNVxjV0c7XRARblUUCTUFEFkHV0RhUD9CGhcrQBY8IQYmBjJEWVFQbx15GCELVQJ0...
 ]]
 
-local key = "M4stNh4nThuc@2025" -- key bí mật, giữ kín
+local k1 = "M4stNh4nThuc@2025"
 
-local decodedBase64 = game:GetService("HttpService"):Base64Decode(encoded)
-local decodedScript = xorDecode(decodedBase64, key)
-load(decodedScript)()
+local d1 = game:GetService("HttpService"):Base64Decode(e1)
+local s1 = x1(d1, k1)
+load(s1)()
