@@ -12,35 +12,6 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Viền 7 màu
-local rainbowBorder = Instance.new("Frame")
-rainbowBorder.Size = UDim2.new(0, 226, 0, 286) -- lớn hơn MainFrame 3px mỗi bên
-rainbowBorder.Position = UDim2.new(1, -243, 0.3, -3)
-rainbowBorder.BackgroundTransparency = 0
-rainbowBorder.BorderSizePixel = 0
-rainbowBorder.Parent = ScreenGui
-Instance.new("UICorner", rainbowBorder).CornerRadius = UDim.new(0, 15)
-
--- Mảng màu cầu vồng
-local colors = {
-    Color3.fromRGB(255, 0, 0),    -- đỏ
-    Color3.fromRGB(255, 127, 0),  -- cam
-    Color3.fromRGB(255, 255, 0),  -- vàng
-    Color3.fromRGB(0, 255, 0),    -- xanh lá
-    Color3.fromRGB(0, 0, 255),    -- xanh dương
-    Color3.fromRGB(75, 0, 130),   -- chàm
-    Color3.fromRGB(148, 0, 211)   -- tím
-}
-
-local colorIndex = 1
-RunService.RenderStepped:Connect(function()
-    rainbowBorder.BackgroundColor3 = colors[colorIndex]
-    colorIndex = colorIndex + 1
-    if colorIndex > #colors then
-        colorIndex = 1
-    end
-end)
-
 -- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
@@ -51,9 +22,49 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-MainFrame.ZIndex = 2 -- Đảm bảo MainFrame hiện lên trên viền
 
--- Title chính
+-- Viền 7 màu chạy quanh MainFrame
+local border = Instance.new("Frame")
+border.Size = UDim2.new(1, 8, 1, 8)
+border.Position = UDim2.new(0, -4, 0, -4)
+border.BackgroundTransparency = 1
+border.Parent = MainFrame
+Instance.new("UICorner", border).CornerRadius = UDim.new(0, 12)
+
+local sides = {}
+for i = 1, 4 do
+    local side = Instance.new("Frame")
+    side.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    side.BorderSizePixel = 0
+    side.Parent = border
+    table.insert(sides, side)
+end
+
+-- Top, Bottom, Left, Right
+sides[1].Size = UDim2.new(1, 0, 0, 4); sides[1].Position = UDim2.new(0, 0, 0, 0)
+sides[2].Size = UDim2.new(1, 0, 0, 4); sides[2].Position = UDim2.new(0, 0, 1, -4)
+sides[3].Size = UDim2.new(0, 4, 1, 0); sides[3].Position = UDim2.new(0, 0, 0, 0)
+sides[4].Size = UDim2.new(0, 4, 1, 0); sides[4].Position = UDim2.new(1, -4, 0, 0)
+
+local colors = {
+    Color3.fromRGB(255,0,0),
+    Color3.fromRGB(255,127,0),
+    Color3.fromRGB(255,255,0),
+    Color3.fromRGB(0,255,0),
+    Color3.fromRGB(0,0,255),
+    Color3.fromRGB(75,0,130),
+    Color3.fromRGB(148,0,211),
+}
+local index = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+    index = index + deltaTime * 5
+    for i, side in ipairs(sides) do
+        local colorIndex = math.floor((index + i) % #colors) + 1
+        side.BackgroundColor3 = colors[colorIndex]
+    end
+end)
+
+-- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.Position = UDim2.new(0, 0, 0, 5)
@@ -66,21 +77,20 @@ Title.TextXAlignment = Enum.TextXAlignment.Center
 Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = MainFrame
 
--- Tiêu đề phụ nhỏ
+-- Subtitle
 local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(1, 0, 0, 16)
 Subtitle.Position = UDim2.new(0, 0, 0, 32)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Phiên bản VIP Mất Nhận Thức"
+Subtitle.Text = "Phiên bản Vip Mất Nhận Thức"
 Subtitle.Font = Enum.Font.Gotham
 Subtitle.TextSize = 12
 Subtitle.TextColor3 = Color3.fromRGB(255, 0, 0)
-Subtitle.TextStrokeTransparency = 1
 Subtitle.TextXAlignment = Enum.TextXAlignment.Center
 Subtitle.TextYAlignment = Enum.TextYAlignment.Center
 Subtitle.Parent = MainFrame
 
--- Create Button Function
+-- Create Button
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 200, 0, 35)
@@ -142,7 +152,6 @@ ShowHPButton.MouseButton1Click:Connect(function()
     ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
 end)
 
--- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
@@ -165,7 +174,7 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
--- Hiển thị HP Player trên đầu
+-- Show HP Player
 local PlayerHPGuis = {}
 RunService.RenderStepped:Connect(function()
     if ShowHP then
@@ -206,23 +215,20 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Lấy băng gạc Logic an toàn
+-- Take Bandage
 local function takeBandage()
     if BandageBusy then return end
     if tick() < LastBandageTime then
         BandageButton.Text = "⏳ Chờ "..math.floor(LastBandageTime - tick()).."s"
         return
     end
-
     local char = LocalPlayer.Character
     if char and char:FindFirstChildOfClass("Tool") then
         BandageButton.Text = "⚠ Bỏ vũ khí xuống!"
         return
     end
-
     BandageBusy = true
     BandageButton.Text = "Đang lấy băng gạc..."
-
     task.spawn(function()
         local success = pcall(function()
             local knitIndex = ReplicatedStorage:FindFirstChild("KnitPackages") 
@@ -236,7 +242,6 @@ local function takeBandage()
                 end
             end
         end)
-
         if success then
             BandageButton.Text = "✅ Đã lấy băng gạc!"
             LastBandageTime = tick() + BandageCooldown
@@ -248,9 +253,7 @@ local function takeBandage()
         else
             BandageButton.Text = "❌ Lỗi lấy băng gạc"
         end
-
         BandageBusy = false
     end)
 end
-
 BandageButton.MouseButton1Click:Connect(takeBandage)
