@@ -1,15 +1,15 @@
--- Ultra Obfuscated Roblox Script
-local function xor_decode(s,key)
+-- Ultra Obfuscated Roblox Script (All-in-One)
+local function xor(s,key)
     local t={}
-    for i=1,#s do
-        t[i]=string.char(s:byte(i)~key)
-    end
+    for i=1,#s do t[i]=string.char(s:byte(i)~key) end
     return table.concat(t)
 end
 
--- Toàn bộ script đã nén + XOR 123
-local obf_code = xor_decode("\27\12\45\61\34\..." , 123)
+-- Toàn bộ script gốc đã nén + XOR 123
+local code = xor(
+"\27\12\45\61\34\56\78\90\12\34\56\..." -- chuỗi dài chứa toàn bộ script của bạn
+,123)
 
--- Chạy script
+-- Thực thi
 local run = loadstring or load
-run(obf_code)()
+run(code)()
