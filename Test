@@ -12,12 +12,12 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame
+-- Main Frame (nền trở về như cũ)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
 MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.3
+MainFrame.BackgroundTransparency = 0.3 -- nền như cũ
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
@@ -26,11 +26,11 @@ mainUICorner.CornerRadius = UDim.new(0, 12)
 
 -- Viền Rainbow
 local BorderFrame = Instance.new("Frame")
-BorderFrame.Size = UDim2.new(1, 4, 1, 4) -- viền 2px xung quanh
+BorderFrame.Size = UDim2.new(1, 4, 1, 4)
 BorderFrame.Position = UDim2.new(0, -2, 0, -2)
 BorderFrame.BackgroundTransparency = 1
 BorderFrame.BorderSizePixel = 0
-BorderFrame.ZIndex = MainFrame.ZIndex - 1 -- luôn sau MainFrame
+BorderFrame.ZIndex = MainFrame.ZIndex - 1
 BorderFrame.Parent = MainFrame
 
 local borderUICorner = Instance.new("UICorner", BorderFrame)
@@ -46,7 +46,7 @@ local rainbowColors = {
     Color3.fromRGB(148, 0, 211),
 }
 
--- Chạy hiệu ứng nháy viền
+-- Hiệu ứng nháy viền
 task.spawn(function()
     local index = 1
     while BorderFrame.Parent do
@@ -71,7 +71,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Center
 Title.TextYAlignment = Enum.TextYAlignment.Center
 Title.Parent = MainFrame
 
--- Tiêu đề phụ nhỏ
+-- Tiêu đề phụ
 local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(1, 0, 0, 16)
 Subtitle.Position = UDim2.new(0, 0, 0, 32)
@@ -84,7 +84,7 @@ Subtitle.TextXAlignment = Enum.TextXAlignment.Center
 Subtitle.TextYAlignment = Enum.TextYAlignment.Center
 Subtitle.Parent = MainFrame
 
--- Create Button Function
+-- Tạo nút
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 200, 0, 35)
@@ -107,7 +107,7 @@ local SpeedButton = createButton("🏃 Tốc độ", 135)
 local ShowHPButton = createButton("♥️ Hiện HP Player", 175)
 local BandageButton = createButton("🩹 Lấy băng gạc", 215)
 
--- Variables
+-- Biến
 local AutoAttack = false
 local AutoSpin = false
 local SpeedBoost = false
@@ -121,7 +121,7 @@ local BandageCooldown = 6
 local LastBandageTime = 0
 local BandageBusy = false
 
--- Button Logic
+-- Nút logic
 AttackButton.MouseButton1Click:Connect(function()
     AutoAttack = not AutoAttack
     AttackButton.Text = "⚔️ Auto Attack "..(AutoAttack and "✅" or "")
@@ -146,13 +146,12 @@ ShowHPButton.MouseButton1Click:Connect(function()
     ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
 end)
 
--- Giữ tốc độ khi respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
 end)
 
--- Auto Attack Loop
+-- Auto Attack
 task.spawn(function()
     while true do
         if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
@@ -162,14 +161,14 @@ task.spawn(function()
     end
 end)
 
--- Auto Spin Loop
+-- Auto Spin
 RunService.RenderStepped:Connect(function(deltaTime)
     if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
     end
 end)
 
--- Hiển thị HP Player trên đầu
+-- Hiện HP Player
 local PlayerHPGuis = {}
 RunService.RenderStepped:Connect(function()
     if ShowHP then
@@ -210,7 +209,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Lấy băng gạc Logic an toàn
+-- Lấy băng gạc
 local function takeBandage()
     if BandageBusy then return end
     if tick() < LastBandageTime then
