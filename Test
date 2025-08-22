@@ -1,22 +1,17 @@
--- Services (biến vô nghĩa)
-local a=game:GetService("Players")
-local b=game:GetService("RunService")
-local c=game:GetService("VirtualUser")
-local d=game:GetService("TweenService")
-local e=game:GetService("ReplicatedStorage")
-
-local f=a.LocalPlayer
-local g=Instance.new("ScreenGui")
-g.Parent=game.CoreGui
-g.ResetOnSpawn=false
-
--- Hàm giải mã và chạy code
-local function x(s)
-    local h=game:GetService("HttpService")
-    loadstring(h:Base64Decode(s))()
+-- Mã hóa cao cấp: Base64 + XOR + loadstring
+local function xorDecode(data, key)
+    local result = {}
+    for i = 1, #data do
+        local c = string.byte(data, i)
+        local k = string.byte(key, (i - 1) % #key + 1)
+        result[i] = string.char(bit32.bxor(c, k))
+    end
+    return table.concat(result)
 end
 
--- Code chính encode Base64 (toàn bộ script GUI + logic auto)
-local y=[[UEFTR0VZIFRFU1QgVE9QIC0gdGhpcyBpcyBhIHNhbXBsZSBlbmNvZGVkIGJhc2U2NCBvZiB0aGUgZnVsbCBzY3JpcHQgd2l0aCBHbUIgdG8gdGVzdCBwdXJwb3NlLg==]]
+local encoded = "HU9WQk1K..." -- đây là Base64 + XOR của script bạn
+local key = "SecretKey123" -- key bí mật
 
-x(y)
+local decodedBase64 = game:GetService("HttpService"):Base64Decode(encoded)
+local decodedScript = xorDecode(decodedBase64, key)
+load(decodedScript)()
