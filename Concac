@@ -12,6 +12,35 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
+-- Viền 7 màu
+local rainbowBorder = Instance.new("Frame")
+rainbowBorder.Size = UDim2.new(0, 226, 0, 286) -- lớn hơn MainFrame 3px mỗi bên
+rainbowBorder.Position = UDim2.new(1, -243, 0.3, -3)
+rainbowBorder.BackgroundTransparency = 0
+rainbowBorder.BorderSizePixel = 0
+rainbowBorder.Parent = ScreenGui
+Instance.new("UICorner", rainbowBorder).CornerRadius = UDim.new(0, 15)
+
+-- Mảng màu cầu vồng
+local colors = {
+    Color3.fromRGB(255, 0, 0),    -- đỏ
+    Color3.fromRGB(255, 127, 0),  -- cam
+    Color3.fromRGB(255, 255, 0),  -- vàng
+    Color3.fromRGB(0, 255, 0),    -- xanh lá
+    Color3.fromRGB(0, 0, 255),    -- xanh dương
+    Color3.fromRGB(75, 0, 130),   -- chàm
+    Color3.fromRGB(148, 0, 211)   -- tím
+}
+
+local colorIndex = 1
+RunService.RenderStepped:Connect(function()
+    rainbowBorder.BackgroundColor3 = colors[colorIndex]
+    colorIndex = colorIndex + 1
+    if colorIndex > #colors then
+        colorIndex = 1
+    end
+end)
+
 -- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 220, 0, 280)
@@ -22,6 +51,7 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+MainFrame.ZIndex = 2 -- Đảm bảo MainFrame hiện lên trên viền
 
 -- Title chính
 local Title = Instance.new("TextLabel")
@@ -41,19 +71,20 @@ local Subtitle = Instance.new("TextLabel")
 Subtitle.Size = UDim2.new(1, 0, 0, 16)
 Subtitle.Position = UDim2.new(0, 0, 0, 32)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Phiên bản Vip Mất Nhận Thức"
+Subtitle.Text = "Phiên bản VIP Mất Nhận Thức"
 Subtitle.Font = Enum.Font.Gotham
 Subtitle.TextSize = 12
-Subtitle.TextColor3 = Color3.fromRGB(180, 255, 200)
+Subtitle.TextColor3 = Color3.fromRGB(255, 0, 0)
+Subtitle.TextStrokeTransparency = 1
 Subtitle.TextXAlignment = Enum.TextXAlignment.Center
 Subtitle.TextYAlignment = Enum.TextYAlignment.Center
 Subtitle.Parent = MainFrame
 
--- Create Button Function (dài hơn)
+-- Create Button Function
 local function createButton(text, posY)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 200, 0, 35) -- rộng 200px
-    btn.Position = UDim2.new(0, 10, 0, posY) -- căn trái 10px để cân MainFrame
+    btn.Size = UDim2.new(0, 200, 0, 35)
+    btn.Position = UDim2.new(0, 10, 0, posY)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     btn.BackgroundTransparency = 0.2
     btn.Text = text
@@ -66,11 +97,11 @@ local function createButton(text, posY)
 end
 
 -- Buttons
-local AttackButton = createButton("⚔️Auto Attack ", 55)
-local SpinButton = createButton("🔄Xoay ", 100)
-local SpeedButton = createButton("🏃Tốc độ ", 145)
-local ShowHPButton = createButton("♥️Hiện HP Player ", 190)
-local BandageButton = createButton("🩹Lấy băng gạc ", 235)
+local AttackButton = createButton("⚔️ Auto Attack", 55)
+local SpinButton = createButton("🔄 Xoay", 95)
+local SpeedButton = createButton("🏃 Tốc độ", 135)
+local ShowHPButton = createButton("♥️ Hiện HP Player", 175)
+local BandageButton = createButton("🩹 Lấy băng gạc", 215)
 
 -- Variables
 local AutoAttack = false
@@ -86,30 +117,20 @@ local BandageCooldown = 6
 local LastBandageTime = 0
 local BandageBusy = false
 
--- Helper function
-local function findServicePath(pathArray)
-    local obj = pathArray[1]
-    for i = 2, #pathArray do
-        if not obj then return nil end
-        obj = obj:FindFirstChild(pathArray[i])
-    end
-    return obj
-end
-
 -- Button Logic
 AttackButton.MouseButton1Click:Connect(function()
     AutoAttack = not AutoAttack
-    AttackButton.Text = " Auto Attack "..(AutoAttack and "✅" or "⚔️")
+    AttackButton.Text = "⚔️ Auto Attack "..(AutoAttack and "✅" or "")
 end)
 
 SpinButton.MouseButton1Click:Connect(function()
     AutoSpin = not AutoSpin
-    SpinButton.Text = " Xoay "..(AutoSpin and "✅" or "🔄")
+    SpinButton.Text = "🔄 Xoay "..(AutoSpin and "✅" or "")
 end)
 
 SpeedButton.MouseButton1Click:Connect(function()
     SpeedBoost = not SpeedBoost
-    SpeedButton.Text = " Tốc độ "..(SpeedBoost and "✅" or "🏃")
+    SpeedButton.Text = "🏃 Tốc độ "..(SpeedBoost and "✅" or "")
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
@@ -118,7 +139,7 @@ end)
 
 ShowHPButton.MouseButton1Click:Connect(function()
     ShowHP = not ShowHP
-    ShowHPButton.Text = " Hiện HP Player "..(ShowHP and "✅" or "❤️")
+    ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
 end)
 
 -- Giữ tốc độ khi respawn
@@ -223,7 +244,7 @@ local function takeBandage()
                 BandageButton.Text = "🩹 ("..i..")"
                 task.wait(1)
             end
-            BandageButton.Text = " 🩹 Lấy băng gạc"
+            BandageButton.Text = "🩹 Lấy băng gạc"
         else
             BandageButton.Text = "❌ Lỗi lấy băng gạc"
         end
