@@ -1,225 +1,118 @@
--- Services
+--// Dịch vụ
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- GUI
+--// Cấu hình Orbit
+local radius = 15
+local speed = 2
+local height = 5
+local bossName = "Boss"
+
+--// Trạng thái
+local autoAttack = false
+local orbitBoss = false
+
+--// Hàm tìm boss
+local function getBoss()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:lower():find(bossName:lower()) and v:IsA("Model") then
+            local hrp = v:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                return hrp
+            end
+        end
+    end
+    return nil
+end
+
+--// Auto Attack Loop
+spawn(function()
+    while task.wait(0.2) do
+        if autoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+            VirtualUser:ClickButton1(Vector2.new(0,0))
+        end
+    end
+end)
+
+--// Orbit Boss Loop
+spawn(function()
+    local angle = 0
+    while task.wait() do
+        if orbitBoss and HumanoidRootPart then
+            local boss = getBoss()
+            if boss then
+                angle = angle + speed * 0.1
+                local offset = Vector3.new(math.cos(angle) * radius, height, math.sin(angle) * radius)
+                local targetPos = boss.Position + offset
+                local tween = TweenService:Create(
+                    HumanoidRootPart,
+                    TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut),
+                    {CFrame = CFrame.new(targetPos, boss.Position)}
+                )
+                tween:Play()
+                tween.Completed:Wait()
+            end
+        end
+    end
+end)
+
+--// GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
--- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 280)
-MainFrame.Position = UDim2.new(1, -240, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.3
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 180, 0, 100)
+Frame.Position = UDim2.new(0.05, 0, 0.25, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 2
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
 
--- Title chính
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
-Title.Position = UDim2.new(0, 0, 0, 5)
-Title.BackgroundTransparency = 1
-Title.Text = "☠️ Mất Nhận Thức ☠️"
-Title.Font = Enum.Font.GothamBold
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Text = "☠️ Auto Boss ☠️"
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 18
-Title.TextColor3 = Color3.fromRGB(255, 255, 255) -- đỏ
-Title.TextXAlignment = Enum.TextXAlignment.Center
-Title.TextYAlignment = Enum.TextYAlignment.Center
-Title.Parent = MainFrame
+Title.Parent = Frame
 
--- Tiêu đề phụ nhỏ
-local Subtitle = Instance.new("TextLabel")
-Subtitle.Size = UDim2.new(1, 0, 0, 16)
-Subtitle.Position = UDim2.new(0, 0, 0, 32)
-Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Phiên bản Vip Mất Nhận Thức"
-Subtitle.Font = Enum.Font.Gotham
-Subtitle.TextSize = 12
-Subtitle.TextColor3 = Color3.fromRGB(255, 0, 0)
-Subtitle.TextXAlignment = Enum.TextXAlignment.Center
-Subtitle.TextYAlignment = Enum.TextYAlignment.Center
-Subtitle.Parent = MainFrame
+-- Nút Auto Attack
+local AttackBtn = Instance.new("TextButton")
+AttackBtn.Size = UDim2.new(1, -10, 0, 30)
+AttackBtn.Position = UDim2.new(0, 5, 0, 30)
+AttackBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+AttackBtn.Text = "Auto Attack: ❌"
+AttackBtn.TextColor3 = Color3.fromRGB(255,255,255)
+AttackBtn.Font = Enum.Font.SourceSansBold
+AttackBtn.TextSize = 16
+AttackBtn.Parent = Frame
 
--- Create Button Function
-local function createButton(text, posY)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 200, 0, 35) -- rộng 200px
-    btn.Position = UDim2.new(0, 10, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.BackgroundTransparency = 0.2
-    btn.Text = text
-    btn.TextSize = 14
-    btn.Font = Enum.Font.Gotham
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Parent = MainFrame
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    return btn
-end
-
--- Buttons
-local AttackButton = createButton("⚔️ Auto Attack", 55)
-local SpinButton = createButton("🔄 Xoay", 95)
-local SpeedButton = createButton("🏃 Tốc độ", 135)
-local ShowHPButton = createButton("♥️ Hiện HP Player", 175)
-local BandageButton = createButton("🩹 Lấy băng gạc", 215)
-
--- Variables
-local AutoAttack = false
-local AutoSpin = false
-local SpeedBoost = false
-local ShowHP = false
-local SpinSpeed = 2500
-local AttackDelay = 0.08
-local NormalSpeed = 16
-local BoostSpeed = 32
-
-local BandageCooldown = 6
-local LastBandageTime = 0
-local BandageBusy = false
-
--- Button Logic
-AttackButton.MouseButton1Click:Connect(function()
-    AutoAttack = not AutoAttack
-    AttackButton.Text = "⚔️ Auto Attack "..(AutoAttack and "✅" or "")
+AttackBtn.MouseButton1Click:Connect(function()
+    autoAttack = not autoAttack
+    AttackBtn.Text = "Auto Attack: " .. (autoAttack and "✅" or "❌")
 end)
 
-SpinButton.MouseButton1Click:Connect(function()
-    AutoSpin = not AutoSpin
-    SpinButton.Text = "🔄 Xoay "..(AutoSpin and "✅" or "")
+-- Nút Orbit Boss
+local OrbitBtn = Instance.new("TextButton")
+OrbitBtn.Size = UDim2.new(1, -10, 0, 30)
+OrbitBtn.Position = UDim2.new(0, 5, 0, 65)
+OrbitBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+OrbitBtn.Text = "Orbit Boss: ❌"
+OrbitBtn.TextColor3 = Color3.fromRGB(255,255,255)
+OrbitBtn.Font = Enum.Font.SourceSansBold
+OrbitBtn.TextSize = 16
+OrbitBtn.Parent = Frame
+
+OrbitBtn.MouseButton1Click:Connect(function()
+    orbitBoss = not orbitBoss
+    OrbitBtn.Text = "Orbit Boss: " .. (orbitBoss and "✅" or "❌")
 end)
-
-SpeedButton.MouseButton1Click:Connect(function()
-    SpeedBoost = not SpeedBoost
-    SpeedButton.Text = "🏃 Tốc độ "..(SpeedBoost and "✅" or "")
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
-    end
-end)
-
-ShowHPButton.MouseButton1Click:Connect(function()
-    ShowHP = not ShowHP
-    ShowHPButton.Text = "♥️ Hiện HP Player "..(ShowHP and "✅" or "")
-end)
-
--- Giữ tốc độ khi respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    local humanoid = char:WaitForChild("Humanoid")
-    humanoid.WalkSpeed = SpeedBoost and BoostSpeed or NormalSpeed
-end)
-
--- Auto Attack Loop
-task.spawn(function()
-    while true do
-        if AutoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
-            VirtualUser:ClickButton1(Vector2.new())
-        end
-        task.wait(AttackDelay)
-    end
-end)
-
--- Auto Spin Loop
-RunService.RenderStepped:Connect(function(deltaTime)
-    if AutoSpin and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(SpinSpeed * deltaTime), 0)
-    end
-end)
-
--- Hiển thị HP Player trên đầu
-local PlayerHPGuis = {}
-RunService.RenderStepped:Connect(function()
-    if ShowHP then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                if not PlayerHPGuis[player] then
-                    local billboard = Instance.new("BillboardGui")
-                    billboard.Size = UDim2.new(0, 100, 0, 30)
-                    billboard.Adornee = head
-                    billboard.AlwaysOnTop = true
-                    billboard.Parent = head
-
-                    local hpLabel = Instance.new("TextLabel")
-                    hpLabel.Size = UDim2.new(1,0,1,0)
-                    hpLabel.BackgroundTransparency = 1
-                    hpLabel.TextColor3 = Color3.fromRGB(255,0,0)
-                    hpLabel.Font = Enum.Font.GothamBold
-                    hpLabel.TextSize = 14
-                    hpLabel.TextStrokeTransparency = 0
-                    hpLabel.Parent = billboard
-
-                    PlayerHPGuis[player] = hpLabel
-                end
-                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    PlayerHPGuis[player].Text = string.format("%d / %d", math.floor(humanoid.Health), math.floor(humanoid.MaxHealth))
-                end
-            end
-        end
-    else
-        for player, gui in pairs(PlayerHPGuis) do
-            if gui and gui.Parent then
-                gui.Parent:Destroy()
-            end
-        end
-        PlayerHPGuis = {}
-    end
-end)
-
--- Lấy băng gạc Logic an toàn
-local function takeBandage()
-    if BandageBusy then return end
-    if tick() < LastBandageTime then
-        BandageButton.Text = "⏳ Chờ "..math.floor(LastBandageTime - tick()).."s"
-        return
-    end
-
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChildOfClass("Tool") then
-        BandageButton.Text = "⚠ Bỏ vũ khí xuống!"
-        return
-    end
-
-    BandageBusy = true
-    BandageButton.Text = "Đang lấy băng gạc..."
-
-    task.spawn(function()
-        local success = pcall(function()
-            local knitIndex = ReplicatedStorage:FindFirstChild("KnitPackages") 
-                and ReplicatedStorage.KnitPackages._Index:FindFirstChild("sleitnick_knit@1.7.0")
-            if knitIndex then
-                local invService = knitIndex.knit.Services.InventoryService.RE.updateInventory
-                if invService then
-                    invService:FireServer("refresh")
-                    task.wait(0.3)
-                    invService:FireServer("eue","băng gạc")
-                end
-            end
-        end)
-
-        if success then
-            BandageButton.Text = "✅ Đã lấy băng gạc!"
-            LastBandageTime = tick() + BandageCooldown
-            for i = BandageCooldown, 1, -1 do
-                BandageButton.Text = "🩹 ("..i..")"
-                task.wait(1)
-            end
-            BandageButton.Text = "🩹 Lấy băng gạc"
-        else
-            BandageButton.Text = "❌ Lỗi lấy băng gạc"
-        end
-
-        BandageBusy = false
-    end)
-end
-
-BandageButton.MouseButton1Click:Connect(takeBandage)
