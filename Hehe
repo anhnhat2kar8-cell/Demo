@@ -1,38 +1,42 @@
 --// Dịch vụ
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
---// Cấu hình Orbit
+--// Cấu hình mặc định
 local radius = 15
 local speed = 2
 local height = 5
-local bossName = "Boss"
 
 --// Trạng thái
 local autoAttack = false
 local orbitBoss = false
 
---// Hàm tìm boss
+--// Hàm tìm boss gần nhất
 local function getBoss()
+    local closest, dist = nil, math.huge
     for _, v in pairs(workspace:GetDescendants()) do
-        if v.Name:lower():find(bossName:lower()) and v:IsA("Model") then
-            local hrp = v:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                return hrp
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChildOfClass("Humanoid") then
+            local hrp = v.HumanoidRootPart
+            local hum = v:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local d = (hrp.Position - HumanoidRootPart.Position).Magnitude
+                if d < dist then
+                    closest, dist = hrp, d
+                end
             end
         end
     end
-    return nil
+    return closest
 end
 
 --// Auto Attack Loop
-spawn(function()
+task.spawn(function()
     while task.wait(0.2) do
         if autoAttack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
             VirtualUser:ClickButton1(Vector2.new(0,0))
@@ -41,7 +45,7 @@ spawn(function()
 end)
 
 --// Orbit Boss Loop
-spawn(function()
+task.spawn(function()
     local angle = 0
     while task.wait() do
         if orbitBoss and HumanoidRootPart then
@@ -68,7 +72,7 @@ ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 180, 0, 100)
+Frame.Size = UDim2.new(0, 200, 0, 180)
 Frame.Position = UDim2.new(0.05, 0, 0.25, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Frame.BorderSizePixel = 2
@@ -115,4 +119,82 @@ OrbitBtn.Parent = Frame
 OrbitBtn.MouseButton1Click:Connect(function()
     orbitBoss = not orbitBoss
     OrbitBtn.Text = "Orbit Boss: " .. (orbitBoss and "✅" or "❌")
+end)
+
+-- Label Radius
+local RadiusLabel = Instance.new("TextLabel")
+RadiusLabel.Size = UDim2.new(1, -10, 0, 20)
+RadiusLabel.Position = UDim2.new(0, 5, 0, 100)
+RadiusLabel.BackgroundTransparency = 1
+RadiusLabel.Text = "Radius: " .. radius
+RadiusLabel.TextColor3 = Color3.fromRGB(255,255,255)
+RadiusLabel.Font = Enum.Font.SourceSans
+RadiusLabel.TextSize = 14
+RadiusLabel.TextXAlignment = Enum.TextXAlignment.Left
+RadiusLabel.Parent = Frame
+
+-- Tăng/Giảm Radius
+local RadiusPlus = Instance.new("TextButton")
+RadiusPlus.Size = UDim2.new(0, 40, 0, 20)
+RadiusPlus.Position = UDim2.new(1, -45, 0, 100)
+RadiusPlus.BackgroundColor3 = Color3.fromRGB(100,100,100)
+RadiusPlus.Text = "+"
+RadiusPlus.TextColor3 = Color3.fromRGB(255,255,255)
+RadiusPlus.Parent = Frame
+
+local RadiusMinus = Instance.new("TextButton")
+RadiusMinus.Size = UDim2.new(0, 40, 0, 20)
+RadiusMinus.Position = UDim2.new(1, -90, 0, 100)
+RadiusMinus.BackgroundColor3 = Color3.fromRGB(100,100,100)
+RadiusMinus.Text = "-"
+RadiusMinus.TextColor3 = Color3.fromRGB(255,255,255)
+RadiusMinus.Parent = Frame
+
+RadiusPlus.MouseButton1Click:Connect(function()
+    radius = radius + 5
+    RadiusLabel.Text = "Radius: " .. radius
+end)
+
+RadiusMinus.MouseButton1Click:Connect(function()
+    radius = math.max(5, radius - 5)
+    RadiusLabel.Text = "Radius: " .. radius
+end)
+
+-- Label Speed
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(1, -10, 0, 20)
+SpeedLabel.Position = UDim2.new(0, 5, 0, 125)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "Speed: " .. speed
+SpeedLabel.TextColor3 = Color3.fromRGB(255,255,255)
+SpeedLabel.Font = Enum.Font.SourceSans
+SpeedLabel.TextSize = 14
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = Frame
+
+-- Tăng/Giảm Speed
+local SpeedPlus = Instance.new("TextButton")
+SpeedPlus.Size = UDim2.new(0, 40, 0, 20)
+SpeedPlus.Position = UDim2.new(1, -45, 0, 125)
+SpeedPlus.BackgroundColor3 = Color3.fromRGB(100,100,100)
+SpeedPlus.Text = "+"
+SpeedPlus.TextColor3 = Color3.fromRGB(255,255,255)
+SpeedPlus.Parent = Frame
+
+local SpeedMinus = Instance.new("TextButton")
+SpeedMinus.Size = UDim2.new(0, 40, 0, 20)
+SpeedMinus.Position = UDim2.new(1, -90, 0, 125)
+SpeedMinus.BackgroundColor3 = Color3.fromRGB(100,100,100)
+SpeedMinus.Text = "-"
+SpeedMinus.TextColor3 = Color3.fromRGB(255,255,255)
+SpeedMinus.Parent = Frame
+
+SpeedPlus.MouseButton1Click:Connect(function()
+    speed = speed + 1
+    SpeedLabel.Text = "Speed: " .. speed
+end)
+
+SpeedMinus.MouseButton1Click:Connect(function()
+    speed = math.max(1, speed - 1)
+    SpeedLabel.Text = "Speed: " .. speed
 end)
