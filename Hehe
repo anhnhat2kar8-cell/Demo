@@ -1,1 +1,60 @@
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
+--// Variables
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Thay "BossName" bằng tên boss trong game
+local Boss = workspace:WaitForChild("BossName")
+
+-- Cài đặt
+local Radius = 15      -- bán kính vòng tròn quanh boss
+local Speed = 2        -- tốc độ quay
+local HeightOffset = 0 -- cao hơn boss
+
+-- Trạng thái
+local AutoOrbit = false
+
+--// Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "OrbitGui"
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 150, 0, 50)
+ToggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 18
+ToggleButton.Text = "Quay quanh Boss: OFF"
+ToggleButton.Parent = ScreenGui
+
+-- Bật/tắt
+ToggleButton.MouseButton1Click:Connect(function()
+    AutoOrbit = not AutoOrbit
+    if AutoOrbit then
+        ToggleButton.Text = "Quay quanh Boss: ON"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    else
+        ToggleButton.Text = "Quay quanh Boss: OFF"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    end
+end)
+
+-- Vòng lặp quay quanh boss
+RunService.RenderStepped:Connect(function()
+    if AutoOrbit and Boss and Boss:FindFirstChild("HumanoidRootPart") then
+        local BossRoot = Boss.HumanoidRootPart
+        local t = tick() * Speed
+
+        local offset = Vector3.new(math.cos(t) * Radius, HeightOffset, math.sin(t) * Radius)
+        local targetPos = BossRoot.Position + offset
+
+        -- Dịch chuyển nhân vật
+        HumanoidRootPart.CFrame = CFrame.new(targetPos, BossRoot.Position)
+    end
+end)
