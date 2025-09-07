@@ -1,60 +1,109 @@
---// Services
+--// Auto Collect Money (for your own place)
+--// Works when money is collected by touching (Touched event on server)
+
+-- SETTINGS
+local ENABLED = true               -- bật/tắt auto
+local SCAN_INTERVAL = 0.25         -- mỗi bao lâu quét 1 lần (giây)
+local PICKUP_RANGE = 300           -- chỉ tìm tiền trong bán kính này
+local STOP_IF_ENEMY_NEAR = false   -- nếu muốn dừng khi có NPC gần
+local LOW_HEALTH_STOP = 20         -- dừng nếu máu < 20% (0 để bỏ)
+
+-- SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
+local PathfindingService = game:GetService("PathfindingService")
+local CollectionService = game:GetService("CollectionService")
 
---// Variables
-local Player = Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local LP = Players.LocalPlayer
+local Char = LP.Character or LP.CharacterAdded:Wait()
+local Humanoid = Char:WaitForChild("Humanoid")
+local HRP = Char:WaitForChild("HumanoidRootPart")
 
--- Thay "BossName" bằng tên boss trong game
-local Boss = workspace:WaitForChild("BossName")
+-- UTIL
+local function isMoney(inst)
+	-- Hỗ trợ: Tag "Money" hoặc Name == "Money"
+	if CollectionService:HasTag(inst, "Money") then return true end
+	if string.lower(inst.Name) == "money" then return true end
+	return false
+end
 
--- Cài đặt
-local Radius = 15      -- bán kính vòng tròn quanh boss
-local Speed = 2        -- tốc độ quay
-local HeightOffset = 0 -- cao hơn boss
+local function getMoneyCandidates(origin, maxRange)
+	local list = {}
+	-- Từ Workspace: duyệt nhanh các Part/Model có tag/name hợp lệ
+	for _, inst in ipairs(workspace:GetDescendants()) do
+		if isMoney(inst) and inst:IsA("BasePart") and inst.Parent ~= Char then
+			local dist = (inst.Position - origin).Magnitude
+			if dist <= maxRange then
+				table.insert(list, {part = inst, d = dist})
+			end
+		end
+	end
+	table.sort(list, function(a,b) return a.d < b.d end)
+	return list
+end
 
--- Trạng thái
-local AutoOrbit = false
+local function moveTo(targetPos)
+	-- Dùng Pathfinding để đi tránh vật cản, hạn chế bị anti-cheat
+	local path = PathfindingService:CreatePath({
+		AgentCanJump = true,
+		WaypointSpacing = 4
+	})
+	path:ComputeAsync(HRP.Position, targetPos)
+	if path.Status ~= Enum.PathStatus.Success then
+		-- fallback: MoveTo thẳng
+		Humanoid:MoveTo(targetPos)
+		Humanoid.MoveToFinished:Wait(3)
+		return
+	end
+	for _, wp in ipairs(path:GetWaypoints()) do
+		if not ENABLED then return end
+		if wp.Action == Enum.PathWaypointAction.Jump then
+			Humanoid.Jump = true
+		end
+		Humanoid:MoveTo(wp.Position)
+		local reached = Humanoid.MoveToFinished:Wait(3)
+		if not reached then break end
+	end
+end
 
---// Tạo GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "OrbitGui"
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+local function healthPercent()
+	if Humanoid.MaxHealth <= 0 then return 100 end
+	return (Humanoid.Health / Humanoid.MaxHealth) * 100
+end
 
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 150, 0, 50)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.2, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 18
-ToggleButton.Text = "Quay quanh Boss: OFF"
-ToggleButton.Parent = ScreenGui
-
--- Bật/tắt
-ToggleButton.MouseButton1Click:Connect(function()
-    AutoOrbit = not AutoOrbit
-    if AutoOrbit then
-        ToggleButton.Text = "Quay quanh Boss: ON"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    else
-        ToggleButton.Text = "Quay quanh Boss: OFF"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-    end
+-- MAIN LOOP
+task.spawn(function()
+	while true do
+		if ENABLED and Humanoid and HRP then
+			-- Dừng nếu máu thấp
+			if LOW_HEALTH_STOP > 0 and healthPercent() < LOW_HEALTH_STOP then
+				-- đợi hồi máu
+			else
+				local items = getMoneyCandidates(HRP.Position, PICKUP_RANGE)
+				for _, item in ipairs(items) do
+					if not ENABLED then break end
+					local part = item.part
+					if part and part.Parent and part:IsDescendantOf(workspace) then
+						-- Đi đến gần (cách ~2.5 stud) để chạm
+						local goal = part.Position
+						moveTo(goal)
+						-- đứng 1 tí cho server xử lý Touched
+						task.wait(0.1)
+					end
+				end
+			end
+		end
+		task.wait(SCAN_INTERVAL)
+	end
 end)
 
--- Vòng lặp quay quanh boss
-RunService.RenderStepped:Connect(function()
-    if AutoOrbit and Boss and Boss:FindFirstChild("HumanoidRootPart") then
-        local BossRoot = Boss.HumanoidRootPart
-        local t = tick() * Speed
-
-        local offset = Vector3.new(math.cos(t) * Radius, HeightOffset, math.sin(t) * Radius)
-        local targetPos = BossRoot.Position + offset
-
-        -- Dịch chuyển nhân vật
-        HumanoidRootPart.CFrame = CFrame.new(targetPos, BossRoot.Position)
-    end
+-- Optional: Hotkey bật/tắt (G)
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.G then
+		ENABLED = not ENABLED
+		local msg = ENABLED and "[Auto Money] ON" or "[Auto Money] OFF"
+		print(msg)
+	end
 end)
