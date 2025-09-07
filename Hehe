@@ -1,109 +1,71 @@
---// Auto Collect Money (for your own place)
---// Works when money is collected by touching (Touched event on server)
-
--- SETTINGS
-local ENABLED = true               -- bật/tắt auto
-local SCAN_INTERVAL = 0.25         -- mỗi bao lâu quét 1 lần (giây)
-local PICKUP_RANGE = 300           -- chỉ tìm tiền trong bán kính này
-local STOP_IF_ENEMY_NEAR = false   -- nếu muốn dừng khi có NPC gần
-local LOW_HEALTH_STOP = 20         -- dừng nếu máu < 20% (0 để bỏ)
-
--- SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local PathfindingService = game:GetService("PathfindingService")
-local CollectionService = game:GetService("CollectionService")
 
-local LP = Players.LocalPlayer
-local Char = LP.Character or LP.CharacterAdded:Wait()
-local Humanoid = Char:WaitForChild("Humanoid")
-local HRP = Char:WaitForChild("HumanoidRootPart")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- UTIL
-local function isMoney(inst)
-	-- Hỗ trợ: Tag "Money" hoặc Name == "Money"
-	if CollectionService:HasTag(inst, "Money") then return true end
-	if string.lower(inst.Name) == "money" then return true end
-	return false
-end
+-- ====== CONFIG ======
+local moneyName = "Bill" -- Đổi tên object tiền trong game
+local pickupRange = 100  -- Khoảng cách auto nhặt
+-- ====================
 
-local function getMoneyCandidates(origin, maxRange)
-	local list = {}
-	-- Từ Workspace: duyệt nhanh các Part/Model có tag/name hợp lệ
-	for _, inst in ipairs(workspace:GetDescendants()) do
-		if isMoney(inst) and inst:IsA("BasePart") and inst.Parent ~= Char then
-			local dist = (inst.Position - origin).Magnitude
-			if dist <= maxRange then
-				table.insert(list, {part = inst, d = dist})
-			end
-		end
-	end
-	table.sort(list, function(a,b) return a.d < b.d end)
-	return list
-end
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
 
-local function moveTo(targetPos)
-	-- Dùng Pathfinding để đi tránh vật cản, hạn chế bị anti-cheat
-	local path = PathfindingService:CreatePath({
-		AgentCanJump = true,
-		WaypointSpacing = 4
-	})
-	path:ComputeAsync(HRP.Position, targetPos)
-	if path.Status ~= Enum.PathStatus.Success then
-		-- fallback: MoveTo thẳng
-		Humanoid:MoveTo(targetPos)
-		Humanoid.MoveToFinished:Wait(3)
-		return
-	end
-	for _, wp in ipairs(path:GetWaypoints()) do
-		if not ENABLED then return end
-		if wp.Action == Enum.PathWaypointAction.Jump then
-			Humanoid.Jump = true
-		end
-		Humanoid:MoveTo(wp.Position)
-		local reached = Humanoid.MoveToFinished:Wait(3)
-		if not reached then break end
-	end
-end
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 150, 0, 60)
+Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 2
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
 
-local function healthPercent()
-	if Humanoid.MaxHealth <= 0 then return 100 end
-	return (Humanoid.Health / Humanoid.MaxHealth) * 100
-end
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 20)
+Title.BackgroundTransparency = 1
+Title.Text = "⚡ Auto Nhặt Tiền ⚡"
+Title.TextColor3 = Color3.fromRGB(0, 255, 0)
+Title.TextScaled = true
+Title.Parent = Frame
 
--- MAIN LOOP
-task.spawn(function()
-	while true do
-		if ENABLED and Humanoid and HRP then
-			-- Dừng nếu máu thấp
-			if LOW_HEALTH_STOP > 0 and healthPercent() < LOW_HEALTH_STOP then
-				-- đợi hồi máu
-			else
-				local items = getMoneyCandidates(HRP.Position, PICKUP_RANGE)
-				for _, item in ipairs(items) do
-					if not ENABLED then break end
-					local part = item.part
-					if part and part.Parent and part:IsDescendantOf(workspace) then
-						-- Đi đến gần (cách ~2.5 stud) để chạm
-						local goal = part.Position
-						moveTo(goal)
-						-- đứng 1 tí cho server xử lý Touched
-						task.wait(0.1)
-					end
-				end
-			end
-		end
-		task.wait(SCAN_INTERVAL)
-	end
+local Toggle = Instance.new("TextButton")
+Toggle.Size = UDim2.new(1, -10, 0, 30)
+Toggle.Position = UDim2.new(0, 5, 0, 25)
+Toggle.Text = "Bật"
+Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+Toggle.TextScaled = true
+Toggle.Parent = Frame
+
+-- Auto Collect Logic
+local autoCollect = false
+
+Toggle.MouseButton1Click:Connect(function()
+    autoCollect = not autoCollect
+    if autoCollect then
+        Toggle.Text = "Tắt"
+        Toggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    else
+        Toggle.Text = "Bật"
+        Toggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    end
 end)
 
--- Optional: Hotkey bật/tắt (G)
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input, gp)
-	if gp then return end
-	if input.KeyCode == Enum.KeyCode.G then
-		ENABLED = not ENABLED
-		local msg = ENABLED and "[Auto Money] ON" or "[Auto Money] OFF"
-		print(msg)
-	end
+RunService.RenderStepped:Connect(function()
+    if autoCollect and humanoidRootPart then
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if obj.Name == moneyName or (obj:IsA("Part") and obj:FindFirstChild("TouchInterest")) then
+                local distance = (humanoidRootPart.Position - obj.Position).Magnitude
+                if distance <= pickupRange then
+                    firetouchinterest(humanoidRootPart, obj, 0)
+                    task.wait()
+                    firetouchinterest(humanoidRootPart, obj, 1)
+                end
+            end
+        end
+    end
 end)
