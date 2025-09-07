@@ -1,3 +1,6 @@
+-- Auto Collect Money with ProximityPrompt
+-- LocalScript
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -5,65 +8,40 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- ====== CONFIG ======
-local moneyName = "Bill" -- Đổi tên object tiền trong game
-local pickupRange = 100  -- Khoảng cách auto nhặt
--- ====================
-
--- GUI
+-- GUI Toggle
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 150, 0, 60)
-Frame.Position = UDim2.new(0.05, 0, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.BorderSizePixel = 2
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = ScreenGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 20)
-Title.BackgroundTransparency = 1
-Title.Text = "⚡ Auto Nhặt Tiền ⚡"
-Title.TextColor3 = Color3.fromRGB(0, 255, 0)
-Title.TextScaled = true
-Title.Parent = Frame
-
 local Toggle = Instance.new("TextButton")
-Toggle.Size = UDim2.new(1, -10, 0, 30)
-Toggle.Position = UDim2.new(0, 5, 0, 25)
-Toggle.Text = "Bật"
-Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Toggle.Size = UDim2.new(0, 180, 0, 50)
+Toggle.Position = UDim2.new(0.05, 0, 0.3, 0)
+Toggle.Text = "⚡ Auto Nhặt Tiền: Tắt ⚡"
+Toggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 Toggle.TextScaled = true
-Toggle.Parent = Frame
+Toggle.Parent = ScreenGui
 
--- Auto Collect Logic
 local autoCollect = false
-
 Toggle.MouseButton1Click:Connect(function()
     autoCollect = not autoCollect
     if autoCollect then
-        Toggle.Text = "Tắt"
+        Toggle.Text = "⚡ Auto Nhặt Tiền: Bật ⚡"
         Toggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
     else
-        Toggle.Text = "Bật"
+        Toggle.Text = "⚡ Auto Nhặt Tiền: Tắt ⚡"
         Toggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     end
 end)
 
+-- Auto Collect Logic (ProximityPrompt)
 RunService.RenderStepped:Connect(function()
     if autoCollect and humanoidRootPart then
-        for _, obj in ipairs(workspace:GetChildren()) do
-            if obj.Name == moneyName or (obj:IsA("Part") and obj:FindFirstChild("TouchInterest")) then
-                local distance = (humanoidRootPart.Position - obj.Position).Magnitude
-                if distance <= pickupRange then
-                    firetouchinterest(humanoidRootPart, obj, 0)
-                    task.wait()
-                    firetouchinterest(humanoidRootPart, obj, 1)
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Parent:IsA("Part") then
+                local distance = (humanoidRootPart.Position - obj.Parent.Position).Magnitude
+                if distance <= obj.MaxActivationDistance then
+                    fireproximityprompt(obj) -- bấm tự động
                 end
             end
         end
