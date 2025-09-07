@@ -1,4 +1,4 @@
--- Auto Collect Money with ProximityPrompt
+-- Auto Collect Money (ProximityPrompt) - Smooth Version
 -- LocalScript
 
 local Players = game:GetService("Players")
@@ -34,15 +34,29 @@ Toggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Auto Collect Logic (ProximityPrompt)
-RunService.RenderStepped:Connect(function()
-    if autoCollect and humanoidRootPart then
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") and obj.Parent:IsA("Part") then
-                local distance = (humanoidRootPart.Position - obj.Parent.Position).Magnitude
-                if distance <= obj.MaxActivationDistance then
-                    fireproximityprompt(obj) -- bấm tự động
-                end
+-- Function: Tìm ProximityPrompt gần nhất
+local function getNearestPrompt()
+    local nearest, dist = nil, math.huge
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") and obj.Parent:IsA("Part") then
+            local distance = (humanoidRootPart.Position - obj.Parent.Position).Magnitude
+            if distance < dist and distance <= obj.MaxActivationDistance then
+                nearest, dist = obj, distance
+            end
+        end
+    end
+    return nearest
+end
+
+-- Auto Collect Loop (mượt hơn, ít lag)
+task.spawn(function()
+    while task.wait(0.2) do -- check mỗi 0.2s thay vì 60 lần/giây
+        if autoCollect and humanoidRootPart then
+            local prompt = getNearestPrompt()
+            if prompt then
+                pcall(function()
+                    fireproximityprompt(prompt)
+                end)
             end
         end
     end
