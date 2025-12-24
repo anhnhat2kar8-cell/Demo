@@ -1,20 +1,25 @@
--- Auto Collect Money (ProximityPrompt) - Smooth Version
--- LocalScript
+-- Auto Collect Multiple ProximityPrompts (Smooth)
+-- LocalScript / Executor Script
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
 local player = Players.LocalPlayer
+
+-- Character setup (anti respawn bug)
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- GUI Toggle
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
 local Toggle = Instance.new("TextButton")
-Toggle.Size = UDim2.new(0, 180, 0, 50)
+Toggle.Size = UDim2.new(0, 200, 0, 50)
 Toggle.Position = UDim2.new(0.05, 0, 0.3, 0)
 Toggle.Text = "⚡ Auto Nhặt Tiền: Tắt ⚡"
 Toggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -34,26 +39,37 @@ Toggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Function: Tìm ProximityPrompt gần nhất
-local function getNearestPrompt()
-    local nearest, dist = nil, math.huge
+-- Tìm tất cả ProximityPrompt trong tầm
+local function getNearbyPrompts()
+    local prompts = {}
+
+    if not humanoidRootPart then return prompts end
+
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") and obj.Parent:IsA("Part") then
+        if obj:IsA("ProximityPrompt")
+        and obj.Parent:IsA("BasePart")
+        and obj.Enabled then
+
+            -- 🔒 Nếu muốn lọc tiền, mở dòng dưới
+            -- if obj.Name ~= "MoneyPrompt" then continue end
+
             local distance = (humanoidRootPart.Position - obj.Parent.Position).Magnitude
-            if distance < dist and distance <= obj.MaxActivationDistance then
-                nearest, dist = obj, distance
+            if distance <= obj.MaxActivationDistance then
+                table.insert(prompts, obj)
             end
         end
     end
-    return nearest
+
+    return prompts
 end
 
--- Auto Collect Loop (mượt hơn, ít lag)
+-- Auto Collect Loop
 task.spawn(function()
-    while task.wait(0.2) do -- check mỗi 0.2s thay vì 60 lần/giây
-        if autoCollect and humanoidRootPart then
-            local prompt = getNearestPrompt()
-            if prompt then
+    while task.wait(0.2) do
+        if autoCollect then
+            local prompts = getNearbyPrompts()
+
+            for _, prompt in ipairs(prompts) do
                 pcall(function()
                     fireproximityprompt(prompt)
                 end)
