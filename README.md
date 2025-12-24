@@ -1,5 +1,3 @@
--- AUTO LỤM + TOGGLE | DELTA EXECUTOR
-
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local LocalPlayer = Players.LocalPlayer
