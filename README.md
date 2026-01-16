@@ -1,28 +1,71 @@
+-- SERVICES
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
-local LocalPlayer = Players.LocalPlayer
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 
--- trạng thái bật tắt
-local AutoPick = false
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
 -- GUI
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local button = script.Parent:WaitForChild("AutoFarmButton")
 
-local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(0, 140, 0, 45)
-Button.Position = UDim2.new(0, 20, 0.5, -22)
-Button.Text = "Auto Lụm: OFF"
-Button.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-Button.TextColor3 = Color3.new(1,1,1)
-Button.TextScaled = true
-Button.Parent = ScreenGui
+-- SETTINGS
+local AUTO_FARM = false
+local ATTACK_DISTANCE = 3
+local TELE_OFFSET = CFrame.new(0, 0, -2)
 
--- Toggle
-Button.MouseButton1Click:Connect(function()
-	AutoPick = not AutoPick
-	if AutoPick then
-		Button.Text = "Auto Lụm: ON"
-		Button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+-- AUTO ATTACK (bạn sửa chỗ này theo game)
+local function attackNPC(npc)
+    for _,v in pairs(npc:GetDescendants()) do
+        if v:IsA("Humanoid") then
+            v.Health = 0 -- ⚠️ Nếu game có anti-cheat thì cần remote
+        end
+    end
+end
+
+-- TÌM NPC GẦN NHẤT
+local function getNearestNPC()
+    local nearestNPC = nil
+    local shortestDistance = math.huge
+
+    for _,npc in pairs(CollectionService:GetTagged("NPC")) do
+        if npc:FindFirstChild("HumanoidRootPart")
+        and npc:FindFirstChild("Humanoid")
+        and npc.Humanoid.Health > 0 then
+
+            local distance = (humanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestNPC = npc
+            end
+        end
+    end
+
+    return nearestNPC
+end
+
+-- AUTO FARM LOOP
+task.spawn(function()
+    while task.wait(0.1) do
+        if AUTO_FARM then
+            local npc = getNearestNPC()
+            if npc then
+                humanoidRootPart.CFrame =
+                    npc.HumanoidRootPart.CFrame * TELE_OFFSET
+
+                task.wait(0.2)
+                attackNPC(npc)
+            end
+        end
+    end
+end)
+
+-- BUTTON TOGGLE
+button.MouseButton1Click:Connect(function()
+    AUTO_FARM = not AUTO_FARM
+    button.Text = AUTO_FARM and "AUTO FARM : ON" or "AUTO FARM : OFF"
+end)		Button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 	else
 		Button.Text = "Auto Lụm: OFF"
 		Button.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
