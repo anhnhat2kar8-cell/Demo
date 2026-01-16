@@ -1,6 +1,7 @@
 --// SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local LP = Players.LocalPlayer
 local Char = LP.Character or LP.CharacterAdded:Wait()
@@ -13,10 +14,10 @@ end)
 
 --// SETTINGS
 local FARM = true
-local HEIGHT = 3.5        -- đứng trên đầu
-local DELAY = 0.1         -- tốc đánh
+local HEIGHT = 3.2
+local SPEED = 0.08
 
---// NOCLIP
+--// NOCLIP (KHÔNG NHẢY / KHÔNG VƯỚNG)
 RunService.Stepped:Connect(function()
     if not Char then return end
     for _,v in pairs(Char:GetDescendants()) do
@@ -26,38 +27,36 @@ RunService.Stepped:Connect(function()
     end
 end)
 
---// CHECK GIANG HO ĐI ĐƯỜNG
-local function isGiangHo(model)
+--// GIẢ LẬP CLICK (GAME CẦN)
+LP.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
+
+--// NHẬN DIỆN GIANG HỒ (CHUẨN)
+local function isTarget(model)
     if not model:IsA("Model") then return false end
-    local hum = model:FindFirstChild("Humanoid")
+    if Players:GetPlayerFromCharacter(model) then return false end
+
+    local hum = model:FindFirstChildOfClass("Humanoid")
     local hrp = model:FindFirstChild("HumanoidRootPart")
     if not hum or not hrp then return false end
     if hum.Health <= 0 then return false end
-    if Players:GetPlayerFromCharacter(model) then return false end
 
-    -- có thanh máu trên đầu
-    local hasBar = false
-    for _,v in pairs(model:GetDescendants()) do
-        if v:IsA("BillboardGui") then
-            hasBar = true
-            break
-        end
-    end
-    if not hasBar then return false end
-
-    -- đang đi (move)
-    if hum.MoveDirection.Magnitude <= 0 then return false end
+    -- loại NPC tĩnh (shop, quest)
+    if model.Name:lower():find("npc") then return false end
 
     return true
 end
 
---// FIND NEAREST GIANG HO
-local function getTarget()
+--// TÌM GIANG HỒ GẦN NHẤT
+local function getNearest()
     local nearest, dist
     for _,v in pairs(workspace:GetChildren()) do
-        if isGiangHo(v) then
+        if isTarget(v) then
             local d = (v.HumanoidRootPart.Position - HRP.Position).Magnitude
-            if not dist or d < dist then
+            if d < 60 and (not dist or d < dist) then
                 dist = d
                 nearest = v
             end
@@ -66,15 +65,14 @@ local function getTarget()
     return nearest
 end
 
---// FARM LOOP (BÁM THEO ĐẦU)
+--// FARM LOOP (DÍNH TRÊN ĐẦU)
 task.spawn(function()
-    while task.wait(DELAY) do
+    while task.wait(SPEED) do
         if FARM and Char and HRP then
-            local npc = getTarget()
+            local npc = getNearest()
             if npc and npc:FindFirstChild("HumanoidRootPart") then
                 local nhrp = npc.HumanoidRootPart
 
-                -- LUÔN đứng trên đầu kể cả khi NPC đi
                 HRP.CFrame = CFrame.new(
                     nhrp.Position + Vector3.new(0, HEIGHT, 0),
                     nhrp.Position
