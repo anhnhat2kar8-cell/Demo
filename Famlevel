@@ -1,40 +1,67 @@
--- SERVICES
 local Players = game:GetService("Players")
-local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local lp = Players.LocalPlayer
+local char = lp.Character or lp.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
 
--- GUI
-local button = script.Parent:WaitForChild("AutoFarmButton")
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "DeltaAutoFarm"
+gui.Parent = game.CoreGui
 
--- SETTINGS
-local AUTO_FARM = false
-local ATTACK_DISTANCE = 3
-local TELE_OFFSET = CFrame.new(0, 0, -2)
+local btn = Instance.new("TextButton")
+btn.Parent = gui
+btn.Size = UDim2.new(0,200,0,50)
+btn.Position = UDim2.new(0,20,0,200)
+btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+btn.TextColor3 = Color3.fromRGB(0,255,0)
+btn.Text = "AUTO FARM : OFF"
+btn.TextScaled = true
+btn.Active = true
+btn.Draggable = true
 
--- AUTO ATTACK (bạn sửa chỗ này theo game)
-local function attackNPC(npc)
-    for _,v in pairs(npc:GetDescendants()) do
-        if v:IsA("Humanoid") then
-            v.Health = 0 -- ⚠️ Nếu game có anti-cheat thì cần remote
+-- ===== SETTING =====
+local AutoFarm = false
+local TeleOffset = CFrame.new(0,0,-3)
+
+-- ===== TÌM NPC =====
+local function getNPC()
+    for _,npc in pairs(CollectionService:GetTagged("NPC")) do
+        if npc:FindFirstChild("Humanoid")
+        and npc:FindFirstChild("HumanoidRootPart")
+        and npc.Humanoid.Health > 0 then
+            return npc
         end
     end
 end
 
--- TÌM NPC GẦN NHẤT
-local function getNearestNPC()
-    local nearestNPC = nil
-    local shortestDistance = math.huge
+-- ===== GIẾT NPC (CLIENT) =====
+local function kill(npc)
+    pcall(function()
+        npc.Humanoid.Health = 0
+    end)
+end
 
-    for _,npc in pairs(CollectionService:GetTagged("NPC")) do
-        if npc:FindFirstChild("HumanoidRootPart")
-        and npc:FindFirstChild("Humanoid")
-        and npc.Humanoid.Health > 0 then
+-- ===== LOOP =====
+task.spawn(function()
+    while task.wait(0.1) do
+        if AutoFarm then
+            local npc = getNPC()
+            if npc then
+                hrp.CFrame = npc.HumanoidRootPart.CFrame * TeleOffset
+                kill(npc)
+            end
+        end
+    end
+end)
 
-            local distance = (humanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
+-- ===== BUTTON =====
+btn.MouseButton1Click:Connect(function()
+    AutoFarm = not AutoFarm
+    btn.Text = AutoFarm and "AUTO FARM : ON" or "AUTO FARM : OFF"
+end)            local distance = (humanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
             if distance < shortestDistance then
                 shortestDistance = distance
                 nearestNPC = npc
