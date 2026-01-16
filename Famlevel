@@ -2,22 +2,25 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
-
 local LP = Players.LocalPlayer
+
+--// CHARACTER
 local Char = LP.Character or LP.CharacterAdded:Wait()
 local HRP = Char:WaitForChild("HumanoidRootPart")
+local Hum = Char:WaitForChild("Humanoid")
 
 LP.CharacterAdded:Connect(function(c)
     Char = c
     HRP = c:WaitForChild("HumanoidRootPart")
+    Hum = c:WaitForChild("Humanoid")
 end)
 
 --// SETTINGS
 local FARM = true
-local HEIGHT = 3.2
-local SPEED = 0.08
+local HEIGHT = 3
+local ATTACK_DELAY = 0.12
 
---// NOCLIP (KHÔNG NHẢY / KHÔNG VƯỚNG)
+--// NOCLIP
 RunService.Stepped:Connect(function()
     if not Char then return end
     for _,v in pairs(Char:GetDescendants()) do
@@ -27,65 +30,54 @@ RunService.Stepped:Connect(function()
     end
 end)
 
---// GIẢ LẬP CLICK (GAME CẦN)
-LP.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
---// NHẬN DIỆN GIANG HỒ (CHUẨN)
-local function isTarget(model)
-    if not model:IsA("Model") then return false end
-    if Players:GetPlayerFromCharacter(model) then return false end
-
-    local hum = model:FindFirstChildOfClass("Humanoid")
-    local hrp = model:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp then return false end
-    if hum.Health <= 0 then return false end
-
-    -- loại NPC tĩnh (shop, quest)
-    if model.Name:lower():find("npc") then return false end
-
-    return true
+--// CHECK NPC GIANG HO DI DUONG
+local function isTarget(m)
+    return m:IsA("Model")
+    and m:FindFirstChildWhichIsA("Humanoid")
+    and not Players:GetPlayerFromCharacter(m)
+    and m:FindFirstChildWhichIsA("BasePart")
+    and m:FindFirstChildWhichIsA("Humanoid").Health > 0
 end
 
---// TÌM GIANG HỒ GẦN NHẤT
+--// GET NEAREST TARGET
 local function getNearest()
-    local nearest, dist
-    for _,v in pairs(workspace:GetChildren()) do
-        if isTarget(v) then
-            local d = (v.HumanoidRootPart.Position - HRP.Position).Magnitude
-            if d < 60 and (not dist or d < dist) then
+    local nearest, dist = nil, math.huge
+    for _,m in pairs(workspace:GetDescendants()) do
+        if isTarget(m) then
+            local part = m:FindFirstChildWhichIsA("BasePart")
+            local d = (HRP.Position - part.Position).Magnitude
+            if d < dist then
                 dist = d
-                nearest = v
+                nearest = m
             end
         end
     end
     return nearest
 end
 
---// FARM LOOP (DÍNH TRÊN ĐẦU)
+--// AUTO ATTACK
 task.spawn(function()
-    while task.wait(SPEED) do
-        if FARM and Char and HRP then
-            local npc = getNearest()
-            if npc and npc:FindFirstChild("HumanoidRootPart") then
-                local nhrp = npc.HumanoidRootPart
+    while FARM do
+        VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(ATTACK_DELAY)
+        VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(ATTACK_DELAY)
+    end
+end)
 
-                HRP.CFrame = CFrame.new(
-                    nhrp.Position + Vector3.new(0, HEIGHT, 0),
-                    nhrp.Position
-                )
+--// MAIN FARM LOOP
+task.spawn(function()
+    while FARM do
+        local target = getNearest()
+        if target then
+            local hum = target:FindFirstChildWhichIsA("Humanoid")
+            local part = target:FindFirstChildWhichIsA("BasePart")
 
-                -- đánh
-                local tool = Char:FindFirstChildOfClass("Tool")
-                if tool then
-                    pcall(function()
-                        tool:Activate()
-                    end)
-                end
+            while hum and hum.Health > 0 and FARM do
+                HRP.CFrame = part.CFrame * CFrame.new(0, HEIGHT, 0)
+                task.wait()
             end
         end
+        task.wait(0.2)
     end
 end)
