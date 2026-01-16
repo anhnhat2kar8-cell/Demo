@@ -1,11 +1,13 @@
---// AUTO FARM NPC - FULL GUI
---// Mobile Friendly (Delta / Hydrogen)
+--// AUTO FARM NPC - FULL FIX
+--// By ChatGPT | Mobile Friendly
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+
 local LP = Players.LocalPlayer
 local Char = LP.Character or LP.CharacterAdded:Wait()
+local HRP = Char:WaitForChild("HumanoidRootPart")
 
 -- Ẩn chuột
 UIS.MouseIconEnabled = false
@@ -26,15 +28,15 @@ gui.Name = "PrimeVipGUI"
 local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0,260,0,300)
 main.Position = UDim2.new(0.05,0,0.3,0)
-main.BackgroundColor3 = Color3.fromRGB(30,30,30)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
 main.Active = true
 main.Draggable = true
 
-local function label(text,y)
+local function label(txt,y)
     local l = Instance.new("TextLabel",main)
     l.Size = UDim2.new(1,-20,0,25)
     l.Position = UDim2.new(0,10,0,y)
-    l.Text = text
+    l.Text = txt
     l.TextColor3 = Color3.new(1,1,1)
     l.BackgroundTransparency = 1
     l.TextScaled = true
@@ -45,7 +47,7 @@ local function box(val,y,cb)
     b.Size = UDim2.new(1,-20,0,25)
     b.Position = UDim2.new(0,10,0,y)
     b.Text = tostring(val)
-    b.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    b.BackgroundColor3 = Color3.fromRGB(45,45,45)
     b.TextColor3 = Color3.new(1,1,1)
     b.FocusLost:Connect(function()
         cb(tonumber(b.Text) or val)
@@ -62,32 +64,34 @@ box(Settings.SpinSpeed,125,function(v) Settings.SpinSpeed=v end)
 label("Độ cao",155)
 box(Settings.Height,180,function(v) Settings.Height=v end)
 
--- NOCLIP
+-- NOCLIP BUTTON
 local noclipBtn = Instance.new("TextButton",main)
 noclipBtn.Size = UDim2.new(1,-20,0,35)
 noclipBtn.Position = UDim2.new(0,10,0,215)
 noclipBtn.Text = "Noclip: OFF"
-noclipBtn.BackgroundColor3 = Color3.fromRGB(120,0,0)
+noclipBtn.BackgroundColor3 = Color3.fromRGB(130,0,0)
 noclipBtn.TextColor3 = Color3.new(1,1,1)
 
 noclipBtn.MouseButton1Click:Connect(function()
     Settings.Noclip = not Settings.Noclip
     noclipBtn.Text = "Noclip: "..(Settings.Noclip and "ON" or "OFF")
-    noclipBtn.BackgroundColor3 = Settings.Noclip and Color3.fromRGB(0,120,0) or Color3.fromRGB(120,0,0)
+    noclipBtn.BackgroundColor3 =
+        Settings.Noclip and Color3.fromRGB(0,130,0) or Color3.fromRGB(130,0,0)
 end)
 
--- FARM
+-- FARM BUTTON
 local farmBtn = Instance.new("TextButton",main)
 farmBtn.Size = UDim2.new(1,-20,0,35)
 farmBtn.Position = UDim2.new(0,10,0,255)
 farmBtn.Text = "Đang Farm: OFF"
-farmBtn.BackgroundColor3 = Color3.fromRGB(120,0,0)
+farmBtn.BackgroundColor3 = Color3.fromRGB(130,0,0)
 farmBtn.TextColor3 = Color3.new(1,1,1)
 
 farmBtn.MouseButton1Click:Connect(function()
     Settings.Farming = not Settings.Farming
     farmBtn.Text = "Đang Farm: "..(Settings.Farming and "ON" or "OFF")
-    farmBtn.BackgroundColor3 = Settings.Farming and Color3.fromRGB(0,120,0) or Color3.fromRGB(120,0,0)
+    farmBtn.BackgroundColor3 =
+        Settings.Farming and Color3.fromRGB(0,130,0) or Color3.fromRGB(130,0,0)
 end)
 
 -- NOCLIP LOOP
@@ -101,40 +105,37 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- FIND NPC (KHÔNG ĐÁNH PLAYER)
+-- FIND NPC (FIX ĐÚNG NPC TRONG HÌNH)
 local function getNPC()
-    local near,dist
-    for _,v in pairs(workspace:GetChildren()) do
+    local nearest, dist
+    for _,v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model")
-        and v:FindFirstChild("Humanoid")
+        and v:FindFirstChildOfClass("Humanoid")
         and v:FindFirstChild("HumanoidRootPart")
-        and v.Humanoid.Health > 0
-        and not Players:GetPlayerFromCharacter(v) then
+        and v:FindFirstChildOfClass("Humanoid").Health > 0
+        and not Players:GetPlayerFromCharacter(v)
+        and v ~= Char then
 
-            local d = (v.HumanoidRootPart.Position -
-                       Char.HumanoidRootPart.Position).Magnitude
+            local d = (v.HumanoidRootPart.Position - HRP.Position).Magnitude
             if not dist or d < dist then
                 dist = d
-                near = v
+                nearest = v
             end
         end
     end
-    return near
+    return nearest
 end
 
 -- FARM LOOP
 task.spawn(function()
     while task.wait(0.05) do
-        if Settings.Farming
-        and Char
-        and Char:FindFirstChild("HumanoidRootPart") then
-
+        if Settings.Farming and Char and HRP then
             local npc = getNPC()
             if npc and npc:FindFirstChild("HumanoidRootPart") then
-                Char.HumanoidRootPart.CFrame =
+                HRP.CFrame =
                     npc.HumanoidRootPart.CFrame
-                    * CFrame.new(0,Settings.Height,Settings.Distance)
-                    * CFrame.Angles(0,math.rad(tick()*Settings.SpinSpeed*60),0)
+                    * CFrame.new(0, Settings.Height, Settings.Distance)
+                    * CFrame.Angles(0, math.rad(tick()*Settings.SpinSpeed*60), 0)
 
                 pcall(function()
                     mouse1click()
