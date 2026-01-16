@@ -1,26 +1,24 @@
---// SERVICES
+--================== SERVICES ==================--
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local LP = Players.LocalPlayer
 
---// CHARACTER
+--================== CHARACTER =================--
 local Char = LP.Character or LP.CharacterAdded:Wait()
 local HRP = Char:WaitForChild("HumanoidRootPart")
-local Hum = Char:WaitForChild("Humanoid")
 
 LP.CharacterAdded:Connect(function(c)
     Char = c
     HRP = c:WaitForChild("HumanoidRootPart")
-    Hum = c:WaitForChild("Humanoid")
 end)
 
---// SETTINGS
+--================== SETTINGS ==================--
 local FARM = true
-local HEIGHT = 3
+local HEIGHT = 3        -- đứng trên đầu NPC
 local ATTACK_DELAY = 0.12
 
---// NOCLIP
+--================== NOCLIP ====================--
 RunService.Stepped:Connect(function()
     if not Char then return end
     for _,v in pairs(Char:GetDescendants()) do
@@ -30,22 +28,30 @@ RunService.Stepped:Connect(function()
     end
 end)
 
---// CHECK NPC GIANG HO DI DUONG
-local function isTarget(m)
-    return m:IsA("Model")
-    and m:FindFirstChildWhichIsA("Humanoid")
-    and not Players:GetPlayerFromCharacter(m)
-    and m:FindFirstChildWhichIsA("BasePart")
-    and m:FindFirstChildWhichIsA("Humanoid").Health > 0
+--================== UTIL ======================--
+local function getRoot(model)
+    if model.PrimaryPart then return model.PrimaryPart end
+    if model:FindFirstChild("HumanoidRootPart") then
+        return model.HumanoidRootPart
+    end
+    return model:FindFirstChildWhichIsA("BasePart")
 end
 
---// GET NEAREST TARGET
-local function getNearest()
+local function isGiangHo(model)
+    if not model:IsA("Model") then return false end
+    if Players:GetPlayerFromCharacter(model) then return false end
+    local hum = model:FindFirstChildWhichIsA("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    return getRoot(model) ~= nil
+end
+
+--================== FIND NPC ==================--
+local function getNearestGiangHo()
     local nearest, dist = nil, math.huge
     for _,m in pairs(workspace:GetDescendants()) do
-        if isTarget(m) then
-            local part = m:FindFirstChildWhichIsA("BasePart")
-            local d = (HRP.Position - part.Position).Magnitude
+        if isGiangHo(m) then
+            local root = getRoot(m)
+            local d = (HRP.Position - root.Position).Magnitude
             if d < dist then
                 dist = d
                 nearest = m
@@ -55,29 +61,27 @@ local function getNearest()
     return nearest
 end
 
---// AUTO ATTACK
+--================== ATTACK ====================--
 task.spawn(function()
-    while FARM do
-        VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(ATTACK_DELAY)
-        VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(ATTACK_DELAY)
+    while task.wait(ATTACK_DELAY) do
+        if FARM then
+            VirtualUser:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            task.wait()
+            VirtualUser:Button1Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        end
     end
 end)
 
---// MAIN FARM LOOP
-task.spawn(function()
-    while FARM do
-        local target = getNearest()
-        if target then
-            local hum = target:FindFirstChildWhichIsA("Humanoid")
-            local part = target:FindFirstChildWhichIsA("BasePart")
+--================== MAIN LOOP =================--
+RunService.Heartbeat:Connect(function()
+    if not FARM or not HRP then return end
 
-            while hum and hum.Health > 0 and FARM do
-                HRP.CFrame = part.CFrame * CFrame.new(0, HEIGHT, 0)
-                task.wait()
-            end
+    local npc = getNearestGiangHo()
+    if npc then
+        local root = getRoot(npc)
+        local hum = npc:FindFirstChildWhichIsA("Humanoid")
+        if root and hum and hum.Health > 0 then
+            HRP.CFrame = root.CFrame * CFrame.new(0, HEIGHT, 0)
         end
-        task.wait(0.2)
     end
 end)
