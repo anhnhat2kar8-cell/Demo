@@ -1,108 +1,134 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local CollectionService = game:GetService("CollectionService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local lp = Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
+--// SETTINGS
+local Settings = {
+    Distance = 12,
+    SpinSpeed = 3,
+    Height = 1,
+    Farming = false,
+    Noclip = false
+}
 
--- ===== GUI =====
-local gui = Instance.new("ScreenGui")
-gui.Name = "DeltaAutoFarm"
-gui.Parent = game.CoreGui
+--// GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "AutoFarmGUI"
 
-local btn = Instance.new("TextButton")
-btn.Parent = gui
-btn.Size = UDim2.new(0,200,0,50)
-btn.Position = UDim2.new(0,20,0,200)
-btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
-btn.TextColor3 = Color3.fromRGB(0,255,0)
-btn.Text = "AUTO FARM : OFF"
-btn.TextScaled = true
-btn.Active = true
-btn.Draggable = true
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 260, 0, 300)
+main.Position = UDim2.new(0.5, -130, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(30,30,30)
+main.Active = true
+main.Draggable = true
 
--- ===== SETTING =====
-local AutoFarm = false
-local TeleOffset = CFrame.new(0,0,-3)
-
--- ===== TÌM NPC =====
-local function getNPC()
-    for _,npc in pairs(CollectionService:GetTagged("NPC")) do
-        if npc:FindFirstChild("Humanoid")
-        and npc:FindFirstChild("HumanoidRootPart")
-        and npc.Humanoid.Health > 0 then
-            return npc
-        end
-    end
+local function createLabel(text, y)
+    local l = Instance.new("TextLabel", main)
+    l.Size = UDim2.new(1, -20, 0, 25)
+    l.Position = UDim2.new(0, 10, 0, y)
+    l.Text = text
+    l.TextColor3 = Color3.new(1,1,1)
+    l.BackgroundTransparency = 1
+    l.TextScaled = true
+    return l
 end
 
--- ===== GIẾT NPC (CLIENT) =====
-local function kill(npc)
-    pcall(function()
-        npc.Humanoid.Health = 0
+local function createBox(value, y, callback)
+    local b = Instance.new("TextBox", main)
+    b.Size = UDim2.new(1, -20, 0, 25)
+    b.Position = UDim2.new(0, 10, 0, y)
+    b.Text = tostring(value)
+    b.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    b.TextColor3 = Color3.new(1,1,1)
+    b.FocusLost:Connect(function()
+        callback(tonumber(b.Text) or value)
     end)
 end
 
--- ===== LOOP =====
-task.spawn(function()
-    while task.wait(0.1) do
-        if AutoFarm then
-            local npc = getNPC()
-            if npc then
-                hrp.CFrame = npc.HumanoidRootPart.CFrame * TeleOffset
-                kill(npc)
+createLabel("Prime Vip", 10)
+
+createLabel("Khoảng cách", 45)
+createBox(Settings.Distance, 70, function(v) Settings.Distance = v end)
+
+createLabel("Tốc độ quay", 100)
+createBox(Settings.SpinSpeed, 125, function(v) Settings.SpinSpeed = v end)
+
+createLabel("Độ cao", 155)
+createBox(Settings.Height, 180, function(v) Settings.Height = v end)
+
+--// Noclip Button
+local noclipBtn = Instance.new("TextButton", main)
+noclipBtn.Size = UDim2.new(1, -20, 0, 35)
+noclipBtn.Position = UDim2.new(0, 10, 0, 215)
+noclipBtn.Text = "Noclip: OFF"
+noclipBtn.BackgroundColor3 = Color3.fromRGB(120,0,0)
+noclipBtn.TextColor3 = Color3.new(1,1,1)
+
+noclipBtn.MouseButton1Click:Connect(function()
+    Settings.Noclip = not Settings.Noclip
+    noclipBtn.Text = "Noclip: "..(Settings.Noclip and "ON" or "OFF")
+    noclipBtn.BackgroundColor3 = Settings.Noclip and Color3.fromRGB(0,120,0) or Color3.fromRGB(120,0,0)
+end)
+
+--// Farm Button
+local farmBtn = Instance.new("TextButton", main)
+farmBtn.Size = UDim2.new(1, -20, 0, 35)
+farmBtn.Position = UDim2.new(0, 10, 0, 255)
+farmBtn.Text = "Đang Farm: OFF"
+farmBtn.BackgroundColor3 = Color3.fromRGB(120,0,0)
+farmBtn.TextColor3 = Color3.new(1,1,1)
+
+farmBtn.MouseButton1Click:Connect(function()
+    Settings.Farming = not Settings.Farming
+    farmBtn.Text = "Đang Farm: "..(Settings.Farming and "ON" or "OFF")
+    farmBtn.BackgroundColor3 = Settings.Farming and Color3.fromRGB(0,120,0) or Color3.fromRGB(120,0,0)
+end)
+
+--// NOCLIP
+RunService.Stepped:Connect(function()
+    if Settings.Noclip and Character then
+        for _,v in pairs(Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
             end
         end
     end
 end)
 
--- ===== BUTTON =====
-btn.MouseButton1Click:Connect(function()
-    AutoFarm = not AutoFarm
-    btn.Text = AutoFarm and "AUTO FARM : ON" or "AUTO FARM : OFF"
-end)            local distance = (humanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                nearestNPC = npc
+--// FIND NPC
+local function getNearestNPC()
+    local nearest, dist
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v ~= Character then
+            if not Players:GetPlayerFromCharacter(v) then
+                local d = (v.HumanoidRootPart.Position - Character.HumanoidRootPart.Position).Magnitude
+                if not dist or d < dist then
+                    dist = d
+                    nearest = v
+                end
             end
         end
     end
-
-    return nearestNPC
+    return nearest
 end
 
--- AUTO FARM LOOP
+--// FARM LOOP
 task.spawn(function()
-    while task.wait(0.1) do
-        if AUTO_FARM then
+    while task.wait() do
+        if Settings.Farming and Character and Character:FindFirstChild("HumanoidRootPart") then
             local npc = getNearestNPC()
-            if npc then
-                humanoidRootPart.CFrame =
-                    npc.HumanoidRootPart.CFrame * TELE_OFFSET
+            if npc and npc:FindFirstChild("HumanoidRootPart") and npc.Humanoid.Health > 0 then
+                Character.HumanoidRootPart.CFrame =
+                    npc.HumanoidRootPart.CFrame *
+                    CFrame.new(0, Settings.Height, Settings.Distance) *
+                    CFrame.Angles(0, math.rad(tick()*Settings.SpinSpeed*60), 0)
 
-                task.wait(0.2)
-                attackNPC(npc)
+                -- Auto attack
+                pcall(function()
+                    mouse1click()
+                end)
             end
         end
     end
-end)
-
--- BUTTON TOGGLE
-button.MouseButton1Click:Connect(function()
-    AUTO_FARM = not AUTO_FARM
-    button.Text = AUTO_FARM and "AUTO FARM : ON" or "AUTO FARM : OFF"
-end)		Button.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-	else
-		Button.Text = "Auto Lụm: OFF"
-		Button.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-	end
-end)
-
--- Auto kích hoạt ProximityPrompt
-ProximityPromptService.PromptShown:Connect(function(prompt)
-	if AutoPick and prompt.ActionText == "Lụm" then
-		task.wait(0.1)
-		fireproximityprompt(prompt)
-	end
 end)
