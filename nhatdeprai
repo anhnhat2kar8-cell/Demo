@@ -3,6 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 local CurrentNPC = nil
+local angle = 0
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -28,17 +29,30 @@ end)
 
 -- tìm npc
 local function getNPC()
-
     for _,v in pairs(workspace:GetDescendants()) do
         if v.Name == "CityNPC"
         and v:FindFirstChild("HumanoidRootPart")
         and v:FindFirstChild("Humanoid")
         and v.Humanoid.Health > 0 then
-
             return v
         end
     end
+end
 
+-- nhặt đồ
+local function pickupDrops()
+    if not player.Character then return end
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Tool") and v:FindFirstChild("Handle") then
+            if (v.Handle.Position - hrp.Position).Magnitude < 15 then
+                firetouchinterest(hrp, v.Handle, 0)
+                firetouchinterest(hrp, v.Handle, 1)
+            end
+        end
+    end
 end
 
 -- auto farm
@@ -60,16 +74,29 @@ task.spawn(function()
 
             if CurrentNPC and hrp then
 
-                local dist = (hrp.Position - CurrentNPC.HumanoidRootPart.Position).Magnitude
+                local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
+                if npcHRP then
 
-                -- nếu xa thì TP lại
-                if dist > 5 then
-                    hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-                end
+                    -- xoay quanh npc 4 studs
+                    angle = angle + 10
 
-                local tool = player.Character:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool:Activate()
+                    local offset = CFrame.new(
+                        math.cos(math.rad(angle)) * 4,
+                        0,
+                        math.sin(math.rad(angle)) * 4
+                    )
+
+                    hrp.CFrame = npcHRP.CFrame * offset
+
+                    -- đánh
+                    local tool = player.Character:FindFirstChildOfClass("Tool")
+                    if tool then
+                        tool:Activate()
+                    end
+
+                    -- nhặt đồ
+                    pickupDrops()
+
                 end
 
             end
