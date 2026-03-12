@@ -29,10 +29,11 @@ end)
 -- khóa npc
 local function lockNPC(npc)
 
-    if npc and npc:FindFirstChild("Humanoid") then
+    if npc and npc:FindFirstChild("HumanoidRootPart") then
 
         npc.Humanoid.WalkSpeed = 0
         npc.Humanoid.JumpPower = 0
+        npc.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 
         for _,p in pairs(npc:GetDescendants()) do
             if p:IsA("BasePart") then
@@ -46,17 +47,14 @@ end
 
 -- tìm npc
 local function getNPC()
-
     for _,v in pairs(workspace:GetDescendants()) do
         if v.Name == "CityNPC"
         and v:FindFirstChild("HumanoidRootPart")
         and v:FindFirstChild("Humanoid")
         and v.Humanoid.Health > 0 then
-
             return v
         end
     end
-
 end
 
 -- auto farm
@@ -71,17 +69,16 @@ task.spawn(function()
             if not CurrentNPC
             or not CurrentNPC.Parent
             or CurrentNPC.Humanoid.Health <= 0 then
-
                 CurrentNPC = getNPC()
-
             end
 
             if CurrentNPC and hrp then
 
                 lockNPC(CurrentNPC)
 
-                -- đứng sau npc
-                hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,4)
+                -- kéo NPC lên cao
+                CurrentNPC.HumanoidRootPart.CFrame =
+                    hrp.CFrame * CFrame.new(0,15,0)
 
                 local tool = player.Character:FindFirstChildOfClass("Tool")
                 if tool then
