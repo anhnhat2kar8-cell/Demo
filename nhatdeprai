@@ -41,7 +41,7 @@ end
 
 task.spawn(function()
 
-while task.wait(0.15) do
+while task.wait(0.12) do
 
     if AutoFarm and player.Character then
 
@@ -59,15 +59,10 @@ while task.wait(0.15) do
 
             if npcHRP then
 
-                local dist = (hrp.Position - npcHRP.Position).Magnitude
+                local dir = (hrp.Position - npcHRP.Position).Unit
+                local targetPos = npcHRP.Position + dir * DIST
 
-                -- giữ khoảng cách 7 studs
-                if dist > DIST then
-                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
-                end
-
-                -- nhìn vào NPC
-                hrp.CFrame = CFrame.new(hrp.Position, npcHRP.Position)
+                hrp.CFrame = CFrame.new(targetPos, npcHRP.Position)
 
                 -- đánh
                 local tool = player.Character:FindFirstChildOfClass("Tool")
