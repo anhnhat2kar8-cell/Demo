@@ -3,8 +3,6 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 local CurrentNPC = nil
-local angle = 0
-local DISTANCE = 20 -- khoảng cách xoay quanh NPC
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -28,7 +26,7 @@ button.MouseButton1Click:Connect(function()
     button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm npc
+-- tìm NPC
 local function getNPC()
     for _,v in pairs(workspace:GetDescendants()) do
         if v.Name == "CityNPC"
@@ -40,9 +38,10 @@ local function getNPC()
     end
 end
 
--- auto farm
+-- Auto farm
 task.spawn(function()
-    while task.wait(0.08) do
+
+    while task.wait(0.1) do
 
         if AutoFarm and player.Character then
 
@@ -51,9 +50,7 @@ task.spawn(function()
             if not CurrentNPC
             or not CurrentNPC.Parent
             or CurrentNPC.Humanoid.Health <= 0 then
-
                 CurrentNPC = getNPC()
-
             end
 
             if CurrentNPC and hrp then
@@ -61,14 +58,8 @@ task.spawn(function()
                 local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
                 if npcHRP then
 
-                    angle = angle + 15
-
-                    local x = math.cos(math.rad(angle)) * DISTANCE
-                    local z = math.sin(math.rad(angle)) * DISTANCE
-
-                    local pos = npcHRP.Position + Vector3.new(x,0,z)
-
-                    hrp.CFrame = CFrame.new(pos, npcHRP.Position)
+                    -- đứng dưới chân NPC
+                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,-3,0)
 
                     -- đánh
                     local tool = player.Character:FindFirstChildOfClass("Tool")
@@ -79,5 +70,7 @@ task.spawn(function()
                 end
             end
         end
+
     end
+
 end)
