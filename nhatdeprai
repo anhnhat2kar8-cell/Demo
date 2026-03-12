@@ -9,91 +9,64 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ResetOnSpawn = false
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,200,0,100)
-MainFrame.Position = UDim2.new(0.8,0,0.3,0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = ScreenGui
-
-Instance.new("UICorner",MainFrame)
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0,200,0,80)
+Frame.Position = UDim2.new(0.8,0,0.3,0)
+Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+Instance.new("UICorner",Frame)
 
 local Button = Instance.new("TextButton")
 Button.Size = UDim2.new(0,180,0,40)
-Button.Position = UDim2.new(0,10,0,30)
+Button.Position = UDim2.new(0,10,0,20)
+Button.Text = "⚔️ Auto Farm OFF"
 Button.BackgroundColor3 = Color3.fromRGB(40,40,40)
 Button.TextColor3 = Color3.fromRGB(255,255,255)
-Button.Text = "⚔️ Auto Farm OFF"
-Button.TextSize = 16
-Button.Parent = MainFrame
+Button.Parent = Frame
 Instance.new("UICorner",Button)
 
--- Settings
+-- Toggle
 local AutoFarm = false
-local TeleportDistance = 3
 
--- Tìm NPC gần nhất
-local function getNearestNPC()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    local root = char.HumanoidRootPart
-    local closest = nil
-    local dist = math.huge
-
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") then
-            if v.Humanoid.Health > 0 and not Players:GetPlayerFromCharacter(v) then
-                local mag = (root.Position - v.HumanoidRootPart.Position).Magnitude
-                if mag < dist then
-                    dist = mag
-                    closest = v
-                end
-            end
-        end
-    end
-
-    return closest
-end
-
--- Toggle button
 Button.MouseButton1Click:Connect(function()
     AutoFarm = not AutoFarm
     Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
 end)
 
--- Auto Farm
-task.spawn(function()
-    while true do
-        task.wait(0.1)
+-- Tìm NPC đi ngoài đường
+local function getNPC()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:FindFirstChild("Humanoid")
+        and v:FindFirstChild("HumanoidRootPart")
+        and not Players:GetPlayerFromCharacter(v) then
 
-        if AutoFarm then
-            local npc = getNearestNPC()
-            local char = LocalPlayer.Character
-
-            if npc and char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame =
-                    npc.HumanoidRootPart.CFrame * CFrame.new(0,0,TeleportDistance)
-
-                if char:FindFirstChildOfClass("Tool") then
-                    VirtualUser:ClickButton1(Vector2.new())
-                end
+            if v.Humanoid.Health > 0 then
+                return v
             end
         end
     end
-end)
+end
 
--- Auto nhặt đồ
+-- Auto farm
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.2)
 
         if AutoFarm then
-            for _,v in pairs(workspace:GetDescendants()) do
-                if v:IsA("Tool") and v:FindFirstChild("Handle") then
-                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart,v.Handle,0)
-                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart,v.Handle,1)
+            local npc = getNPC()
+            local char = LocalPlayer.Character
+
+            if npc and char and char:FindFirstChild("HumanoidRootPart") then
+
+                -- teleport tới NPC
+                char.HumanoidRootPart.CFrame =
+                    npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+
+                -- đánh
+                if char:FindFirstChildOfClass("Tool") then
+                    VirtualUser:ClickButton1(Vector2.new())
                 end
             end
         end
