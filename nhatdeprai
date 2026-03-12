@@ -2,8 +2,6 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
-local UNDERGROUND = -25
-local UndergroundMode = false
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -41,26 +39,32 @@ while task.wait(0.2) do
 if AutoRescue and player.Character then
 
 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-
--- xuống dưới đất 1 lần
-if hrp and not UndergroundMode then
-hrp.CFrame = hrp.CFrame + Vector3.new(0,UNDERGROUND,0)
-UndergroundMode = true
-end
-
 local prompt = findPrompt()
 
-if prompt then
+if hrp and prompt then
 
--- tăng khoảng cách kích hoạt
-prompt.MaxActivationDistance = 200
+local part = prompt.Parent
+
+-- teleport tới mục tiêu
+hrp.CFrame = part.CFrame
+
+-- tạo weld
+local weld = Instance.new("WeldConstraint")
+weld.Part0 = hrp
+weld.Part1 = part
+weld.Parent = hrp
+
+prompt.MaxActivationDistance = 100
 
 pcall(function()
 fireproximityprompt(prompt)
 end)
 
-end
+task.wait(0.3)
 
+weld:Destroy()
+
+end
 end
 
 end
