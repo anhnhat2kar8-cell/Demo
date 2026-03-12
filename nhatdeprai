@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
-local CurrentNPC = nil
+local TargetNPC = nil
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -26,16 +26,40 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm npc
+-- tìm npc gần nhất
 local function getNPC()
+
+	local closest
+	local dist = math.huge
 
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v.Name == "CityNPC"
-		and v:FindFirstChild("HumanoidRootPart")
 		and v:FindFirstChild("Humanoid")
+		and v:FindFirstChild("HumanoidRootPart")
 		and v.Humanoid.Health > 0 then
 
-			return v
+			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+
+			if d < dist then
+				dist = d
+				closest = v
+			end
+
+		end
+	end
+
+	return closest
+end
+
+-- nhặt item
+local function pickupItems()
+
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("Tool") and v:FindFirstChild("Handle") then
+
+			firetouchinterest(player.Character.HumanoidRootPart,v.Handle,0)
+			firetouchinterest(player.Character.HumanoidRootPart,v.Handle,1)
+
 		end
 	end
 
@@ -50,27 +74,28 @@ task.spawn(function()
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-			if not CurrentNPC
-			or not CurrentNPC.Parent
-			or CurrentNPC.Humanoid.Health <= 0 then
+			if not TargetNPC
+			or not TargetNPC.Parent
+			or TargetNPC.Humanoid.Health <= 0 then
 
-				CurrentNPC = getNPC()
+				TargetNPC = getNPC()
 
 			end
 
-			if CurrentNPC and hrp then
+			if TargetNPC and hrp then
 
-				local dist = (hrp.Position - CurrentNPC.HumanoidRootPart.Position).Magnitude
+				local dist = (hrp.Position - TargetNPC.HumanoidRootPart.Position).Magnitude
 
-				-- nếu xa thì TP lại
-				if dist > 5 then
-					hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+				if dist > 4 then
+					hrp.CFrame = TargetNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
 				end
 
 				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
+
+				pickupItems()
 
 			end
 
