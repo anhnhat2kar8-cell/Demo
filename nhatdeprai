@@ -4,7 +4,7 @@ local player = Players.LocalPlayer
 local AutoFarm = false
 local CurrentNPC = nil
 local angle = 0
-local DISTANCE = 10 -- khoảng cách xoay quanh NPC
+local DISTANCE = 20 -- khoảng cách xoay quanh NPC
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
