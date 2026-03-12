@@ -59,6 +59,13 @@ while task.wait(0.12) do
 
             if npcHRP then
 
+                -- tắt damage NPC
+                if CurrentNPC:FindFirstChild("Humanoid") then
+                    CurrentNPC.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                    CurrentNPC.Humanoid.WalkSpeed = 0
+                    CurrentNPC.Humanoid.JumpPower = 0
+                end
+
                 local dir = (hrp.Position - npcHRP.Position).Unit
                 local targetPos = npcHRP.Position + dir * DIST
 
