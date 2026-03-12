@@ -26,25 +26,37 @@ button.MouseButton1Click:Connect(function()
     button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- khóa NPC
+-- khóa npc
 local function lockNPC(npc)
-    if npc and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+
+    if npc and npc:FindFirstChild("Humanoid") then
+
         npc.Humanoid.WalkSpeed = 0
         npc.Humanoid.JumpPower = 0
-        npc.HumanoidRootPart.Anchored = true
+
+        for _,p in pairs(npc:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = false
+            end
+        end
+
     end
+
 end
 
 -- tìm npc
 local function getNPC()
+
     for _,v in pairs(workspace:GetDescendants()) do
         if v.Name == "CityNPC"
         and v:FindFirstChild("HumanoidRootPart")
         and v:FindFirstChild("Humanoid")
         and v.Humanoid.Health > 0 then
+
             return v
         end
     end
+
 end
 
 -- auto farm
@@ -68,11 +80,8 @@ task.spawn(function()
 
                 lockNPC(CurrentNPC)
 
-                local dist = (hrp.Position - CurrentNPC.HumanoidRootPart.Position).Magnitude
-
-                if dist > 5 then
-                    hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-                end
+                -- đứng sau npc
+                hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,4)
 
                 local tool = player.Character:FindFirstChildOfClass("Tool")
                 if tool then
