@@ -1,41 +1,52 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = false
+local autofarm = false
 
 -- GUI
-local gui = Instance.new("ScreenGui",game.CoreGui)
+local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame",gui)
+local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,200,0,60)
 frame.Position = UDim2.new(0.75,0,0.35,0)
 frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 frame.Active = true
 frame.Draggable = true
 
-local btn = Instance.new("TextButton",frame)
-btn.Size = UDim2.new(1,0,1,0)
-btn.Text = "Auto Farm OFF"
-btn.TextColor3 = Color3.new(1,1,1)
-btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1,0,1,0)
+button.Text = "Auto Farm OFF"
+button.BackgroundColor3 = Color3.fromRGB(60,60,60)
+button.TextColor3 = Color3.new(1,1,1)
 
-btn.MouseButton1Click:Connect(function()
-	AutoFarm = not AutoFarm
-	btn.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
+button.MouseButton1Click:Connect(function()
+	autofarm = not autofarm
+	button.Text = autofarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm NPC
-function getNPC()
+-- tìm npc gần nhất
+local function getNPC()
 
-	local folder = workspace:FindFirstChild("NPCs")
-	if not folder then return end
+	local closest = nil
+	local dist = math.huge
 
-	for _,v in pairs(folder:GetChildren()) do
-		if v.Name == "CityNPC" then
-			return v
+	for _,v in pairs(workspace.NPCs:GetChildren()) do
+
+		if v.Name == "CityNPC" and v:FindFirstChild("HumanoidRootPart") then
+
+			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+
+			if d < dist then
+				dist = d
+				closest = v
+			end
+
 		end
+
 	end
+
+	return closest
 
 end
 
@@ -44,21 +55,16 @@ task.spawn(function()
 
 	while task.wait(0.1) do
 
-		if AutoFarm then
+		if autofarm and player.Character then
 
 			local npc = getNPC()
-			local char = player.Character
 
-			if npc and char then
+			if npc then
 
-				local hrp = char:FindFirstChild("HumanoidRootPart")
-				local target = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Torso")
+				player.Character.HumanoidRootPart.CFrame =
+					npc.HumanoidRootPart.CFrame * CFrame.new(0,0,2)
 
-				if hrp and target then
-					hrp.CFrame = target.CFrame * CFrame.new(0,0,2)
-				end
-
-				local tool = char:FindFirstChildOfClass("Tool")
+				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
