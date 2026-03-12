@@ -4,6 +4,7 @@ local player = Players.LocalPlayer
 local AutoFarm = false
 local CurrentNPC = nil
 local angle = 0
+local DISTANCE = 10 -- khoảng cách xoay quanh NPC
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -39,25 +40,8 @@ local function getNPC()
     end
 end
 
--- nhặt đồ
-local function pickup()
-    if not player.Character then return end
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Tool") and v:FindFirstChild("Handle") then
-            if (v.Handle.Position - hrp.Position).Magnitude < 12 then
-                firetouchinterest(hrp, v.Handle, 0)
-                firetouchinterest(hrp, v.Handle, 1)
-            end
-        end
-    end
-end
-
 -- auto farm
 task.spawn(function()
-
     while task.wait(0.08) do
 
         if AutoFarm and player.Character then
@@ -79,8 +63,8 @@ task.spawn(function()
 
                     angle = angle + 15
 
-                    local x = math.cos(math.rad(angle)) * 4
-                    local z = math.sin(math.rad(angle)) * 4
+                    local x = math.cos(math.rad(angle)) * DISTANCE
+                    local z = math.sin(math.rad(angle)) * DISTANCE
 
                     local pos = npcHRP.Position + Vector3.new(x,0,z)
 
@@ -91,9 +75,6 @@ task.spawn(function()
                     if tool then
                         tool:Activate()
                     end
-
-                    -- nhặt đồ
-                    pickup()
 
                 end
             end
