@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
-local TargetNPC = nil
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -17,55 +16,77 @@ frame.Draggable = true
 
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1,0,1,0)
-button.Text = "Auto Farm OFF"
+button.Text = "AUTO FARM OFF"
 button.TextColor3 = Color3.new(1,1,1)
 button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
 button.MouseButton1Click:Connect(function()
 	AutoFarm = not AutoFarm
-	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
+	button.Text = AutoFarm and "AUTO FARM ON" or "AUTO FARM OFF"
 end)
 
--- tìm npc gần nhất
-local function getNPC()
+-- Auto equip tool
+local function equipTool()
 
-	local closest
-	local dist = math.huge
+	if not player.Character then return end
+
+	if not player.Character:FindFirstChildOfClass("Tool") then
+
+		local tool = player.Backpack:FindFirstChildOfClass("Tool")
+
+		if tool then
+			tool.Parent = player.Character
+		end
+
+	end
+
+end
+
+-- Hút NPC
+local function magnetNPC()
+
+	if not player.Character then return end
+
+	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
 
 	for _,v in pairs(workspace:GetDescendants()) do
+
 		if v.Name == "CityNPC"
 		and v:FindFirstChild("Humanoid")
 		and v:FindFirstChild("HumanoidRootPart")
 		and v.Humanoid.Health > 0 then
 
-			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-
-			if d < dist then
-				dist = d
-				closest = v
-			end
+			v.HumanoidRootPart.CFrame =
+				hrp.CFrame * CFrame.new(0,0,-6)
 
 		end
+
 	end
 
-	return closest
 end
 
--- nhặt item
+-- Nhặt item
 local function pickupItems()
 
+	if not player.Character then return end
+
+	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
 	for _,v in pairs(workspace:GetDescendants()) do
+
 		if v:IsA("Tool") and v:FindFirstChild("Handle") then
 
-			firetouchinterest(player.Character.HumanoidRootPart,v.Handle,0)
-			firetouchinterest(player.Character.HumanoidRootPart,v.Handle,1)
+			v.Handle.CFrame = hrp.CFrame
 
 		end
+
 	end
 
 end
 
--- auto farm
+-- Auto farm loop
 task.spawn(function()
 
 	while task.wait(0.1) do
@@ -73,30 +94,16 @@ task.spawn(function()
 		if AutoFarm and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if not hrp then continue end
 
-			if not TargetNPC
-			or not TargetNPC.Parent
-			or TargetNPC.Humanoid.Health <= 0 then
+			equipTool()
+			magnetNPC()
+			pickupItems()
 
-				TargetNPC = getNPC()
+			local tool = player.Character:FindFirstChildOfClass("Tool")
 
-			end
-
-			if TargetNPC and hrp then
-
-				local dist = (hrp.Position - TargetNPC.HumanoidRootPart.Position).Magnitude
-
-				if dist > 4 then
-					hrp.CFrame = TargetNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-				end
-
-				local tool = player.Character:FindFirstChildOfClass("Tool")
-				if tool then
-					tool:Activate()
-				end
-
-				pickupItems()
-
+			if tool then
+				tool:Activate()
 			end
 
 		end
