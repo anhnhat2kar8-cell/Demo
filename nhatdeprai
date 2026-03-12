@@ -2,8 +2,8 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
-local OldPos = nil
 local UNDERGROUND = -25
+local UndergroundMode = false
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -41,38 +41,26 @@ while task.wait(0.2) do
 if AutoRescue and player.Character then
 
 local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+
+-- xuống dưới đất 1 lần
+if hrp and not UndergroundMode then
+hrp.CFrame = hrp.CFrame + Vector3.new(0,UNDERGROUND,0)
+UndergroundMode = true
+end
+
 local prompt = findPrompt()
 
-if hrp and prompt then
-
-local part = prompt.Parent
-OldPos = hrp.CFrame
-
--- xuống dưới đất
-hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
-
-task.wait(0.15)
-
--- đi tới dưới mục tiêu
-hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
-
-task.wait(0.15)
+if prompt then
 
 -- tăng khoảng cách kích hoạt
-prompt.MaxActivationDistance = 100
+prompt.MaxActivationDistance = 200
 
 pcall(function()
 fireproximityprompt(prompt)
 end)
 
-task.wait(0.2)
-
--- quay lại vị trí cũ
-if OldPos then
-hrp.CFrame = OldPos
 end
 
-end
 end
 
 end
