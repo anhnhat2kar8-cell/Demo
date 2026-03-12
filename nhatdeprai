@@ -1,69 +1,64 @@
--- Services
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
 
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 local AutoFarm = false
 
 -- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ResetOnSpawn = false
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.ResetOnSpawn = false
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0,200,0,80)
-Frame.Position = UDim2.new(0.8,0,0.3,0)
-Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-Frame.Active = true
-Frame.Draggable = true
-Frame.Parent = ScreenGui
-Instance.new("UICorner",Frame)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,200,0,70)
+frame.Position = UDim2.new(0.75,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Active = true
+frame.Draggable = true
 
-local Button = Instance.new("TextButton")
-Button.Size = UDim2.new(0,180,0,40)
-Button.Position = UDim2.new(0,10,0,20)
-Button.Text = "⚔️ Auto Farm OFF"
-Button.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Button.TextColor3 = Color3.fromRGB(255,255,255)
-Button.Parent = Frame
-Instance.new("UICorner",Button)
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1,-20,1,-20)
+button.Position = UDim2.new(0,10,0,10)
+button.Text = "Auto Farm OFF"
+button.BackgroundColor3 = Color3.fromRGB(50,50,50)
+button.TextColor3 = Color3.new(1,1,1)
 
-Button.MouseButton1Click:Connect(function()
+button.MouseButton1Click:Connect(function()
 	AutoFarm = not AutoFarm
-	Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
+	button.Text = "Auto Farm "..(AutoFarm and "ON" or "OFF")
 end)
 
--- tìm NPC
-local function getNPC()
+-- tìm part của NPC
+local function getNPCPart()
 
 	local folder = workspace:FindFirstChild("NPCs")
 	if not folder then return end
 
 	for _,npc in pairs(folder:GetChildren()) do
-		if npc.Name == "CityNPC" and npc:FindFirstChild("Handle") then
-			return npc
+		if npc.Name == "CityNPC" then
+
+			for _,part in pairs(npc:GetChildren()) do
+				if part:IsA("BasePart") then
+					return part
+				end
+			end
+
 		end
 	end
 
 end
 
--- Auto farm
+-- auto farm
 task.spawn(function()
-
-	while true do
-		task.wait(0.15)
-
+	while task.wait(0.15) do
 		if AutoFarm then
 
-			local npc = getNPC()
-			local char = LocalPlayer.Character
+			local npcPart = getNPCPart()
+			local char = player.Character
 
-			if npc and char and char:FindFirstChild("HumanoidRootPart") then
-
-				local handle = npc.Handle
+			if npcPart and char and char:FindFirstChild("HumanoidRootPart") then
 
 				char.HumanoidRootPart.CFrame =
-					handle.CFrame * CFrame.new(0,0,3)
+					npcPart.CFrame * CFrame.new(0,0,2)
 
 				if char:FindFirstChildOfClass("Tool") then
 					VirtualUser:ClickButton1(Vector2.new())
@@ -72,7 +67,5 @@ task.spawn(function()
 			end
 
 		end
-
 	end
-
 end)
