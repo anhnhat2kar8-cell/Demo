@@ -39,6 +39,17 @@ end
 end
 end
 
+-- AUTO LỤM
+local function autoPickup()
+for _,v in pairs(workspace:GetDescendants()) do
+if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
+pcall(function()
+fireproximityprompt(v)
+end)
+end
+end
+end
+
 task.spawn(function()
 
 while task.wait(0.12) do
@@ -73,15 +84,18 @@ p.CanCollide = false
 end
 end
 
--- giữ khoảng cách
-hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
-hrp.CFrame = CFrame.new(hrp.Position, npcHRP.Position)
+-- giữ khoảng cách 9 stud
+local targetPos = npcHRP.Position + (npcHRP.CFrame.LookVector * -DIST)
+hrp.CFrame = CFrame.new(targetPos, npcHRP.Position)
 
 -- đánh
 local tool = player.Character:FindFirstChildOfClass("Tool")
 if tool then
 tool:Activate()
 end
+
+-- auto lụm
+autoPickup()
 
 end
 end
