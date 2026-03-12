@@ -12,37 +12,41 @@ gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,200,0,60)
 frame.Position = UDim2.new(0.75,0,0.45,0)
-frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+frame.BackgroundColor3 = Color3.fromRGB(0,0,0) -- màu đen
 frame.Active = true
 frame.Draggable = true
 
+-- bo góc
 local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0.10,0)
 
+-- viền
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255,0,0)
 
--- BUTTON (hiển thị chữ)
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1,0,1,0)
-button.BackgroundTransparency = 1
-button.Text = "N"
+button.Text = "Auto Cứu OFF"
 button.TextColor3 = Color3.new(1,1,1)
-button.TextScaled = true
-button.Font = Enum.Font.GothamBold
+button.BackgroundColor3 = Color3.fromRGB(20,20,20)
 
--- bật tắt
+local buttonCorner = Instance.new("UICorner", button)
+buttonCorner.CornerRadius = UDim.new(0.10,0)
+
 button.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
-	button.Text = AutoRescue and "..." or "N"
+	button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
 end)
 
--- viền rainbow
+-- viền đổi màu nhẹ
 task.spawn(function()
 	local hue = 0
 	while true do
-		hue += 0.002
-		if hue > 1 then hue = 0 end
+		hue = hue + 0.002
+		if hue > 1 then
+			hue = 0
+		end
 		stroke.Color = Color3.fromHSV(hue,0.7,1)
 		task.wait(0.02)
 	end
