@@ -25,33 +25,44 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm npc
+-- tìm NPC gần nhất
 local function getNPC()
+
+	local closest = nil
+	local dist = math.huge
 
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v.Name == "CityNPC" and v:FindFirstChild("HumanoidRootPart") then
-			return v
+
+			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+
+			if d < dist then
+				dist = d
+				closest = v
+			end
+
 		end
 	end
+
+	return closest
 
 end
 
 -- auto farm
 task.spawn(function()
 
-	while task.wait(0.1) do
+	while task.wait(0.2) do
 
-		if AutoFarm then
+		if AutoFarm and player.Character then
 
 			local npc = getNPC()
-			local char = player.Character
+			local humanoid = player.Character:FindFirstChild("Humanoid")
 
-			if npc and char and char:FindFirstChild("HumanoidRootPart") then
+			if npc and humanoid then
 
-				char.HumanoidRootPart.CFrame =
-					npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+				humanoid:MoveTo(npc.HumanoidRootPart.Position)
 
-				local tool = char:FindFirstChildOfClass("Tool")
+				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
