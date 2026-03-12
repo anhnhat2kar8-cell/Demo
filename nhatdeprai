@@ -53,11 +53,11 @@ task.spawn(function()
 
 					-- xuống dưới đất
 					hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
-					task.wait(0.1)
+					task.wait(0.5)
 
 					-- đi tới mục tiêu
 					hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
-					task.wait(0.1)
+					task.wait(0.5)
 
 					-- trồi lên
 					hrp.CFrame = part.CFrame * CFrame.new(0,0,3)
