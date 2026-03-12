@@ -26,7 +26,7 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm NPC còn sống
+-- tìm npc
 local function getNPC()
 
 	for _,v in pairs(workspace:GetDescendants()) do
@@ -34,6 +34,7 @@ local function getNPC()
 		and v:FindFirstChild("HumanoidRootPart")
 		and v:FindFirstChild("Humanoid")
 		and v.Humanoid.Health > 0 then
+
 			return v
 		end
 	end
@@ -49,9 +50,8 @@ task.spawn(function()
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-			-- nếu chưa có target hoặc target chết
 			if not CurrentNPC
-			or not CurrentNPC:FindFirstChild("Humanoid")
+			or not CurrentNPC.Parent
 			or CurrentNPC.Humanoid.Health <= 0 then
 
 				CurrentNPC = getNPC()
@@ -60,10 +60,13 @@ task.spawn(function()
 
 			if CurrentNPC and hrp then
 
-				-- teleport tới NPC
-				hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+				local dist = (hrp.Position - CurrentNPC.HumanoidRootPart.Position).Magnitude
 
-				-- đánh
+				-- nếu xa thì TP lại
+				if dist > 5 then
+					hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+				end
+
 				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
