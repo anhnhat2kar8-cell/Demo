@@ -23,63 +23,74 @@ button.TextColor3 = Color3.new(1,1,1)
 button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
 button.MouseButton1Click:Connect(function()
-    AutoFarm = not AutoFarm
-    button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
+AutoFarm = not AutoFarm
+button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
 -- tìm NPC
 local function getNPC()
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v.Name == "CityNPC"
-        and v:FindFirstChild("HumanoidRootPart")
-        and v:FindFirstChild("Humanoid")
-        and v.Humanoid.Health > 0 then
-            return v
-        end
-    end
+for _,v in pairs(workspace:GetDescendants()) do
+if v.Name == "CityNPC"
+and v:FindFirstChild("HumanoidRootPart")
+and v:FindFirstChild("Humanoid")
+and v.Humanoid.Health > 0 then
+return v
+end
+end
+end
+
+-- auto lụm
+local function autoPickup()
+local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+
+for _,v in pairs(workspace:GetDescendants()) do
+if v:IsA("Tool") and v:FindFirstChild("Handle") then
+if (v.Handle.Position - hrp.Position).Magnitude < 15 then
+firetouchinterest(hrp, v.Handle, 0)
+firetouchinterest(hrp, v.Handle, 1)
+end
+end
+end
 end
 
 task.spawn(function()
 
 while task.wait(0.12) do
 
-    if AutoFarm and player.Character then
+if AutoFarm and player.Character then
 
-        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-        if not CurrentNPC
-        or not CurrentNPC.Parent
-        or CurrentNPC.Humanoid.Health <= 0 then
-            CurrentNPC = getNPC()
-        end
+if not CurrentNPC
+or not CurrentNPC.Parent
+or CurrentNPC.Humanoid.Health <= 0 then
+CurrentNPC = getNPC()
+end
 
-        if CurrentNPC and hrp then
+if CurrentNPC and hrp then
 
-            local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
+local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
 
-            if npcHRP then
+if npcHRP then
 
-                -- tắt damage NPC
-                if CurrentNPC:FindFirstChild("Humanoid") then
-                    CurrentNPC.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                    CurrentNPC.Humanoid.WalkSpeed = 0
-                    CurrentNPC.Humanoid.JumpPower = 0
-                end
+local dir = (hrp.Position - npcHRP.Position).Unit
+local targetPos = npcHRP.Position + dir * DIST
 
-                local dir = (hrp.Position - npcHRP.Position).Unit
-                local targetPos = npcHRP.Position + dir * DIST
+hrp.CFrame = CFrame.new(targetPos, npcHRP.Position)
 
-                hrp.CFrame = CFrame.new(targetPos, npcHRP.Position)
+-- đánh
+local tool = player.Character:FindFirstChildOfClass("Tool")
+if tool then
+tool:Activate()
+end
 
-                -- đánh
-                local tool = player.Character:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool:Activate()
-                end
+-- lụm
+autoPickup()
 
-            end
-        end
-    end
+end
+end
+end
 
 end
 
