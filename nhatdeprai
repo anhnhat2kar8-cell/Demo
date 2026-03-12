@@ -27,48 +27,52 @@ Button.TextColor3 = Color3.fromRGB(255,255,255)
 Button.Parent = Frame
 Instance.new("UICorner",Button)
 
--- Toggle
 local AutoFarm = false
 
 Button.MouseButton1Click:Connect(function()
-    AutoFarm = not AutoFarm
-    Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
+	AutoFarm = not AutoFarm
+	Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
 end)
 
--- Tìm NPC đi ngoài đường
-local function getNPC()
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:FindFirstChild("Humanoid")
-        and v:FindFirstChild("HumanoidRootPart")
-        and not Players:GetPlayerFromCharacter(v) then
+-- tìm NPC đang đi
+local function getWalkingNPC()
 
-            if v.Humanoid.Health > 0 then
-                return v
-            end
-        end
-    end
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:FindFirstChild("Humanoid")
+		and v:FindFirstChild("HumanoidRootPart")
+		and not Players:GetPlayerFromCharacter(v) then
+
+			local hum = v.Humanoid
+
+			if hum.Health > 0 and hum.MoveDirection.Magnitude > 0 then
+				return v
+			end
+
+		end
+	end
+
 end
 
--- Auto farm
+-- Auto Farm
 task.spawn(function()
-    while true do
-        task.wait(0.2)
+	while true do
+		task.wait(0.15)
 
-        if AutoFarm then
-            local npc = getNPC()
-            local char = LocalPlayer.Character
+		if AutoFarm then
 
-            if npc and char and char:FindFirstChild("HumanoidRootPart") then
+			local npc = getWalkingNPC()
+			local char = LocalPlayer.Character
 
-                -- teleport tới NPC
-                char.HumanoidRootPart.CFrame =
-                    npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+			if npc and char and char:FindFirstChild("HumanoidRootPart") then
 
-                -- đánh
-                if char:FindFirstChildOfClass("Tool") then
-                    VirtualUser:ClickButton1(Vector2.new())
-                end
-            end
-        end
-    end
+				char.HumanoidRootPart.CFrame =
+					npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+
+				if char:FindFirstChildOfClass("Tool") then
+					VirtualUser:ClickButton1(Vector2.new())
+				end
+
+			end
+		end
+	end
 end)
