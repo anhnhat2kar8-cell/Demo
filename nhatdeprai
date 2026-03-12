@@ -2,8 +2,8 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
-local UNDERGROUND = -5
-local DIST = 120
+local OldPos = nil
+local UNDERGROUND = -25
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -36,7 +36,7 @@ end
 end
 
 task.spawn(function()
-while task.wait(0.15) do
+while task.wait(0.2) do
 
 if AutoRescue and player.Character then
 
@@ -46,20 +46,32 @@ local prompt = findPrompt()
 if hrp and prompt then
 
 local part = prompt.Parent
+OldPos = hrp.CFrame
 
-if part and part:IsA("BasePart") then
+-- xuống dưới đất
+hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
 
--- đứng hơi dưới mặt đất
+task.wait(0.15)
+
+-- đi tới dưới mục tiêu
 hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
 
--- tăng khoảng cách cứu
-prompt.MaxActivationDistance = DIST
+task.wait(0.15)
+
+-- tăng khoảng cách kích hoạt
+prompt.MaxActivationDistance = 100
 
 pcall(function()
 fireproximityprompt(prompt)
 end)
 
+task.wait(0.2)
+
+-- quay lại vị trí cũ
+if OldPos then
+hrp.CFrame = OldPos
 end
+
 end
 end
 
