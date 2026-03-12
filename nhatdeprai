@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 local CurrentNPC = nil
-local DIST = 20
+local DIST = 7
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
