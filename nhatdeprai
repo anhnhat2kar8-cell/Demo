@@ -33,94 +33,37 @@ Button.MouseButton1Click:Connect(function()
 	Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
 end)
 
--- tìm NPC gần nhất
-local function getNearestNPC()
+-- tìm NPC trong folder NPCs
+local function getCityNPC()
 
-	local char = LocalPlayer.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	local npcFolder = workspace:FindFirstChild("NPCs")
+	if not npcFolder then return end
 
-	local root = char.HumanoidRootPart
-	local nearest = nil
-	local dist = math.huge
+	for _,npc in pairs(npcFolder:GetChildren()) do
 
-	for _,v in pairs(workspace:GetDescendants()) do
+		if npc.Name == "CityNPC"
+		and npc:FindFirstChild("HumanoidRootPart")
+		and npc:FindFirstChild("Humanoid") then
 
-		if v:FindFirstChild("Humanoid")
-		and v:FindFirstChild("HumanoidRootPart")
-		and not Players:GetPlayerFromCharacter(v) then
-
-			local hum = v.Humanoid
-
-			if hum.Health > 0 then
-
-				local d = (root.Position - v.HumanoidRootPart.Position).Magnitude
-
-				if d < dist then
-					dist = d
-					nearest = v
-				end
-
-			end
-		end
-
-	end
-
-	return nearest
-end
-
--- Auto Farm loop
-task.spawn(function()
-
-	while true do
-		task.wait(0.15)
-
-		if AutoFarm then
-
-			local npc = getNearestNPC()
-			local char = LocalPlayer.Character
-
-			if npc and char and char:FindFirstChild("HumanoidRootPart") then
-
-				char.HumanoidRootPart.CFrame =
-					npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-
-				if char:FindFirstChildOfClass("Tool") then
-					VirtualUser:ClickButton1(Vector2.new())
-				end
-
+			if npc.Humanoid.Health > 0 then
+				return npc
 			end
 
 		end
 
-	end
-
-end)-- tìm NPC đang đi
-local function getWalkingNPC()
-
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:FindFirstChild("Humanoid")
-		and v:FindFirstChild("HumanoidRootPart")
-		and not Players:GetPlayerFromCharacter(v) then
-
-			local hum = v.Humanoid
-
-			if hum.Health > 0 and hum.MoveDirection.Magnitude > 0 then
-				return v
-			end
-
-		end
 	end
 
 end
 
 -- Auto Farm
 task.spawn(function()
+
 	while true do
 		task.wait(0.15)
 
 		if AutoFarm then
 
-			local npc = getWalkingNPC()
+			local npc = getCityNPC()
 			local char = LocalPlayer.Character
 
 			if npc and char and char:FindFirstChild("HumanoidRootPart") then
@@ -133,6 +76,9 @@ task.spawn(function()
 				end
 
 			end
+
 		end
+
 	end
+
 end)
