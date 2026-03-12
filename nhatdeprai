@@ -74,6 +74,15 @@ local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
 
 if npcHRP then
 
+-- khóa chân NPC
+local hum = CurrentNPC:FindFirstChild("Humanoid")
+if hum then
+hum.WalkSpeed = 0
+hum.JumpPower = 0
+end
+
+npcHRP.Anchored = true
+
 local dir = (hrp.Position - npcHRP.Position).Unit
 local targetPos = npcHRP.Position + dir * DIST
 
