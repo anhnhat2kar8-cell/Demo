@@ -3,6 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 local CurrentNPC = nil
+local DIST = 20
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -39,6 +40,7 @@ local function getNPC()
 end
 
 task.spawn(function()
+
 while task.wait(0.15) do
 
     if AutoFarm and player.Character then
@@ -59,10 +61,13 @@ while task.wait(0.15) do
 
                 local dist = (hrp.Position - npcHRP.Position).Magnitude
 
-                -- chỉ TP khi xa
-                if dist > 6 then
-                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,-3,0)
+                -- giữ khoảng cách 20 studs
+                if dist > DIST then
+                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
                 end
+
+                -- nhìn vào NPC
+                hrp.CFrame = CFrame.new(hrp.Position, npcHRP.Position)
 
                 -- đánh
                 local tool = player.Character:FindFirstChildOfClass("Tool")
@@ -73,5 +78,7 @@ while task.wait(0.15) do
             end
         end
     end
+
 end
+
 end)
