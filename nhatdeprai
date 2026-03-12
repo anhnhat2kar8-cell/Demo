@@ -2,7 +2,8 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
-local OFFSET = -5 -- thấp hơn 5 stud
+local OldPos = nil
+local UNDERGROUND = -25 -- độ sâu dưới đất
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -46,25 +47,37 @@ if hrp and prompt then
 
 local part = prompt.Parent
 
--- đặt vị trí thấp hơn 5 stud
-hrp.CFrame = part.CFrame * CFrame.new(0, OFFSET, 0)
+if part and part:IsA("BasePart") then
 
--- weld
-local weld = Instance.new("WeldConstraint")
-weld.Part0 = hrp
-weld.Part1 = part
-weld.Parent = hrp
+OldPos = hrp.CFrame
 
-prompt.MaxActivationDistance = 100
+-- TP xuống dưới đất
+hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
+
+task.wait(0.2)
+
+-- đi dưới đất tới mục tiêu
+hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
+
+task.wait(0.2)
+
+-- trồi lên cứu
+hrp.CFrame = part.CFrame * CFrame.new(0,0,3)
+
+task.wait(0.2)
 
 pcall(function()
 fireproximityprompt(prompt)
 end)
 
-task.wait(0.3)
+task.wait(0.2)
 
-weld:Destroy()
+-- quay lại vị trí cũ
+if OldPos then
+hrp.CFrame = OldPos
+end
 
+end
 end
 end
 
