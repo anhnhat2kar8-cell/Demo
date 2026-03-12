@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
+local Speed = 80 -- tốc độ chạy (bình thường ~16)
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -48,15 +49,19 @@ local function getNPC()
 
 end
 
--- auto farm
+-- Auto farm
 task.spawn(function()
 
 	while task.wait(0.2) do
 
 		if AutoFarm and player.Character then
 
-			local npc = getNPC()
 			local humanoid = player.Character:FindFirstChild("Humanoid")
+			local npc = getNPC()
+
+			if humanoid then
+				humanoid.WalkSpeed = Speed
+			end
 
 			if npc and humanoid then
 
