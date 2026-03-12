@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
-local Speed = 80 -- tốc độ chạy (bình thường ~16)
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -49,27 +48,33 @@ local function getNPC()
 
 end
 
--- Auto farm
+-- auto farm
 task.spawn(function()
 
-	while task.wait(0.2) do
+	while task.wait(0.1) do
 
 		if AutoFarm and player.Character then
 
-			local humanoid = player.Character:FindFirstChild("Humanoid")
 			local npc = getNPC()
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-			if humanoid then
-				humanoid.WalkSpeed = Speed
-			end
+			if npc and hrp then
 
-			if npc and humanoid then
+				-- TELEPORT tới NPC
+				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
 
-				humanoid:MoveTo(npc.HumanoidRootPart.Position)
-
+				-- đánh
 				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
+				end
+
+				-- nhặt item gần
+				for _,v in pairs(workspace:GetDescendants()) do
+					if v:IsA("Tool") then
+						firetouchinterest(hrp, v.Handle, 0)
+						firetouchinterest(hrp, v.Handle, 1)
+					end
 				end
 
 			end
