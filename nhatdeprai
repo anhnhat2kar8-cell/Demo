@@ -61,7 +61,7 @@ while task.wait(0.15) do
 
                 local dist = (hrp.Position - npcHRP.Position).Magnitude
 
-                -- giữ khoảng cách 20 studs
+                -- giữ khoảng cách 7 studs
                 if dist > DIST then
                     hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
                 end
