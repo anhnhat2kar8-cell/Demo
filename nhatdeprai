@@ -16,39 +16,33 @@ frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
 frame.Active = true
 frame.Draggable = true
 
--- bo góc
 local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0.10,0)
 
--- viền
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
 
--- chữ trạng thái
-local label = Instance.new("TextLabel", frame)
-label.Size = UDim2.new(1,0,1,0)
-label.BackgroundTransparency = 1
-label.Text = "N"
-label.TextColor3 = Color3.new(1,1,1)
-label.TextScaled = true
-label.Font = Enum.Font.GothamBold
+-- BUTTON (hiển thị chữ)
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1,0,1,0)
+button.BackgroundTransparency = 1
+button.Text = "N"
+button.TextColor3 = Color3.new(1,1,1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
 
--- bấm GUI để bật/tắt
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		AutoRescue = not AutoRescue
-		label.Text = AutoRescue and "..." or "N"
-	end
+-- bật tắt
+button.MouseButton1Click:Connect(function()
+	AutoRescue = not AutoRescue
+	button.Text = AutoRescue and "..." or "N"
 end)
 
--- viền đổi màu
+-- viền rainbow
 task.spawn(function()
 	local hue = 0
 	while true do
 		hue += 0.002
-		if hue > 1 then
-			hue = 0
-		end
+		if hue > 1 then hue = 0 end
 		stroke.Color = Color3.fromHSV(hue,0.7,1)
 		task.wait(0.02)
 	end
