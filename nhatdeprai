@@ -33,29 +33,21 @@ Button.MouseButton1Click:Connect(function()
 	Button.Text = "⚔️ Auto Farm "..(AutoFarm and "ON" or "OFF")
 end)
 
--- tìm NPC trong folder NPCs
-local function getCityNPC()
+-- tìm NPC
+local function getNPC()
 
-	local npcFolder = workspace:FindFirstChild("NPCs")
-	if not npcFolder then return end
+	local folder = workspace:FindFirstChild("NPCs")
+	if not folder then return end
 
-	for _,npc in pairs(npcFolder:GetChildren()) do
-
-		if npc.Name == "CityNPC"
-		and npc:FindFirstChild("HumanoidRootPart")
-		and npc:FindFirstChild("Humanoid") then
-
-			if npc.Humanoid.Health > 0 then
-				return npc
-			end
-
+	for _,npc in pairs(folder:GetChildren()) do
+		if npc.Name == "CityNPC" and npc:FindFirstChild("Handle") then
+			return npc
 		end
-
 	end
 
 end
 
--- Auto Farm
+-- Auto farm
 task.spawn(function()
 
 	while true do
@@ -63,13 +55,15 @@ task.spawn(function()
 
 		if AutoFarm then
 
-			local npc = getCityNPC()
+			local npc = getNPC()
 			local char = LocalPlayer.Character
 
 			if npc and char and char:FindFirstChild("HumanoidRootPart") then
 
+				local handle = npc.Handle
+
 				char.HumanoidRootPart.CFrame =
-					npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+					handle.CFrame * CFrame.new(0,0,3)
 
 				if char:FindFirstChildOfClass("Tool") then
 					VirtualUser:ClickButton1(Vector2.new())
