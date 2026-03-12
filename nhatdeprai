@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
+local CurrentNPC = nil
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -25,48 +26,42 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm NPC gần nhất còn sống
+-- tìm NPC còn sống
 local function getNPC()
-
-	local closest = nil
-	local dist = math.huge
 
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v.Name == "CityNPC"
 		and v:FindFirstChild("HumanoidRootPart")
-		and v:FindFirstChild("Humanoid") then
-
-			if v.Humanoid.Health > 0 then
-
-				local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-
-				if d < dist then
-					dist = d
-					closest = v
-				end
-
-			end
+		and v:FindFirstChild("Humanoid")
+		and v.Humanoid.Health > 0 then
+			return v
 		end
 	end
 
-	return closest
-
 end
 
--- Auto farm
+-- auto farm
 task.spawn(function()
 
-	while task.wait(0.15) do
+	while task.wait(0.1) do
 
 		if AutoFarm and player.Character then
 
-			local npc = getNPC()
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-			if npc and hrp then
+			-- nếu chưa có target hoặc target chết
+			if not CurrentNPC
+			or not CurrentNPC:FindFirstChild("Humanoid")
+			or CurrentNPC.Humanoid.Health <= 0 then
+
+				CurrentNPC = getNPC()
+
+			end
+
+			if CurrentNPC and hrp then
 
 				-- teleport tới NPC
-				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+				hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
 
 				-- đánh
 				local tool = player.Character:FindFirstChildOfClass("Tool")
