@@ -10,53 +10,29 @@ local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,220,0,80)
+frame.Size = UDim2.new(0,200,0,60)
 frame.Position = UDim2.new(0.75,0,0.45,0)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,30)
-frame.BorderSizePixel = 0
+frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 frame.Active = true
 frame.Draggable = true
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0,12)
+-- Bo góc Frame
+local frameCorner = Instance.new("UICorner", frame)
+frameCorner.CornerRadius = UDim.new(0.10,0)
 
 local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(0,80,0,50)
-button.Position = UDim2.new(0.05,0,0.5,-25)
-button.BackgroundColor3 = Color3.fromRGB(50,50,60)
-button.Text = "Enter"
-button.TextScaled = true
-button.Font = Enum.Font.GothamBold
-button.TextColor3 = Color3.fromRGB(220,220,255)
+button.Size = UDim2.new(1,0,1,0)
+button.Text = "Auto Cứu OFF"
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
-local bcorner = Instance.new("UICorner", button)
-bcorner.CornerRadius = UDim.new(0,10)
-
-local label = Instance.new("TextLabel", frame)
-label.Size = UDim2.new(0.5,0,1,0)
-label.Position = UDim2.new(0.45,0,0,0)
-label.BackgroundTransparency = 1
-label.Text = "Auto Rescue"
-label.TextScaled = true
-label.Font = Enum.Font.GothamBold
-label.TextColor3 = Color3.fromRGB(180,200,255)
-
-local originalPos = button.Position
+-- Bo góc Button
+local buttonCorner = Instance.new("UICorner", button)
+buttonCorner.CornerRadius = UDim.new(0.10,0)
 
 button.MouseButton1Click:Connect(function()
-
 	AutoRescue = not AutoRescue
-
-	if AutoRescue then
-		-- hiệu ứng nút bị nhấn xuống
-		button.Position = originalPos + UDim2.new(0,0,0,3)
-		button.BackgroundColor3 = Color3.fromRGB(0,170,255)
-	else
-		-- nút nổi lại
-		button.Position = originalPos
-		button.BackgroundColor3 = Color3.fromRGB(50,50,60)
-	end
-
+	button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
 end)
 
 -- NoClip
@@ -97,10 +73,8 @@ task.spawn(function()
 
 				OldPos = hrp.CFrame
 
-				-- tăng khoảng cách kích hoạt
 				prompt.MaxActivationDistance = 50
 
-				-- xuống lòng đất dưới player cần cứu
 				hrp.CFrame = CFrame.new(
 					targetHRP.Position.X,
 					targetHRP.Position.Y + UNDERGROUND,
@@ -109,14 +83,12 @@ task.spawn(function()
 
 				task.wait(0.2)
 
-				-- cứu từ dưới đất
 				pcall(function()
 					fireproximityprompt(prompt)
 				end)
 
 				task.wait(0.35)
 
-				-- quay lại vị trí cũ
 				if OldPos then
 					hrp.CFrame = OldPos
 				end
