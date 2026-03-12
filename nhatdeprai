@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
+local OFFSET = -5 -- thấp hơn 5 stud
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -45,10 +46,10 @@ if hrp and prompt then
 
 local part = prompt.Parent
 
--- teleport tới mục tiêu
-hrp.CFrame = part.CFrame
+-- đặt vị trí thấp hơn 5 stud
+hrp.CFrame = part.CFrame * CFrame.new(0, OFFSET, 0)
 
--- tạo weld
+-- weld
 local weld = Instance.new("WeldConstraint")
 weld.Part0 = hrp
 weld.Part1 = part
