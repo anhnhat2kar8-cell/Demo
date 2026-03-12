@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
-local UNDERGROUND = -3
+local UNDERGROUND = -5
 local DIST = 120
 
 -- GUI
