@@ -59,10 +59,22 @@ local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
 
 if npcHRP then
 
--- đứng cách NPC 9 studs
-hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
+-- khóa chân NPC
+local hum = CurrentNPC:FindFirstChild("Humanoid")
+if hum then
+hum.WalkSpeed = 0
+hum.JumpPower = 0
+end
 
--- quay mặt vào NPC
+-- tắt va chạm NPC
+for _,p in pairs(CurrentNPC:GetDescendants()) do
+if p:IsA("BasePart") then
+p.CanCollide = false
+end
+end
+
+-- giữ khoảng cách
+hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
 hrp.CFrame = CFrame.new(hrp.Position, npcHRP.Position)
 
 -- đánh
