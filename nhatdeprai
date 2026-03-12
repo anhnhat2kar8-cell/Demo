@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
+local CurrentNPC = nil
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -16,98 +17,72 @@ frame.Draggable = true
 
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1,0,1,0)
-button.Text = "AUTO FARM OFF"
+button.Text = "Auto Farm OFF"
 button.TextColor3 = Color3.new(1,1,1)
 button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
 button.MouseButton1Click:Connect(function()
-	AutoFarm = not AutoFarm
-	button.Text = AutoFarm and "AUTO FARM ON" or "AUTO FARM OFF"
+    AutoFarm = not AutoFarm
+    button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- Auto equip tool
-local function equipTool()
-
-	if not player.Character then return end
-
-	if not player.Character:FindFirstChildOfClass("Tool") then
-
-		local tool = player.Backpack:FindFirstChildOfClass("Tool")
-
-		if tool then
-			tool.Parent = player.Character
-		end
-
-	end
-
+-- khóa NPC
+local function lockNPC(npc)
+    if npc and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+        npc.Humanoid.WalkSpeed = 0
+        npc.Humanoid.JumpPower = 0
+        npc.HumanoidRootPart.Anchored = true
+    end
 end
 
--- Hút NPC
-local function magnetNPC()
-
-	if not player.Character then return end
-
-	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	for _,v in pairs(workspace:GetDescendants()) do
-
-		if v.Name == "CityNPC"
-		and v:FindFirstChild("Humanoid")
-		and v:FindFirstChild("HumanoidRootPart")
-		and v.Humanoid.Health > 0 then
-
-			v.HumanoidRootPart.CFrame =
-				hrp.CFrame * CFrame.new(0,0,-6)
-
-		end
-
-	end
-
+-- tìm npc
+local function getNPC()
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v.Name == "CityNPC"
+        and v:FindFirstChild("HumanoidRootPart")
+        and v:FindFirstChild("Humanoid")
+        and v.Humanoid.Health > 0 then
+            return v
+        end
+    end
 end
 
--- Nhặt item
-local function pickupItems()
-
-	if not player.Character then return end
-
-	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	for _,v in pairs(workspace:GetDescendants()) do
-
-		if v:IsA("Tool") and v:FindFirstChild("Handle") then
-
-			v.Handle.CFrame = hrp.CFrame
-
-		end
-
-	end
-
-end
-
--- Auto farm loop
+-- auto farm
 task.spawn(function()
 
-	while task.wait(0.1) do
+    while task.wait(0.1) do
 
-		if AutoFarm and player.Character then
+        if AutoFarm and player.Character then
 
-			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if not hrp then continue end
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-			equipTool()
-			magnetNPC()
-			pickupItems()
+            if not CurrentNPC
+            or not CurrentNPC.Parent
+            or CurrentNPC.Humanoid.Health <= 0 then
 
-			local tool = player.Character:FindFirstChildOfClass("Tool")
+                CurrentNPC = getNPC()
 
-			if tool then
-				tool:Activate()
-			end
+            end
 
-		end
+            if CurrentNPC and hrp then
 
-	end
+                lockNPC(CurrentNPC)
+
+                local dist = (hrp.Position - CurrentNPC.HumanoidRootPart.Position).Magnitude
+
+                if dist > 5 then
+                    hrp.CFrame = CurrentNPC.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+                end
+
+                local tool = player.Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                end
+
+            end
+
+        end
+
+    end
 
 end)
