@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoRescue = false
+local DIST = 1000 -- khoảng cách cứu
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -25,19 +26,24 @@ AutoRescue = not AutoRescue
 button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
 end)
 
--- auto cứu
+-- auto cứu xa
 local function autoRescue()
 for _,v in pairs(workspace:GetDescendants()) do
 if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
+
+-- tăng khoảng cách cứu
+v.MaxActivationDistance = DIST
+
 pcall(function()
 fireproximityprompt(v)
 end)
+
 end
 end
 end
 
 task.spawn(function()
-while task.wait(0.2) do
+while task.wait(0.15) do
 if AutoRescue then
 autoRescue()
 end
