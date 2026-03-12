@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoRescue = false
 local OldPos = nil
-local UNDERGROUND = -25 -- độ sâu dưới đất
+local UNDERGROUND = -25
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -23,63 +23,58 @@ button.TextColor3 = Color3.new(1,1,1)
 button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
 button.MouseButton1Click:Connect(function()
-AutoRescue = not AutoRescue
-button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
+	AutoRescue = not AutoRescue
+	button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
 end)
 
 local function findPrompt()
-for _,v in pairs(workspace:GetDescendants()) do
-if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
-return v
-end
-end
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
+			return v
+		end
+	end
 end
 
 task.spawn(function()
-while task.wait(0.2) do
+	while task.wait(0.2) do
 
-if AutoRescue and player.Character then
+		if AutoRescue and player.Character then
 
-local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-local prompt = findPrompt()
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local prompt = findPrompt()
 
-if hrp and prompt then
+			if hrp and prompt then
 
-local part = prompt.Parent
+				local part = prompt.Parent
 
-if part and part:IsA("BasePart") then
+				if part and part:IsA("BasePart") then
 
-OldPos = hrp.CFrame
+					OldPos = hrp.CFrame
 
--- TP xuống dưới đất
-hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
+					-- xuống dưới đất
+					hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
+					task.wait(0.1)
 
-task.wait(0.2)
+					-- đi tới mục tiêu
+					hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
+					task.wait(0.1)
 
--- đi dưới đất tới mục tiêu
-hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
+					-- trồi lên
+					hrp.CFrame = part.CFrame * CFrame.new(0,0,3)
 
-task.wait(0.2)
+					-- kích hoạt cứu
+					pcall(function()
+						fireproximityprompt(prompt)
+					end)
 
--- trồi lên cứu
-hrp.CFrame = part.CFrame * CFrame.new(0,0,3)
+					-- TELE VỀ NGAY
+					if OldPos then
+						hrp.CFrame = OldPos
+					end
 
-task.wait(0.2)
+				end
+			end
+		end
 
-pcall(function()
-fireproximityprompt(prompt)
-end)
-
-task.wait(0.2)
-
--- quay lại vị trí cũ
-if OldPos then
-hrp.CFrame = OldPos
-end
-
-end
-end
-end
-
-end
+	end
 end)
