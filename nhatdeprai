@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 local CurrentNPC = nil
-local DIST = 9 -- khoảng cách mới
+local DIST = 9
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -39,21 +39,6 @@ end
 end
 end
 
--- auto lụm
-local function autoPickup()
-local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-if not hrp then return end
-
-for _,v in pairs(workspace:GetDescendants()) do
-if v:IsA("Tool") and v:FindFirstChild("Handle") then
-if (v.Handle.Position - hrp.Position).Magnitude < 15 then
-firetouchinterest(hrp, v.Handle, 0)
-firetouchinterest(hrp, v.Handle, 1)
-end
-end
-end
-end
-
 task.spawn(function()
 
 while task.wait(0.12) do
@@ -74,28 +59,17 @@ local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
 
 if npcHRP then
 
--- khóa chân NPC
-local hum = CurrentNPC:FindFirstChild("Humanoid")
-if hum then
-hum.WalkSpeed = 0
-hum.JumpPower = 0
-end
+-- đứng cách NPC 9 studs
+hrp.CFrame = npcHRP.CFrame * CFrame.new(0,0,DIST)
 
-npcHRP.Anchored = true
-
-local dir = (hrp.Position - npcHRP.Position).Unit
-local targetPos = npcHRP.Position + dir * DIST
-
-hrp.CFrame = CFrame.new(targetPos, npcHRP.Position)
+-- quay mặt vào NPC
+hrp.CFrame = CFrame.new(hrp.Position, npcHRP.Position)
 
 -- đánh
 local tool = player.Character:FindFirstChildOfClass("Tool")
 if tool then
 tool:Activate()
 end
-
--- lụm
-autoPickup()
 
 end
 end
