@@ -38,39 +38,40 @@ local function getNPC()
     end
 end
 
--- Auto farm
 task.spawn(function()
+while task.wait(0.15) do
 
-    while task.wait(0.1) do
+    if AutoFarm and player.Character then
 
-        if AutoFarm and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-
-            if not CurrentNPC
-            or not CurrentNPC.Parent
-            or CurrentNPC.Humanoid.Health <= 0 then
-                CurrentNPC = getNPC()
-            end
-
-            if CurrentNPC and hrp then
-
-                local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
-                if npcHRP then
-
-                    -- đứng dưới chân NPC
-                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,-3,0)
-
-                    -- đánh
-                    local tool = player.Character:FindFirstChildOfClass("Tool")
-                    if tool then
-                        tool:Activate()
-                    end
-
-                end
-            end
+        if not CurrentNPC
+        or not CurrentNPC.Parent
+        or CurrentNPC.Humanoid.Health <= 0 then
+            CurrentNPC = getNPC()
         end
 
-    end
+        if CurrentNPC and hrp then
 
+            local npcHRP = CurrentNPC:FindFirstChild("HumanoidRootPart")
+
+            if npcHRP then
+
+                local dist = (hrp.Position - npcHRP.Position).Magnitude
+
+                -- chỉ TP khi xa
+                if dist > 6 then
+                    hrp.CFrame = npcHRP.CFrame * CFrame.new(0,-3,0)
+                end
+
+                -- đánh
+                local tool = player.Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                end
+
+            end
+        end
+    end
+end
 end)
