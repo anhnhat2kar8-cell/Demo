@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoRescue = false
 local OldPos = nil
-local UNDERGROUND = -25
+local UNDERGROUND = -12
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -27,52 +27,68 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoRescue and "Auto Cứu ON" or "Auto Cứu OFF"
 end)
 
+-- NoClip
+task.spawn(function()
+	while true do
+		task.wait()
+		if AutoRescue and player.Character then
+			for _,v in pairs(player.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = false
+				end
+			end
+		end
+	end
+end)
+
+-- tìm prompt cứu
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
-			return v
+			local char = v:FindFirstAncestorOfClass("Model")
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				return v, char.HumanoidRootPart
+			end
 		end
 	end
 end
 
 task.spawn(function()
-	while task.wait(0.2) do
+	while task.wait(0.25) do
 
 		if AutoRescue and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			local prompt = findPrompt()
+			local prompt, targetHRP = findPrompt()
 
-			if hrp and prompt then
+			if hrp and prompt and targetHRP then
 
-				local part = prompt.Parent
+				OldPos = hrp.CFrame
 
-				if part and part:IsA("BasePart") then
+				-- tăng khoảng cách kích hoạt
+				prompt.MaxActivationDistance = 50
 
-					OldPos = hrp.CFrame
+				-- xuống lòng đất dưới player cần cứu
+				hrp.CFrame = CFrame.new(
+					targetHRP.Position.X,
+					targetHRP.Position.Y + UNDERGROUND,
+					targetHRP.Position.Z
+				)
 
-					-- xuống dưới đất
-					hrp.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y + UNDERGROUND, hrp.Position.Z)
-					task.wait(0.5)
+				task.wait(0.2)
 
-					-- đi tới mục tiêu
-					hrp.CFrame = CFrame.new(part.Position.X, part.Position.Y + UNDERGROUND, part.Position.Z)
-					task.wait(0.5)
+				-- cứu từ dưới đất
+				pcall(function()
+					fireproximityprompt(prompt)
+				end)
 
-					-- trồi lên
-					hrp.CFrame = part.CFrame * CFrame.new(0,0,3)
+				task.wait(0.35)
 
-					-- kích hoạt cứu
-					pcall(function()
-						fireproximityprompt(prompt)
-					end)
-
-					-- TELE VỀ NGAY
-					if OldPos then
-						hrp.CFrame = OldPos
-					end
-
+				-- quay lại vị trí cũ
+				if OldPos then
+					hrp.CFrame = OldPos
 				end
+
 			end
 		end
 
