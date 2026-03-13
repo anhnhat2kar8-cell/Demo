@@ -4,7 +4,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local OldPos = nil
-local UNDERGROUND = -13
+local UNDERGROUND = -12
 local blockedTargets = {}
 
 -- Anti AFK
@@ -97,25 +97,6 @@ task.spawn(function()
 	end
 end)
 
--- Auto reset tool
-task.spawn(function()
-	while task.wait(0.5) do
-		if AutoRescue and player.Character then
-			local char = player.Character
-			local tool = char:FindFirstChildOfClass("Tool")
-
-			if tool then
-				tool.Parent = player.Backpack
-				task.wait(0.5)
-
-				if player.Character and tool.Parent == player.Backpack then
-					tool.Parent = player.Character
-				end
-			end
-		end
-	end
-end)
-
 -- tìm prompt cứu
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
@@ -133,7 +114,7 @@ local function findPrompt()
 end
 
 task.spawn(function()
-	while task.wait(0.05) do
+	while task.wait(0.08) do
 		if AutoRescue and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -148,9 +129,9 @@ task.spawn(function()
 				task.wait()
 				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
+				task.wait(0.1)
+
 				local success = pcall(function()
-					prompt.HoldDuration = 0
-					prompt.RequiresLineOfSight = false
 					fireproximityprompt(prompt)
 				end)
 
@@ -161,7 +142,7 @@ task.spawn(function()
 					end)
 				end
 
-				task.wait(0.03)
+				task.wait(0.05)
 
 				if OldPos then
 					hrp.CFrame = OldPos
