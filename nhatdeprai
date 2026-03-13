@@ -3,7 +3,6 @@ local player = Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
-local OldPos = nil
 local blockedTargets = {}
 
 -- Anti AFK
@@ -24,8 +23,7 @@ frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 frame.Active = true
 frame.Draggable = true
 
-local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,25)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,25)
 
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 3
@@ -53,8 +51,7 @@ switchBg.Size = UDim2.new(0,150,0,50)
 switchBg.Position = UDim2.new(0.18,0,0.48,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 
-local switchCorner = Instance.new("UICorner", switchBg)
-switchCorner.CornerRadius = UDim.new(1,0)
+Instance.new("UICorner", switchBg).CornerRadius = UDim.new(1,0)
 
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,50,0,50)
@@ -62,8 +59,7 @@ knob.Position = UDim2.new(0,0,0,0)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
 
-local knobCorner = Instance.new("UICorner", knob)
-knobCorner.CornerRadius = UDim.new(1,0)
+Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
 
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
@@ -89,7 +85,7 @@ task.spawn(function()
 	end
 end)
 
--- tìm prompt cứu
+-- tìm prompt gần nhất
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt")
@@ -105,9 +101,9 @@ local function findPrompt()
 	end
 end
 
--- Auto cứu kín
+-- Auto cứu realtime
 task.spawn(function()
-	while task.wait(0.25) do
+	while task.wait(0.1) do
 		if AutoRescue and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -115,34 +111,17 @@ task.spawn(function()
 
 			if hrp and prompt and targetHRP then
 
-				OldPos = hrp.CFrame
-				prompt.MaxActivationDistance = 80
+				prompt.MaxActivationDistance = 100
 
 				hrp.CFrame = CFrame.new(
-					targetHRP.Position.X + math.random(-2,2),
+					targetHRP.Position.X,
 					targetHRP.Position.Y - 18,
-					targetHRP.Position.Z + math.random(-2,2)
+					targetHRP.Position.Z
 				)
 
-				task.wait(0.1)
-
-				local success = pcall(function()
+				pcall(function()
 					fireproximityprompt(prompt)
 				end)
-
-				if not success then
-					blockedTargets[prompt] = true
-					task.delay(10,function()
-						blockedTargets[prompt] = nil
-					end)
-				end
-
-				task.wait(0.1)
-
-				if OldPos then
-					hrp.CFrame = OldPos
-				end
-
 			end
 		end
 	end
