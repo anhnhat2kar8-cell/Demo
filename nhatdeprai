@@ -128,7 +128,7 @@ task.spawn(function()
 
 				hrp.CFrame = CFrame.new(
 					targetHRP.Position.X,
-					targetHRP.Position.Y - 18,
+					targetHRP.Position.Y - 10,
 					targetHRP.Position.Z
 				)
 
