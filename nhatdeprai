@@ -114,7 +114,7 @@ local function findPrompt()
 end
 
 task.spawn(function()
-	while task.wait(0.25) do
+	while task.wait(0.08) do
 		if AutoRescue and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -129,7 +129,7 @@ task.spawn(function()
 				task.wait()
 				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
-				task.wait(0.2)
+				task.wait(0.1)
 
 				local success = pcall(function()
 					fireproximityprompt(prompt)
@@ -142,7 +142,7 @@ task.spawn(function()
 					end)
 				end
 
-				task.wait(0.35)
+				task.wait(0.05)
 
 				if OldPos then
 					hrp.CFrame = OldPos
