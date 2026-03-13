@@ -26,7 +26,7 @@ frame.Active = true
 frame.Draggable = true
 
 local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,10)
+frameCorner.CornerRadius = UDim.new(0,8)
 
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
@@ -44,7 +44,7 @@ end)
 
 -- chữ Tele
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0,40)
+title.Size = UDim2.new(1,0,0,20)
 title.BackgroundTransparency = 1
 title.Text = "Tele"
 title.TextColor3 = Color3.fromRGB(255,170,0)
@@ -53,8 +53,8 @@ title.Font = Enum.Font.GothamBold
 
 -- switch nền
 local switchBg = Instance.new("Frame", frame)
-switchBg.Size = UDim2.new(0,90,0,35)
-switchBg.Position = UDim2.new(0.18,0,0.5,0)
+switchBg.Size = UDim2.new(0,40,0,18)
+switchBg.Position = UDim2.new(0.17,0,0.58,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 
 local switchCorner = Instance.new("UICorner", switchBg)
@@ -62,7 +62,7 @@ switchCorner.CornerRadius = UDim.new(1,0)
 
 -- nút tròn
 local knob = Instance.new("TextButton", switchBg)
-knob.Size = UDim2.new(0,35,0,35)
+knob.Size = UDim2.new(0,18,0,18)
 knob.Position = UDim2.new(0,0,0,0)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
@@ -75,7 +75,7 @@ knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
 	if AutoRescue then
-		knob:TweenPosition(UDim2.new(0.62,0,0,0),"Out","Quad",0.2,true)
+		knob:TweenPosition(UDim2.new(0.55,0,0,0),"Out","Quad",0.2,true)
 	else
 		knob:TweenPosition(UDim2.new(0,0,0,0),"Out","Quad",0.2,true)
 	end
@@ -137,7 +137,6 @@ task.spawn(function()
 
 				if not success then
 					blockedTargets[prompt] = true
-
 					task.delay(10,function()
 						blockedTargets[prompt] = nil
 					end)
@@ -148,7 +147,6 @@ task.spawn(function()
 				if OldPos then
 					hrp.CFrame = OldPos
 				end
-
 			end
 		end
 	end
