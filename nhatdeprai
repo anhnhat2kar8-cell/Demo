@@ -5,6 +5,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local AutoRescue = false
 local OldPos = nil
 local UNDERGROUND = -12
+local blockedTargets = {}
 
 -- Anti AFK
 player.Idled:Connect(function()
@@ -51,10 +52,8 @@ end)
 task.spawn(function()
 	local hue = 0
 	while true do
-		hue = hue + 0.002
-		if hue > 1 then
-			hue = 0
-		end
+		hue += 0.002
+		if hue > 1 then hue = 0 end
 		stroke.Color = Color3.fromHSV(hue,0.7,1)
 		task.wait(0.02)
 	end
@@ -74,11 +73,15 @@ task.spawn(function()
 	end
 end)
 
--- tìm prompt cứu
+-- tìm prompt cứu (bỏ qua target lỗi)
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
+		if v:IsA("ProximityPrompt")
+		and v.ActionText == "Cứu"
+		and not blockedTargets[v] then
+
 			local char = v:FindFirstAncestorOfClass("Model")
+
 			if char and char:FindFirstChild("HumanoidRootPart") then
 				return v, char.HumanoidRootPart
 			end
@@ -106,9 +109,17 @@ task.spawn(function()
 
 				task.wait(0.2)
 
-				pcall(function()
+				local success = pcall(function()
 					fireproximityprompt(prompt)
 				end)
+
+				if not success then
+					blockedTargets[prompt] = true
+
+					task.delay(10,function()
+						blockedTargets[prompt] = nil
+					end)
+				end
 
 				task.wait(0.35)
 
