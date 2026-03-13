@@ -4,7 +4,6 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local OldPos = nil
-local UNDERGROUND = -12
 local blockedTargets = {}
 
 -- Anti AFK
@@ -31,7 +30,6 @@ frameCorner.CornerRadius = UDim.new(0,25)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 3
 
--- Viền đổi màu nhẹ
 task.spawn(function()
 	local hue = 0
 	while true do
@@ -42,7 +40,6 @@ task.spawn(function()
 	end
 end)
 
--- chữ Tele
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0.35,0)
 title.BackgroundTransparency = 1
@@ -51,7 +48,6 @@ title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
--- switch nền
 local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,150,0,50)
 switchBg.Position = UDim2.new(0.18,0,0.48,0)
@@ -60,7 +56,6 @@ switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 local switchCorner = Instance.new("UICorner", switchBg)
 switchCorner.CornerRadius = UDim.new(1,0)
 
--- nút tròn
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,50,0,50)
 knob.Position = UDim2.new(0,0,0,0)
@@ -70,7 +65,6 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
--- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
@@ -111,6 +105,7 @@ local function findPrompt()
 	end
 end
 
+-- Auto cứu kín
 task.spawn(function()
 	while task.wait(0.25) do
 		if AutoRescue and player.Character then
@@ -121,15 +116,15 @@ task.spawn(function()
 			if hrp and prompt and targetHRP then
 
 				OldPos = hrp.CFrame
-				prompt.MaxActivationDistance = 50
+				prompt.MaxActivationDistance = 80
 
 				hrp.CFrame = CFrame.new(
-					targetHRP.Position.X,
-					targetHRP.Position.Y + UNDERGROUND,
-					targetHRP.Position.Z
+					targetHRP.Position.X + math.random(-2,2),
+					targetHRP.Position.Y - 18,
+					targetHRP.Position.Z + math.random(-2,2)
 				)
 
-				task.wait(0.2)
+				task.wait(0.1)
 
 				local success = pcall(function()
 					fireproximityprompt(prompt)
@@ -137,13 +132,12 @@ task.spawn(function()
 
 				if not success then
 					blockedTargets[prompt] = true
-
 					task.delay(10,function()
 						blockedTargets[prompt] = nil
 					end)
 				end
 
-				task.wait(0.35)
+				task.wait(0.1)
 
 				if OldPos then
 					hrp.CFrame = OldPos
