@@ -7,6 +7,21 @@ local OldPos = nil
 local UNDERGROUND = -14
 local blockedTargets = {}
 
+local MONEY_NAME = "VND"
+local RESCUE_COST = 2000000
+
+-- check tiền
+local function hasEnoughMoney()
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local money = leaderstats:FindFirstChild(MONEY_NAME)
+		if money and money.Value >= RESCUE_COST then
+			return true
+		end
+	end
+	return false
+end
+
 -- Anti AFK
 player.Idled:Connect(function()
 	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -32,7 +47,6 @@ frameCorner.CornerRadius = UDim.new(0,10)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
 
--- Viền đổi màu nhẹ
 task.spawn(function()
 	local hue = 0
 	while true do
@@ -43,7 +57,6 @@ task.spawn(function()
 	end
 end)
 
--- chữ Tele
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,22)
 title.BackgroundTransparency = 1
@@ -52,7 +65,6 @@ title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
--- switch nền
 local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,60,0,30)
 switchBg.Position = UDim2.new(0,5,0.52,0)
@@ -62,7 +74,6 @@ switchBg.BackgroundTransparency = 0.2
 local switchCorner = Instance.new("UICorner", switchBg)
 switchCorner.CornerRadius = UDim.new(1,0)
 
--- nút tròn
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,28,0,28)
 knob.Position = UDim2.new(0,1,0,1)
@@ -72,7 +83,6 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
--- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
@@ -116,6 +126,10 @@ end
 task.spawn(function()
 	while task.wait(0.08) do
 		if AutoRescue and player.Character then
+
+			if not hasEnoughMoney() then
+				continue
+			end
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 			local prompt, targetHRP = findPrompt()
