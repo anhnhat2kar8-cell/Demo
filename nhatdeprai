@@ -19,17 +19,17 @@ local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,220,0,100)
-frame.Position = UDim2.new(0.75,0,0.45,0)
+frame.Size = UDim2.new(0,180,0,80)
+frame.Position = UDim2.new(0.78,0,0.45,0)
 frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 frame.Active = true
 frame.Draggable = true
 
 local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,25)
+frameCorner.CornerRadius = UDim.new(0,10)
 
 local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
+stroke.Thickness = 2
 
 -- Viền đổi màu nhẹ
 task.spawn(function()
@@ -53,8 +53,8 @@ title.Font = Enum.Font.GothamBold
 
 -- switch nền
 local switchBg = Instance.new("Frame", frame)
-switchBg.Size = UDim2.new(0,150,0,50)
-switchBg.Position = UDim2.new(0.18,0,0.48,0)
+switchBg.Size = UDim2.new(0,110,0,35)
+switchBg.Position = UDim2.new(0.19,0,0.5,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 
 local switchCorner = Instance.new("UICorner", switchBg)
@@ -62,7 +62,7 @@ switchCorner.CornerRadius = UDim.new(1,0)
 
 -- nút tròn
 local knob = Instance.new("TextButton", switchBg)
-knob.Size = UDim2.new(0,50,0,50)
+knob.Size = UDim2.new(0,35,0,35)
 knob.Position = UDim2.new(0,0,0,0)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
@@ -75,7 +75,7 @@ knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
 	if AutoRescue then
-		knob:TweenPosition(UDim2.new(0.67,0,0,0),"Out","Quad",0.2,true)
+		knob:TweenPosition(UDim2.new(0.68,0,0,0),"Out","Quad",0.2,true)
 	else
 		knob:TweenPosition(UDim2.new(0,0,0,0),"Out","Quad",0.2,true)
 	end
