@@ -19,7 +19,7 @@ local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,60,0,60)
+frame.Size = UDim2.new(0,70,0,70)
 frame.Position = UDim2.new(0.78,0,0.6,0)
 frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 frame.BackgroundTransparency = 0.9
@@ -27,25 +27,14 @@ frame.Active = true
 frame.Draggable = true
 
 local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,8)
+frameCorner.CornerRadius = UDim.new(0,10)
 
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
 
--- Viền đổi màu nhẹ
-task.spawn(function()
-	local hue = 0
-	while true do
-		hue += 0.002
-		if hue > 1 then hue = 0 end
-		stroke.Color = Color3.fromHSV(hue,0.7,1)
-		task.wait(0.02)
-	end
-end)
-
 -- chữ Tele
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0,20)
+title.Size = UDim2.new(1,0,0,22)
 title.BackgroundTransparency = 1
 title.Text = "Tele"
 title.TextColor3 = Color3.fromRGB(255,170,0)
@@ -55,7 +44,7 @@ title.Font = Enum.Font.GothamBold
 -- switch nền
 local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,60,0,30)
-switchBg.Position = UDim2.new(0.07,0,0.50,0)
+switchBg.Position = UDim2.new(0,5,0.52,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 switchBg.BackgroundTransparency = 0.2
 
@@ -64,24 +53,13 @@ switchCorner.CornerRadius = UDim.new(1,0)
 
 -- nút tròn
 local knob = Instance.new("TextButton", switchBg)
-knob.Size = UDim2.new(0,20,0,20)
-knob.Position = UDim2.new(0,0,0,0)
+knob.Size = UDim2.new(0,28,0,28)
+knob.Position = UDim2.new(0,1,0,1)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
 
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
-
--- bật tắt
-knob.MouseButton1Click:Connect(function()
-	AutoRescue = not AutoRescue
-
-	if AutoRescue then
-		knob:TweenPosition(UDim2.new(0.62,0,0,0),"Out","Quad",0.2,true)
-	else
-		knob:TweenPosition(UDim2.new(0,0,0,0),"Out","Quad",0.2,true)
-	end
-end)
 
 -- NoClip
 task.spawn(function()
