@@ -4,7 +4,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local OldPos = nil
-local UNDERGROUND = -10
+local UNDERGROUND = -13
 local blockedTargets = {}
 
 -- Anti AFK
@@ -125,11 +125,9 @@ task.spawn(function()
 				OldPos = hrp.CFrame
 				prompt.MaxActivationDistance = 50
 
-				hrp.CFrame = CFrame.new(
-					targetHRP.Position.X,
-					targetHRP.Position.Y + UNDERGROUND,
-					targetHRP.Position.Z
-				)
+				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
+				task.wait()
+				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
 				task.wait(0.2)
 
