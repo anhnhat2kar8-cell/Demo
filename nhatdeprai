@@ -3,6 +3,8 @@ local player = Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
+local OldPos = nil
+local UNDERGROUND = -12
 local blockedTargets = {}
 
 -- Anti AFK
@@ -13,26 +15,23 @@ player.Idled:Connect(function()
 end)
 
 -- GUI
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.CoreGui
+local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame")
-frame.Parent = gui
+local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,220,0,100)
 frame.Position = UDim2.new(0.75,0,0.45,0)
 frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 frame.Active = true
 frame.Draggable = true
 
-local frameCorner = Instance.new("UICorner")
-frameCorner.Parent = frame
+local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0,25)
 
-local stroke = Instance.new("UIStroke")
-stroke.Parent = frame
+local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 3
 
+-- Viền đổi màu nhẹ
 task.spawn(function()
 	local hue = 0
 	while true do
@@ -43,36 +42,35 @@ task.spawn(function()
 	end
 end)
 
-local title = Instance.new("TextLabel")
-title.Parent = frame
+-- chữ Tele
+local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0.35,0)
 title.BackgroundTransparency = 1
-title.Text = "Tele Rescue"
+title.Text = "Tele"
 title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
-local switchBg = Instance.new("Frame")
-switchBg.Parent = frame
+-- switch nền
+local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,150,0,50)
 switchBg.Position = UDim2.new(0.18,0,0.48,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 
-local switchCorner = Instance.new("UICorner")
-switchCorner.Parent = switchBg
+local switchCorner = Instance.new("UICorner", switchBg)
 switchCorner.CornerRadius = UDim.new(1,0)
 
-local knob = Instance.new("TextButton")
-knob.Parent = switchBg
+-- nút tròn
+local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,50,0,50)
 knob.Position = UDim2.new(0,0,0,0)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
 
-local knobCorner = Instance.new("UICorner")
-knobCorner.Parent = knob
+local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
+-- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
@@ -113,9 +111,8 @@ local function findPrompt()
 	end
 end
 
--- Auto cứu realtime
 task.spawn(function()
-	while task.wait(0.1) do
+	while task.wait(0.25) do
 		if AutoRescue and player.Character then
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -123,16 +120,16 @@ task.spawn(function()
 
 			if hrp and prompt and targetHRP then
 
-				local oldPos = hrp.CFrame
-				prompt.MaxActivationDistance = 100
+				OldPos = hrp.CFrame
+				prompt.MaxActivationDistance = 50
 
 				hrp.CFrame = CFrame.new(
 					targetHRP.Position.X,
-					targetHRP.Position.Y - 10,
+					targetHRP.Position.Y + UNDERGROUND,
 					targetHRP.Position.Z
 				)
 
-				task.wait(0.05)
+				task.wait(0.2)
 
 				local success = pcall(function()
 					fireproximityprompt(prompt)
@@ -140,14 +137,18 @@ task.spawn(function()
 
 				if not success then
 					blockedTargets[prompt] = true
-					task.delay(5,function()
+
+					task.delay(10,function()
 						blockedTargets[prompt] = nil
 					end)
 				end
 
-				task.wait(0.05)
+				task.wait(0.35)
 
-				hrp.CFrame = oldPos
+				if OldPos then
+					hrp.CFrame = OldPos
+				end
+
 			end
 		end
 	end
