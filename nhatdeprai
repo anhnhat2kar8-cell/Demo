@@ -22,7 +22,7 @@ local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,60,0,60)
 frame.Position = UDim2.new(0.78,0,0.4,0)
 frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-frame.BackgroundTransparency = 0.55
+frame.BackgroundTransparency = 0.9
 frame.Active = true
 frame.Draggable = true
 
