@@ -22,6 +22,7 @@ local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,60,0,60)
 frame.Position = UDim2.new(0.78,0,0.4,0)
 frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+frame.BackgroundTransparency = 0.55
 frame.Active = true
 frame.Draggable = true
 
@@ -56,6 +57,7 @@ local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,52,0,20)
 switchBg.Position = UDim2.new(0.07,0,0.48,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
+switchBg.BackgroundTransparency = 0.2
 
 local switchCorner = Instance.new("UICorner", switchBg)
 switchCorner.CornerRadius = UDim.new(1,0)
