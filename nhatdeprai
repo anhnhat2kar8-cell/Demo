@@ -32,6 +32,17 @@ frameCorner.CornerRadius = UDim.new(0,10)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
 
+-- Viền đổi màu nhẹ
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue += 0.002
+		if hue > 1 then hue = 0 end
+		stroke.Color = Color3.fromHSV(hue,0.7,1)
+		task.wait(0.02)
+	end
+end)
+
 -- chữ Tele
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,22)
@@ -60,6 +71,17 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
+
+-- bật tắt
+knob.MouseButton1Click:Connect(function()
+	AutoRescue = not AutoRescue
+
+	if AutoRescue then
+		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
+	else
+		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
+	end
+end)
 
 -- NoClip
 task.spawn(function()
