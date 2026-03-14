@@ -86,11 +86,12 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip + đứng yên
+-- NoClip luôn bật
 task.spawn(function()
 	while true do
 		task.wait()
-		if AutoRescue and player.Character then
+
+		if player.Character then
 			for _,v in pairs(player.Character:GetDescendants()) do
 				if v:IsA("BasePart") then
 					v.CanCollide = false
@@ -98,7 +99,7 @@ task.spawn(function()
 			end
 
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
+			if hrp and AutoRescue then
 				hrp.AssemblyLinearVelocity = Vector3.zero
 				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
@@ -108,7 +109,6 @@ end)
 
 -- tìm prompt ưu tiên Lụm
 local function findPrompt()
-	-- Ưu tiên Lụm trước
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
 			local obj = v.Parent
@@ -118,7 +118,6 @@ local function findPrompt()
 		end
 	end
 
-	-- Không có Lụm thì Cứu
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
