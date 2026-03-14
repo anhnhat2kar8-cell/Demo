@@ -5,7 +5,6 @@ local VirtualUser = game:GetService("VirtualUser")
 local AutoRescue = false
 local OldPos = nil
 local UNDERGROUND = -14
-local blockedTargets = {}
 
 -- Anti AFK
 player.Idled:Connect(function()
@@ -32,7 +31,6 @@ frameCorner.CornerRadius = UDim.new(0,10)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
 
--- Viền đổi màu nhẹ
 task.spawn(function()
 	local hue = 0
 	while true do
@@ -43,7 +41,6 @@ task.spawn(function()
 	end
 end)
 
--- chữ Tele
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,22)
 title.BackgroundTransparency = 1
@@ -52,7 +49,6 @@ title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
--- switch nền
 local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,60,0,30)
 switchBg.Position = UDim2.new(0,5,0.52,0)
@@ -62,7 +58,6 @@ switchBg.BackgroundTransparency = 0.2
 local switchCorner = Instance.new("UICorner", switchBg)
 switchCorner.CornerRadius = UDim.new(1,0)
 
--- nút tròn
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,28,0,28)
 knob.Position = UDim2.new(0,1,0,1)
@@ -72,10 +67,8 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
--- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
-
 	if AutoRescue then
 		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
 	else
@@ -100,12 +93,8 @@ end)
 -- tìm prompt cứu
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt")
-		and v.ActionText == "Cứu"
-		and not blockedTargets[v] then
-
+		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
-
 			if char and char:FindFirstChild("HumanoidRootPart") then
 				return v, char.HumanoidRootPart
 			end
@@ -113,36 +102,25 @@ local function findPrompt()
 	end
 end
 
+-- auto cứu liên tục
 task.spawn(function()
-	while task.wait(0.08) do
+	while task.wait(0.05) do
 		if AutoRescue and player.Character then
-
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 			local prompt, targetHRP = findPrompt()
 
 			if hrp and prompt and targetHRP then
-
 				OldPos = hrp.CFrame
 				prompt.MaxActivationDistance = 50
 
 				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 				task.wait()
-				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
-				task.wait(0.1)
-
-				local success = pcall(function()
+				pcall(function()
 					fireproximityprompt(prompt)
 				end)
 
-				if not success then
-					blockedTargets[prompt] = true
-					task.delay(10,function()
-						blockedTargets[prompt] = nil
-					end)
-				end
-
-				task.wait(0.05)
+				task.wait(0.03)
 
 				if OldPos then
 					hrp.CFrame = OldPos
