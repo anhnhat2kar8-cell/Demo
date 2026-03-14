@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
-local OldPos = nil
+local SavedPos = nil
 local UNDERGROUND = -14
 
 -- Anti AFK
@@ -67,16 +67,26 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
+-- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
+
 	if AutoRescue then
 		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
+
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			SavedPos = player.Character.HumanoidRootPart.CFrame
+		end
 	else
 		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
+
+		if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.CFrame = SavedPos
+		end
 	end
 end)
 
--- NoClip
+-- NoClip + neo đứng yên
 task.spawn(function()
 	while true do
 		task.wait()
@@ -85,6 +95,12 @@ task.spawn(function()
 				if v:IsA("BasePart") then
 					v.CanCollide = false
 				end
+			end
+
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
 		end
 	end
@@ -102,7 +118,7 @@ local function findPrompt()
 	end
 end
 
--- auto cứu liên tục
+-- auto cứu
 task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
@@ -110,21 +126,15 @@ task.spawn(function()
 			local prompt, targetHRP = findPrompt()
 
 			if hrp and prompt and targetHRP then
-				OldPos = hrp.CFrame
 				prompt.MaxActivationDistance = 50
 
 				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
+
 				task.wait()
 
 				pcall(function()
 					fireproximityprompt(prompt)
 				end)
-
-				task.wait(0.03)
-
-				if OldPos then
-					hrp.CFrame = OldPos
-				end
 			end
 		end
 	end
