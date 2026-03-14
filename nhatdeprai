@@ -4,7 +4,10 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local SavedPos = nil
-local UNDERGROUND = -14
+
+local START_HEIGHT = -14
+local RESCUE_HEIGHT = -45
+local SAFE_Y = -50
 
 -- Anti AFK
 player.Idled:Connect(function()
@@ -108,7 +111,6 @@ end)
 
 -- tìm prompt ưu tiên Lụm
 local function findPrompt()
-	-- Ưu tiên Lụm trước
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
 			local obj = v.Parent
@@ -118,7 +120,6 @@ local function findPrompt()
 		end
 	end
 
-	-- Không có Lụm thì Cứu
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
@@ -140,9 +141,20 @@ task.spawn(function()
 				prompt.MaxActivationDistance = 50
 				prompt.HoldDuration = 0
 
-				hrp.CFrame = target.CFrame + Vector3.new(0, UNDERGROUND, 0)
+				-- tele tới -14 trước
+				hrp.CFrame = target.CFrame + Vector3.new(0, START_HEIGHT, 0)
 
 				task.wait()
+
+				-- nếu cứu thì xuống -45
+				if prompt.ActionText == "Cứu" then
+					hrp.CFrame = target.CFrame + Vector3.new(0, RESCUE_HEIGHT, 0)
+				end
+
+				-- nếu tụt quá sâu thì kéo lên -14
+				if hrp.Position.Y < SAFE_Y then
+					hrp.CFrame = CFrame.new(hrp.Position.X, START_HEIGHT, hrp.Position.Z)
+				end
 
 				pcall(function()
 					fireproximityprompt(prompt)
