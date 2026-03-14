@@ -139,7 +139,14 @@ task.spawn(function()
 				prompt.MaxActivationDistance = 50
 				prompt.HoldDuration = 0
 
-				hrp.CFrame = target.CFrame + Vector3.new(0, UNDERGROUND, 0)
+				-- tới -14 stud
+				hrp.CFrame = target.CFrame + Vector3.new(0, -14, 0)
+
+				-- giữ 0.3 giây
+				task.wait(0.3)
+
+				-- tụt xuống -35 stud
+				hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)
 
 				task.wait()
 
