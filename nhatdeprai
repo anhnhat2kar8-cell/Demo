@@ -4,10 +4,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local SavedPos = nil
-
-local START_HEIGHT = -14
-local TARGET_HEIGHT = -45
-local SAFE_Y = -50
+local UNDERGROUND = -14
 
 -- Anti AFK
 player.Idled:Connect(function()
@@ -89,7 +86,7 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip
+-- NoClip + đứng yên
 task.spawn(function()
 	while true do
 		task.wait()
@@ -109,8 +106,9 @@ task.spawn(function()
 	end
 end)
 
--- tìm tiền
-local function findLoot()
+-- tìm prompt ưu tiên Lụm
+local function findPrompt()
+	-- Ưu tiên Lụm trước
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
 			local obj = v.Parent
@@ -119,25 +117,16 @@ local function findLoot()
 			end
 		end
 	end
-end
 
--- lấy tất cả target cứu
-local function getAllRescueTargets()
-	local targets = {}
-
+	-- Không có Lụm thì Cứu
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
 			if char and char:FindFirstChild("HumanoidRootPart") then
-				table.insert(targets,{
-					prompt = v,
-					hrp = char.HumanoidRootPart
-				})
+				return v, char.HumanoidRootPart
 			end
 		end
 	end
-
-	return targets
 end
 
 -- auto cứu + lụm
@@ -145,57 +134,19 @@ task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if not hrp then continue end
+			local prompt, target = findPrompt()
 
-			-- ưu tiên tiền trước
-			local lootPrompt, lootTarget = findLoot()
-			if lootPrompt and lootTarget then
-				lootPrompt.MaxActivationDistance = 50
-				lootPrompt.HoldDuration = 0
+			if hrp and prompt and target then
+				prompt.MaxActivationDistance = 50
+				prompt.HoldDuration = 0
 
-				hrp.CFrame = lootTarget.CFrame + Vector3.new(0, START_HEIGHT, 0)
+				hrp.CFrame = target.CFrame + Vector3.new(0, UNDERGROUND, 0)
+
+				task.wait()
 
 				pcall(function()
-					fireproximityprompt(lootPrompt)
+					fireproximityprompt(prompt)
 				end)
-
-				continue
-			end
-
-			-- cứu nhiều người liên tục
-			for _,target in pairs(getAllRescueTargets()) do
-				local prompt = target.prompt
-				local targetHRP = target.hrp
-
-				if prompt and targetHRP then
-					prompt.MaxActivationDistance = 50
-					prompt.HoldDuration = 0
-
-					-- tele tới -14 trước
-					hrp.CFrame = targetHRP.CFrame + Vector3.new(0, START_HEIGHT, 0)
-
-					task.wait(0.08)
-
-					-- bấm cứu trước
-					pcall(function()
-						fireproximityprompt(prompt)
-					end)
-
-					task.wait(0.05)
-
-					-- rơi từ từ xuống -45
-					for y = START_HEIGHT, TARGET_HEIGHT, -1 do
-						hrp.CFrame = targetHRP.CFrame + Vector3.new(0, y, 0)
-						task.wait(0.01)
-
-						if hrp.Position.Y < SAFE_Y then
-							hrp.CFrame = targetHRP.CFrame + Vector3.new(0, START_HEIGHT, 0)
-							break
-						end
-					end
-
-					task.wait(0.05)
-				end
 			end
 		end
 	end
