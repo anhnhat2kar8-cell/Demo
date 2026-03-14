@@ -171,10 +171,17 @@ task.spawn(function()
 					prompt.MaxActivationDistance = 50
 					prompt.HoldDuration = 0
 
-					-- tele tới -14
+					-- tele tới -14 trước
 					hrp.CFrame = targetHRP.CFrame + Vector3.new(0, START_HEIGHT, 0)
 
-					task.wait(0.03)
+					task.wait(0.08)
+
+					-- bấm cứu trước
+					pcall(function()
+						fireproximityprompt(prompt)
+					end)
+
+					task.wait(0.05)
 
 					-- rơi từ từ xuống -45
 					for y = START_HEIGHT, TARGET_HEIGHT, -1 do
@@ -186,10 +193,6 @@ task.spawn(function()
 							break
 						end
 					end
-
-					pcall(function()
-						fireproximityprompt(prompt)
-					end)
 
 					task.wait(0.05)
 				end
