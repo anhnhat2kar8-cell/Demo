@@ -6,7 +6,7 @@ local AutoRescue = false
 local SavedPos = nil
 
 local START_HEIGHT = -14
-local RESCUE_HEIGHT = -45
+local TARGET_HEIGHT = -45
 local SAFE_Y = -50
 
 -- Anti AFK
@@ -89,7 +89,7 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip + đứng yên
+-- NoClip
 task.spawn(function()
 	while true do
 		task.wait()
@@ -109,8 +109,8 @@ task.spawn(function()
 	end
 end)
 
--- tìm prompt ưu tiên Lụm
-local function findPrompt()
+-- tìm tiền
+local function findLoot()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
 			local obj = v.Parent
@@ -119,15 +119,25 @@ local function findPrompt()
 			end
 		end
 	end
+end
+
+-- lấy tất cả target cứu
+local function getAllRescueTargets()
+	local targets = {}
 
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
 			if char and char:FindFirstChild("HumanoidRootPart") then
-				return v, char.HumanoidRootPart
+				table.insert(targets,{
+					prompt = v,
+					hrp = char.HumanoidRootPart
+				})
 			end
 		end
 	end
+
+	return targets
 end
 
 -- auto cứu + lụm
@@ -135,30 +145,54 @@ task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			local prompt, target = findPrompt()
+			if not hrp then continue end
 
-			if hrp and prompt and target then
-				prompt.MaxActivationDistance = 50
-				prompt.HoldDuration = 0
+			-- ưu tiên tiền trước
+			local lootPrompt, lootTarget = findLoot()
+			if lootPrompt and lootTarget then
+				lootPrompt.MaxActivationDistance = 50
+				lootPrompt.HoldDuration = 0
 
-				-- tele tới -14 trước
-				hrp.CFrame = target.CFrame + Vector3.new(0, START_HEIGHT, 0)
-
-				task.wait()
-
-				-- nếu cứu thì xuống -45
-				if prompt.ActionText == "Cứu" then
-					hrp.CFrame = target.CFrame + Vector3.new(0, RESCUE_HEIGHT, 0)
-				end
-
-				-- nếu tụt quá sâu thì kéo lên -14
-				if hrp.Position.Y < SAFE_Y then
-					hrp.CFrame = CFrame.new(hrp.Position.X, START_HEIGHT, hrp.Position.Z)
-				end
+				hrp.CFrame = lootTarget.CFrame + Vector3.new(0, START_HEIGHT, 0)
 
 				pcall(function()
-					fireproximityprompt(prompt)
+					fireproximityprompt(lootPrompt)
 				end)
+
+				continue
+			end
+
+			-- cứu nhiều người liên tục
+			for _,target in pairs(getAllRescueTargets()) do
+				local prompt = target.prompt
+				local targetHRP = target.hrp
+
+				if prompt and targetHRP then
+					prompt.MaxActivationDistance = 50
+					prompt.HoldDuration = 0
+
+					-- tele tới -14
+					hrp.CFrame = targetHRP.CFrame + Vector3.new(0, START_HEIGHT, 0)
+
+					task.wait(0.03)
+
+					-- rơi từ từ xuống -45
+					for y = START_HEIGHT, TARGET_HEIGHT, -1 do
+						hrp.CFrame = targetHRP.CFrame + Vector3.new(0, y, 0)
+						task.wait(0.01)
+
+						if hrp.Position.Y < SAFE_Y then
+							hrp.CFrame = targetHRP.CFrame + Vector3.new(0, START_HEIGHT, 0)
+							break
+						end
+					end
+
+					pcall(function()
+						fireproximityprompt(prompt)
+					end)
+
+					task.wait(0.05)
+				end
 			end
 		end
 	end
