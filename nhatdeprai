@@ -81,12 +81,14 @@ knob.MouseButton1Click:Connect(function()
 		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
 
 		if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			player.Character.HumanoidRootPart.CFrame = SavedPos
+			local hrp = player.Character.HumanoidRootPart
+			hrp.Anchored = false
+			hrp.CFrame = SavedPos
 		end
 	end
 end)
 
--- NoClip + neo đứng yên
+-- NoClip
 task.spawn(function()
 	while true do
 		task.wait()
@@ -95,12 +97,6 @@ task.spawn(function()
 				if v:IsA("BasePart") then
 					v.CanCollide = false
 				end
-			end
-
-			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				hrp.AssemblyLinearVelocity = Vector3.zero
-				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
 		end
 	end
@@ -128,6 +124,7 @@ task.spawn(function()
 			if hrp and prompt and targetHRP then
 				prompt.MaxActivationDistance = 50
 
+				hrp.Anchored = true
 				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
 				task.wait()
