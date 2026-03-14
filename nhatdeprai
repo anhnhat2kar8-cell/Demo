@@ -86,7 +86,7 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip + neo đứng yên
+-- NoClip + đứng yên
 task.spawn(function()
 	while true do
 		task.wait()
@@ -106,8 +106,19 @@ task.spawn(function()
 	end
 end)
 
--- tìm prompt cứu
+-- tìm prompt ưu tiên Lụm
 local function findPrompt()
+	-- Ưu tiên Lụm trước
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
+			local obj = v.Parent
+			if obj and obj:IsA("BasePart") then
+				return v, obj
+			end
+		end
+	end
+
+	-- Không có Lụm thì Cứu
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
 			local char = v:FindFirstAncestorOfClass("Model")
@@ -118,17 +129,18 @@ local function findPrompt()
 	end
 end
 
--- auto cứu
+-- auto cứu + lụm
 task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			local prompt, targetHRP = findPrompt()
+			local prompt, target = findPrompt()
 
-			if hrp and prompt and targetHRP then
+			if hrp and prompt and target then
 				prompt.MaxActivationDistance = 50
+				prompt.HoldDuration = 0
 
-				hrp.CFrame = targetHRP.CFrame + Vector3.new(0, UNDERGROUND, 0)
+				hrp.CFrame = target.CFrame + Vector3.new(0, UNDERGROUND, 0)
 
 				task.wait()
 
