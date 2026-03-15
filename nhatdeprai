@@ -20,8 +20,8 @@ gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,70,0,70)
 frame.Position = UDim2.new(0.78,0,0.6,0)
-frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-frame.BackgroundTransparency = 0.85
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+frame.BackgroundTransparency = 0.65
 frame.Active = true
 frame.Draggable = true
 
@@ -30,25 +30,25 @@ frameCorner.CornerRadius = UDim.new(0,10)
 
 -- viền neon
 local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 3
+stroke.Thickness = 4
 stroke.Color = Color3.fromRGB(255,105,180)
 
 task.spawn(function()
 	while true do
 		stroke.Transparency = 0
-		task.wait(0.12)
-
-		stroke.Transparency = 0.35
 		task.wait(0.08)
 
-		stroke.Transparency = 0
-		task.wait(0.1)
-
-		stroke.Transparency = 0.6
-		task.wait(0.06)
+		stroke.Transparency = 0.2
+		task.wait(0.05)
 
 		stroke.Transparency = 0
-		task.wait(0.25)
+		task.wait(0.08)
+
+		stroke.Transparency = 0.45
+		task.wait(0.05)
+
+		stroke.Transparency = 0
+		task.wait(0.18)
 	end
 end)
 
