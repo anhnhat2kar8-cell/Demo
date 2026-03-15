@@ -104,7 +104,7 @@ end)
 -- tìm nghề
 local function findJobPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.ActionText == "Nhận nghề" then
+		if v:IsA("ProximityPrompt") and v.ActionText == "Nhận nghề (get a job)" then
 			local obj = v.Parent
 			if obj and obj:IsA("BasePart") then
 				return v, obj
