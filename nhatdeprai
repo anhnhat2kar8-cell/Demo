@@ -4,6 +4,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local SavedPos = nil
+local UNDERGROUND = -14
 local JobDone = false
 
 -- Anti AFK
@@ -25,7 +26,8 @@ frame.BackgroundTransparency = 0.9
 frame.Active = true
 frame.Draggable = true
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+local frameCorner = Instance.new("UICorner", frame)
+frameCorner.CornerRadius = UDim.new(0,10)
 
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
@@ -54,7 +56,8 @@ switchBg.Position = UDim2.new(0,5,0.52,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 switchBg.BackgroundTransparency = 0.2
 
-Instance.new("UICorner", switchBg).CornerRadius = UDim.new(1,0)
+local switchCorner = Instance.new("UICorner", switchBg)
+switchCorner.CornerRadius = UDim.new(1,0)
 
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,28,0,28)
@@ -62,8 +65,10 @@ knob.Position = UDim2.new(0,1,0,1)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
 
-Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
+local knobCorner = Instance.new("UICorner", knob)
+knobCorner.CornerRadius = UDim.new(1,0)
 
+-- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
@@ -72,6 +77,7 @@ knob.MouseButton1Click:Connect(function()
 
 		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 			SavedPos = player.Character.HumanoidRootPart.CFrame
+			JobDone = false
 		end
 	else
 		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
@@ -82,7 +88,7 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip
+-- NoClip luôn bật
 task.spawn(function()
 	while true do
 		task.wait()
@@ -92,6 +98,12 @@ task.spawn(function()
 				if v:IsA("BasePart") then
 					v.CanCollide = false
 				end
+			end
+
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and AutoRescue then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
 		end
 	end
@@ -109,7 +121,7 @@ local function findJobPrompt()
 	end
 end
 
--- tìm cứu/lụm
+-- tìm prompt ưu tiên Lụm
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
@@ -130,26 +142,27 @@ local function findPrompt()
 	end
 end
 
--- Auto
+-- auto nhận nghề + cứu + lụm
 task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 			if not hrp then continue end
 
+			-- nhận nghề trước
 			if not JobDone then
-				local prompt,target = findJobPrompt()
+				local jobPrompt, jobTarget = findJobPrompt()
 
-				if prompt and target then
-					prompt.MaxActivationDistance = 50
-					prompt.HoldDuration = 0
+				if jobPrompt and jobTarget then
+					jobPrompt.MaxActivationDistance = 50
+					jobPrompt.HoldDuration = 0
 
-					hrp.CFrame = target.CFrame + target.CFrame.LookVector * -1
+					hrp.CFrame = jobTarget.CFrame + jobTarget.CFrame.LookVector * -1
 
 					task.wait(0.3)
 
 					pcall(function()
-						fireproximityprompt(prompt)
+						fireproximityprompt(jobPrompt)
 					end)
 
 					JobDone = true
@@ -161,12 +174,13 @@ task.spawn(function()
 					end
 				end
 			else
-				local prompt,target = findPrompt()
+				local prompt, target = findPrompt()
 
 				if prompt and target then
 					prompt.MaxActivationDistance = 50
 					prompt.HoldDuration = 0
 
+					-- giữ nguyên code gốc
 					hrp.CFrame = target.CFrame + Vector3.new(0,-14,0)
 
 					task.wait(0.3)
