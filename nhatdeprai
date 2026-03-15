@@ -4,7 +4,6 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local AutoRescue = false
 local SavedPos = nil
-local UNDERGROUND = -14
 local JobDone = false
 
 -- Anti AFK
@@ -26,8 +25,7 @@ frame.BackgroundTransparency = 0.9
 frame.Active = true
 frame.Draggable = true
 
-local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,10)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
 
 local stroke = Instance.new("UIStroke", frame)
 stroke.Thickness = 2
@@ -56,8 +54,7 @@ switchBg.Position = UDim2.new(0,5,0.52,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 switchBg.BackgroundTransparency = 0.2
 
-local switchCorner = Instance.new("UICorner", switchBg)
-switchCorner.CornerRadius = UDim.new(1,0)
+Instance.new("UICorner", switchBg).CornerRadius = UDim.new(1,0)
 
 local knob = Instance.new("TextButton", switchBg)
 knob.Size = UDim2.new(0,28,0,28)
@@ -65,8 +62,7 @@ knob.Position = UDim2.new(0,1,0,1)
 knob.Text = ""
 knob.BackgroundColor3 = Color3.new(1,1,1)
 
-local knobCorner = Instance.new("UICorner", knob)
-knobCorner.CornerRadius = UDim.new(1,0)
+Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
 
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
@@ -104,16 +100,16 @@ end)
 -- tìm nghề
 local function findJobPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.ActionText == "Nhận nghề (get a job)" then
-			local obj = v.Parent
-			if obj and obj:IsA("BasePart") then
-				return v, obj
+		if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
+			local part = v.Parent
+			if part and part:IsA("BasePart") then
+				return v, part
 			end
 		end
 	end
 end
 
--- tìm prompt cứu/lụm
+-- tìm cứu/lụm
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
@@ -141,7 +137,6 @@ task.spawn(function()
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 			if not hrp then continue end
 
-			-- nhận nghề trước
 			if not JobDone then
 				local prompt,target = findJobPrompt()
 
@@ -149,7 +144,7 @@ task.spawn(function()
 					prompt.MaxActivationDistance = 50
 					prompt.HoldDuration = 0
 
-					hrp.CFrame = target.CFrame + Vector3.new(0,0,-2)
+					hrp.CFrame = target.CFrame + target.CFrame.LookVector * -1
 
 					task.wait(0.3)
 
@@ -158,6 +153,8 @@ task.spawn(function()
 					end)
 
 					JobDone = true
+
+					task.wait(0.5)
 
 					if SavedPos then
 						hrp.CFrame = SavedPos
