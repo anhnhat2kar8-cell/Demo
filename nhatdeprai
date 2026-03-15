@@ -142,7 +142,14 @@ task.spawn(function()
 				fireproximityprompt(prompt)
 			end)
 
-			task.wait(0.5)
+			task.wait(1)
+
+			local tool = player.Backpack:FindFirstChild("Hộp cứu thương")
+			if tool and player.Character then
+				tool.Parent = player.Character
+			end
+
+			task.wait(0.2)
 
 			hrp.CFrame = SavedPos
 		end
@@ -181,11 +188,11 @@ task.spawn(function()
 				prompt.MaxActivationDistance = 50
 				prompt.HoldDuration = 0
 
-				hrp.CFrame = target.CFrame + Vector3.new(0, -14, 0)
+				hrp.CFrame = target.CFrame + Vector3.new(0,-14,0)
 
 				task.wait(0.3)
 
-				hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)
+				hrp.CFrame = target.CFrame + Vector3.new(0,-35,0)
 
 				task.wait()
 
