@@ -5,6 +5,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local AutoRescue = false
 local SavedPos = nil
 local UNDERGROUND = -14
+local JobDone = false
 
 -- Anti AFK
 player.Idled:Connect(function()
@@ -67,7 +68,6 @@ knob.BackgroundColor3 = Color3.new(1,1,1)
 local knobCorner = Instance.new("UICorner", knob)
 knobCorner.CornerRadius = UDim.new(1,0)
 
--- bật tắt
 knob.MouseButton1Click:Connect(function()
 	AutoRescue = not AutoRescue
 
@@ -86,7 +86,7 @@ knob.MouseButton1Click:Connect(function()
 	end
 end)
 
--- NoClip luôn bật
+-- NoClip
 task.spawn(function()
 	while true do
 		task.wait()
@@ -97,17 +97,23 @@ task.spawn(function()
 					v.CanCollide = false
 				end
 			end
-
-			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp and AutoRescue then
-				hrp.AssemblyLinearVelocity = Vector3.zero
-				hrp.AssemblyAngularVelocity = Vector3.zero
-			end
 		end
 	end
 end)
 
--- tìm prompt ưu tiên Lụm
+-- tìm nghề
+local function findJobPrompt()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Nhận nghề" then
+			local obj = v.Parent
+			if obj and obj:IsA("BasePart") then
+				return v, obj
+			end
+		end
+	end
+end
+
+-- tìm prompt cứu/lụm
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
@@ -128,31 +134,54 @@ local function findPrompt()
 	end
 end
 
--- auto cứu + lụm
+-- Auto
 task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			local prompt, target = findPrompt()
+			if not hrp then continue end
 
-			if hrp and prompt and target then
-				prompt.MaxActivationDistance = 50
-				prompt.HoldDuration = 0
+			-- nhận nghề trước
+			if not JobDone then
+				local prompt,target = findJobPrompt()
 
-				-- tới -14 stud
-				hrp.CFrame = target.CFrame + Vector3.new(0, -14, 0)
+				if prompt and target then
+					prompt.MaxActivationDistance = 50
+					prompt.HoldDuration = 0
 
-				-- giữ 0.3 giây
-				task.wait(0.3)
+					hrp.CFrame = target.CFrame + Vector3.new(0,0,-2)
 
-				-- tụt xuống -35 stud
-				hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)
+					task.wait(0.3)
 
-				task.wait()
+					pcall(function()
+						fireproximityprompt(prompt)
+					end)
 
-				pcall(function()
-					fireproximityprompt(prompt)
-				end)
+					JobDone = true
+
+					if SavedPos then
+						hrp.CFrame = SavedPos
+					end
+				end
+			else
+				local prompt,target = findPrompt()
+
+				if prompt and target then
+					prompt.MaxActivationDistance = 50
+					prompt.HoldDuration = 0
+
+					hrp.CFrame = target.CFrame + Vector3.new(0,-14,0)
+
+					task.wait(0.3)
+
+					hrp.CFrame = target.CFrame + Vector3.new(0,-35,0)
+
+					task.wait()
+
+					pcall(function()
+						fireproximityprompt(prompt)
+					end)
+				end
 			end
 		end
 	end
