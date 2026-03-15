@@ -121,8 +121,6 @@ end
 end
 end
 
--- chạy script là nhận nghề ngay
--- chạy script là nhận nghề ngay
 task.spawn(function()
 	task.wait(1)
 
@@ -145,16 +143,16 @@ task.spawn(function()
 				fireproximityprompt(prompt)
 			end)
 
+			task.wait(0.3)
+
+			hrp.CFrame = SavedPos
+
 			task.wait(2)
 
 			local tool = player.Backpack:FindFirstChild("Hộp cứu thương")
 			if tool and player.Character then
 				tool.Parent = player.Character
 			end
-
-			task.wait(0.3)
-
-			hrp.CFrame = SavedPos
 		end
 	end
 end)
