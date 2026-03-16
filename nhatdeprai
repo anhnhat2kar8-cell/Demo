@@ -7,11 +7,10 @@ local SavedPos = nil
 local UNDERGROUND = -14
 local TotalMoney = 0
 
--- format tiền
 local function formatMoney(num)
 	local str = tostring(num)
 	while true do
-		str, k = str:gsub("^(-?%d+)(%d%d%d)", '%1,%2')
+		str, k = str:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
 		if k == 0 then break end
 	end
 	return str
@@ -31,31 +30,24 @@ gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,70,0,95)
 frame.Position = UDim2.new(0.78,0,0.6,0)
-frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
-frame.BackgroundTransparency = 0.65
+frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+frame.BackgroundTransparency = 0.9
 frame.Active = true
 frame.Draggable = true
 
 local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0,10)
 
--- viền neon
 local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 4
-stroke.Color = Color3.fromRGB(255,105,180)
+stroke.Thickness = 2
 
 task.spawn(function()
+	local hue = 0
 	while true do
-		stroke.Transparency = 0
-		task.wait(0.08)
-		stroke.Transparency = 0.2
-		task.wait(0.05)
-		stroke.Transparency = 0
-		task.wait(0.08)
-		stroke.Transparency = 0.45
-		task.wait(0.05)
-		stroke.Transparency = 0
-		task.wait(0.18)
+		hue += 0.002
+		if hue > 1 then hue = 0 end
+		stroke.Color = Color3.fromHSV(hue,0.7,1)
+		task.wait(0.02)
 	end
 end)
 
@@ -118,6 +110,7 @@ end)
 task.spawn(function()
 	while true do
 		task.wait()
+
 		if player.Character then
 			for _,v in pairs(player.Character:GetDescendants()) do
 				if v:IsA("BasePart") then
@@ -134,7 +127,48 @@ task.spawn(function()
 	end
 end)
 
--- tìm prompt ưu tiên Lụm
+-- tìm nghề
+local function findJobPrompt()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
+			local part = v.Parent
+			if part and part:IsA("BasePart") then
+				return v, part
+			end
+		end
+	end
+end
+
+-- nhận nghề
+task.spawn(function()
+	task.wait(1)
+
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+	if hrp then
+		local prompt,target = findJobPrompt()
+
+		if prompt and target then
+			SavedPos = hrp.CFrame
+			prompt.MaxActivationDistance = 50
+			prompt.HoldDuration = 0
+
+			hrp.CFrame = target.CFrame + target.CFrame.RightVector * 8 + Vector3.new(0,-12,0)
+
+			task.wait(0.3)
+
+			pcall(function()
+				fireproximityprompt(prompt)
+			end)
+
+			task.wait(0.5)
+
+			hrp.CFrame = SavedPos
+		end
+	end
+end)
+
+-- tìm prompt
 local function findPrompt()
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
@@ -179,9 +213,9 @@ task.spawn(function()
 				end)
 
 				if prompt.ActionText == "Lụm" then
-					TotalMoney = TotalMoney + 500000
+					TotalMoney += 500000
 				else
-					TotalMoney = TotalMoney + 2000000
+					TotalMoney += 2000000
 				end
 
 				moneyLabel.Text = formatMoney(TotalMoney)
