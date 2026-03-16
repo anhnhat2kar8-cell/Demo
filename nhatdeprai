@@ -6,6 +6,7 @@ local AutoRescue = false
 local SavedPos = nil
 local UNDERGROUND = -14
 local TotalMoney = 0
+local CountedTargets = {}
 
 local function formatMoney(num)
 	local str = tostring(num)
@@ -59,7 +60,6 @@ title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
--- tiền
 local moneyLabel = Instance.new("TextLabel", frame)
 moneyLabel.Size = UDim2.new(1,0,0,18)
 moneyLabel.Position = UDim2.new(0,0,0,22)
@@ -110,7 +110,6 @@ end)
 task.spawn(function()
 	while true do
 		task.wait()
-
 		if player.Character then
 			for _,v in pairs(player.Character:GetDescendants()) do
 				if v:IsA("BasePart") then
@@ -123,47 +122,6 @@ task.spawn(function()
 				hrp.AssemblyLinearVelocity = Vector3.zero
 				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
-		end
-	end
-end)
-
--- tìm nghề
-local function findJobPrompt()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
-			local part = v.Parent
-			if part and part:IsA("BasePart") then
-				return v, part
-			end
-		end
-	end
-end
-
--- nhận nghề
-task.spawn(function()
-	task.wait(1)
-
-	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
-	if hrp then
-		local prompt,target = findJobPrompt()
-
-		if prompt and target then
-			SavedPos = hrp.CFrame
-			prompt.MaxActivationDistance = 50
-			prompt.HoldDuration = 0
-
-			hrp.CFrame = target.CFrame + target.CFrame.RightVector * 8 + Vector3.new(0,-12,0)
-
-			task.wait(0.3)
-
-			pcall(function()
-				fireproximityprompt(prompt)
-			end)
-
-			task.wait(0.5)
-
-			hrp.CFrame = SavedPos
 		end
 	end
 end)
@@ -215,10 +173,17 @@ task.spawn(function()
 				if prompt.ActionText == "Lụm" then
 					TotalMoney += 500000
 				else
-					TotalMoney += 2000000
+					if not CountedTargets[target] then
+						CountedTargets[target] = true
+						TotalMoney += 2000000
+					end
 				end
 
 				moneyLabel.Text = formatMoney(TotalMoney)
+
+				if CountedTargets[target] and not target.Parent then
+					CountedTargets[target] = nil
+				end
 			end
 		end
 	end
