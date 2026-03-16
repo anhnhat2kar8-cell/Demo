@@ -5,12 +5,23 @@ local VirtualUser = game:GetService("VirtualUser")
 local AutoRescue = false
 local SavedPos = nil
 local UNDERGROUND = -14
+local TotalMoney = 0
+
+-- format tiền
+local function formatMoney(num)
+	local str = tostring(num)
+	while true do
+		str, k = str:gsub("^(-?%d+)(%d%d%d)", '%1,%2')
+		if k == 0 then break end
+	end
+	return str
+end
 
 -- Anti AFK
 player.Idled:Connect(function()
-VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-task.wait(1)
-VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
 -- GUI
@@ -18,27 +29,34 @@ local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,70,0,70)
+frame.Size = UDim2.new(0,70,0,95)
 frame.Position = UDim2.new(0.78,0,0.6,0)
-frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-frame.BackgroundTransparency = 0.9
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+frame.BackgroundTransparency = 0.65
 frame.Active = true
 frame.Draggable = true
 
 local frameCorner = Instance.new("UICorner", frame)
 frameCorner.CornerRadius = UDim.new(0,10)
 
+-- viền neon
 local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 2
+stroke.Thickness = 4
+stroke.Color = Color3.fromRGB(255,105,180)
 
 task.spawn(function()
-local hue = 0
-while true do
-hue += 0.002
-if hue > 1 then hue = 0 end
-stroke.Color = Color3.fromHSV(hue,0.7,1)
-task.wait(0.02)
-end
+	while true do
+		stroke.Transparency = 0
+		task.wait(0.08)
+		stroke.Transparency = 0.2
+		task.wait(0.05)
+		stroke.Transparency = 0
+		task.wait(0.08)
+		stroke.Transparency = 0.45
+		task.wait(0.05)
+		stroke.Transparency = 0
+		task.wait(0.18)
+	end
 end)
 
 local title = Instance.new("TextLabel", frame)
@@ -49,9 +67,19 @@ title.TextColor3 = Color3.fromRGB(255,170,0)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 
+-- tiền
+local moneyLabel = Instance.new("TextLabel", frame)
+moneyLabel.Size = UDim2.new(1,0,0,18)
+moneyLabel.Position = UDim2.new(0,0,0,22)
+moneyLabel.BackgroundTransparency = 1
+moneyLabel.Text = "0"
+moneyLabel.TextColor3 = Color3.fromRGB(0,255,0)
+moneyLabel.TextScaled = true
+moneyLabel.Font = Enum.Font.GothamBold
+
 local switchBg = Instance.new("Frame", frame)
 switchBg.Size = UDim2.new(0,60,0,30)
-switchBg.Position = UDim2.new(0,5,0.52,0)
+switchBg.Position = UDim2.new(0,5,0.62,0)
 switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
 switchBg.BackgroundTransparency = 0.2
 
@@ -69,135 +97,95 @@ knobCorner.CornerRadius = UDim.new(1,0)
 
 -- bật tắt
 knob.MouseButton1Click:Connect(function()
-AutoRescue = not AutoRescue
+	AutoRescue = not AutoRescue
 
-if AutoRescue then  
-	knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)  
+	if AutoRescue then
+		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
 
-	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then  
-		SavedPos = player.Character.HumanoidRootPart.CFrame  
-	end  
-else  
-	knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)  
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			SavedPos = player.Character.HumanoidRootPart.CFrame
+		end
+	else
+		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
 
-	if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then  
-		player.Character.HumanoidRootPart.CFrame = SavedPos  
-	end  
-end
-
+		if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.CFrame = SavedPos
+		end
+	end
 end)
 
--- NoClip luôn bật
+-- NoClip
 task.spawn(function()
-while true do
-task.wait()
+	while true do
+		task.wait()
+		if player.Character then
+			for _,v in pairs(player.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = false
+				end
+			end
 
-if player.Character then  
-		for _,v in pairs(player.Character:GetDescendants()) do  
-			if v:IsA("BasePart") then  
-				v.CanCollide = false  
-			end  
-		end  
-
-		local hrp = player.Character:FindFirstChild("HumanoidRootPart")  
-		if hrp and AutoRescue then  
-			hrp.AssemblyLinearVelocity = Vector3.zero  
-			hrp.AssemblyAngularVelocity = Vector3.zero  
-		end  
-	end  
-end
-
-end)
-
--- tìm nghề
-local function findJobPrompt()
-for _,v in pairs(workspace:GetDescendants()) do
-if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
-local part = v.Parent
-if part and part:IsA("BasePart") then
-return v, part
-end
-end
-end
-end
-
--- chạy script là nhận nghề ngay
-task.spawn(function()
-task.wait(1)
-
-local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")  
-
-if hrp then  
-	local prompt,target = findJobPrompt()  
-
-	if prompt and target then  
-		SavedPos = hrp.CFrame  
-
-		prompt.MaxActivationDistance = 50  
-		prompt.HoldDuration = 0  
-
-		hrp.CFrame = target.CFrame + target.CFrame.RightVector * 8 + Vector3.new(0,-12,0)  
-
-		task.wait(0.3)  
-
-		pcall(function()  
-			fireproximityprompt(prompt)  
-		end)  
-
-		task.wait(0.5)  
-
-		hrp.CFrame = SavedPos  
-	end  
-end
-
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and AutoRescue then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end
 end)
 
 -- tìm prompt ưu tiên Lụm
 local function findPrompt()
-for _,v in pairs(workspace:GetDescendants()) do
-if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
-local obj = v.Parent
-if obj and obj:IsA("BasePart") then
-return v, obj
-end
-end
-end
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
+			local obj = v.Parent
+			if obj and obj:IsA("BasePart") then
+				return v, obj
+			end
+		end
+	end
 
-for _,v in pairs(workspace:GetDescendants()) do  
-	if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then  
-		local char = v:FindFirstAncestorOfClass("Model")  
-		if char and char:FindFirstChild("HumanoidRootPart") then  
-			return v, char.HumanoidRootPart  
-		end  
-	end  
-end
-
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
+			local char = v:FindFirstAncestorOfClass("Model")
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				return v, char.HumanoidRootPart
+			end
+		end
+	end
 end
 
 -- auto cứu + lụm
 task.spawn(function()
-while task.wait(0.05) do
-if AutoRescue and player.Character then
-local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-local prompt, target = findPrompt()
+	while task.wait(0.05) do
+		if AutoRescue and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local prompt, target = findPrompt()
 
-if hrp and prompt and target then  
-			prompt.MaxActivationDistance = 50  
-			prompt.HoldDuration = 0  
+			if hrp and prompt and target then
+				prompt.MaxActivationDistance = 50
+				prompt.HoldDuration = 0
 
-			hrp.CFrame = target.CFrame + Vector3.new(0, -14, 0)  
+				hrp.CFrame = target.CFrame + Vector3.new(0,-14,0)
 
-			task.wait(0.3)  
+				task.wait(0.3)
 
-			hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)  
+				hrp.CFrame = target.CFrame + Vector3.new(0,-35,0)
 
-			task.wait()  
+				task.wait()
 
-			pcall(function()  
-				fireproximityprompt(prompt)  
-			end)  
-		end  
-	end  
-end
+				pcall(function()
+					fireproximityprompt(prompt)
+				end)
 
+				if prompt.ActionText == "Lụm" then
+					TotalMoney = TotalMoney + 500000
+				else
+					TotalMoney = TotalMoney + 2000000
+				end
+
+				moneyLabel.Text = formatMoney(TotalMoney)
+			end
+		end
+	end
 end)
