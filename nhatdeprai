@@ -46,7 +46,7 @@ end)
 
 local AutoRescue = false
 local SavedPos = nil
-local UNDERGROUND = -14
+local UNDERGROUND = -10
 
 -- Anti AFK
 player.Idled:Connect(function()
