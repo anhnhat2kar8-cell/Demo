@@ -1,0 +1,240 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+
+-- FPS BOOST cực mạnh
+pcall(function()
+	for _,v in pairs(game:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Material = Enum.Material.SmoothPlastic
+			v.Reflectance = 0
+			v.CastShadow = false
+		elseif v:IsA("Decal") or v:IsA("Texture") then
+			v:Destroy()
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+			v.Enabled = false
+		elseif v:IsA("Explosion") then
+			v.BlastPressure = 0
+			v.BlastRadius = 0
+		elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+			v.Enabled = false
+		end
+	end
+
+	local lighting = game:GetService("Lighting")
+	lighting.GlobalShadows = false
+	lighting.FogEnd = 9e9
+	lighting.Brightness = 0
+	lighting.ClockTime = 14
+
+	for _,v in pairs(lighting:GetChildren()) do
+		if v:IsA("PostEffect") then
+			v.Enabled = false
+		end
+	end
+
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		terrain.WaterWaveSize = 0
+		terrain.WaterWaveSpeed = 0
+		terrain.WaterReflectance = 0
+		terrain.WaterTransparency = 1
+	end
+end)
+
+local AutoRescue = false
+local SavedPos = nil
+local UNDERGROUND = -10
+
+-- Anti AFK
+player.Idled:Connect(function()
+	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,70,0,70)
+frame.Position = UDim2.new(0.78,0,0.6,0)
+frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
+frame.BackgroundTransparency = 0.9
+frame.Active = true
+frame.Draggable = true
+
+local frameCorner = Instance.new("UICorner", frame)
+frameCorner.CornerRadius = UDim.new(0,10)
+
+local stroke = Instance.new("UIStroke", frame)
+stroke.Thickness = 2
+
+task.spawn(function()
+	local hue = 0
+	while true do
+		hue += 0.002
+		if hue > 1 then hue = 0 end
+		stroke.Color = Color3.fromHSV(hue,0.7,1)
+		task.wait(0.02)
+	end
+end)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,22)
+title.BackgroundTransparency = 1
+title.Text = "Tele"
+title.TextColor3 = Color3.fromRGB(255,170,0)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+
+local switchBg = Instance.new("Frame", frame)
+switchBg.Size = UDim2.new(0,60,0,30)
+switchBg.Position = UDim2.new(0,5,0.52,0)
+switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
+switchBg.BackgroundTransparency = 0.2
+
+local switchCorner = Instance.new("UICorner", switchBg)
+switchCorner.CornerRadius = UDim.new(1,0)
+
+local knob = Instance.new("TextButton", switchBg)
+knob.Size = UDim2.new(0,28,0,28)
+knob.Position = UDim2.new(0,1,0,1)
+knob.Text = ""
+knob.BackgroundColor3 = Color3.new(1,1,1)
+
+local knobCorner = Instance.new("UICorner", knob)
+knobCorner.CornerRadius = UDim.new(1,0)
+
+-- bật tắt
+knob.MouseButton1Click:Connect(function()
+	AutoRescue = not AutoRescue
+
+	if AutoRescue then
+		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
+
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			SavedPos = player.Character.HumanoidRootPart.CFrame
+		end
+	else
+		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
+
+		if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.CFrame = SavedPos
+		end
+	end
+end)
+
+-- NoClip luôn bật
+task.spawn(function()
+	while true do
+		task.wait()
+
+		if player.Character then
+			for _,v in pairs(player.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = false
+				end
+			end
+
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and AutoRescue then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end
+end)
+
+-- tìm nghề
+local function findJobPrompt()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
+			local part = v.Parent
+			if part and part:IsA("BasePart") then
+				return v, part
+			end
+		end
+	end
+end
+
+-- chạy script là nhận nghề ngay
+task.spawn(function()
+	task.wait(1)
+
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+	if hrp then
+		local prompt,target = findJobPrompt()
+
+		if prompt and target then
+			SavedPos = hrp.CFrame
+
+			prompt.MaxActivationDistance = 50
+			prompt.HoldDuration = 0
+
+			hrp.CFrame = target.CFrame + target.CFrame.RightVector * 8 + Vector3.new(0,-12,0)
+
+			task.wait(0.3)
+
+			pcall(function()
+				fireproximityprompt(prompt)
+			end)
+
+			task.wait(0.5)
+
+			hrp.CFrame = SavedPos
+		end
+	end
+end)
+
+-- tìm prompt ưu tiên Lụm
+local function findPrompt()
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
+			local obj = v.Parent
+			if obj and obj:IsA("BasePart") then
+				return v, obj
+			end
+		end
+	end
+
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
+			local char = v:FindFirstAncestorOfClass("Model")
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				return v, char.HumanoidRootPart
+			end
+		end
+	end
+end
+
+-- auto cứu + lụm
+task.spawn(function()
+	while task.wait(0.05) do
+		if AutoRescue and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local prompt, target = findPrompt()
+
+			if hrp and prompt and target then
+				prompt.MaxActivationDistance = 50
+				prompt.HoldDuration = 0
+
+				hrp.CFrame = target.CFrame + Vector3.new(0, -10, 0)
+
+				task.wait(0.3)
+
+				hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)
+
+				task.wait()
+
+				pcall(function()
+					fireproximityprompt(prompt)
+				end)
+			end
+		end
+	end
+end)
