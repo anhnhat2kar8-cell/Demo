@@ -1,62 +1,117 @@
 local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "TaiXiuUI"
 
--- Frame chính
+-- FRAME CHÍNH
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 500, 0, 250)
-frame.Position = UDim2.new(0.5, -250, 0.5, -125)
-frame.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+frame.Size = UDim2.new(0, 550, 0, 260)
+frame.Position = UDim2.new(0.5, -275, 0.5, -130)
+frame.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
 
 local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0, 30)
+corner.CornerRadius = UDim.new(1, 0) -- oval
 
--- Title
+-- gradient
+local grad = Instance.new("UIGradient", frame)
+grad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(120,0,0))
+}
+
+-- TITLE
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 40)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.Text = "Số Tiền: 60s #000001"
+title.Text = "Số Tiền : 60s   #000001"
 title.BackgroundTransparency = 1
 title.TextScaled = true
+title.Font = Enum.Font.GothamBold
 title.TextColor3 = Color3.new(1,1,1)
 
--- Tài button
-local tai = Instance.new("TextButton", frame)
-tai.Size = UDim2.new(0, 150, 0, 60)
-tai.Position = UDim2.new(0.1, 0, 0.4, 0)
-tai.Text = "Tài"
-tai.TextScaled = true
-tai.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+-- NÚT TRÒN GIỮA
+local circle = Instance.new("Frame", frame)
+circle.Size = UDim2.new(0, 90, 0, 90)
+circle.Position = UDim2.new(0.5, -45, 0.45, -45)
+circle.BackgroundColor3 = Color3.fromRGB(240,240,240)
 
--- Xỉu button
-local xiu = Instance.new("TextButton", frame)
-xiu.Size = UDim2.new(0, 150, 0, 60)
-xiu.Position = UDim2.new(0.6, 0, 0.4, 0)
-xiu.Text = "Xỉu"
-xiu.TextScaled = true
-xiu.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+local cc = Instance.new("UICorner", circle)
+cc.CornerRadius = UDim.new(1,0)
 
--- Nút tiền
-local amounts = { "1M", "5M", "10M", "100M" }
-for i,v in ipairs(amounts) do
+-- hiệu ứng pulse
+task.spawn(function()
+	while true do
+		local t1 = TweenService:Create(circle, TweenInfo.new(0.6), {Size = UDim2.new(0,100,0,100)})
+		local t2 = TweenService:Create(circle, TweenInfo.new(0.6), {Size = UDim2.new(0,90,0,90)})
+		t1:Play(); t1.Completed:Wait()
+		t2:Play(); t2.Completed:Wait()
+	end
+end)
+
+-- FUNCTION tạo button đẹp
+local function createBtn(text, pos)
+	local btn = Instance.new("TextButton", frame)
+	btn.Size = UDim2.new(0, 160, 0, 70)
+	btn.Position = pos
+	btn.Text = text
+	btn.TextScaled = true
+	btn.Font = Enum.Font.GothamBold
+	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+
+	local c = Instance.new("UICorner", btn)
+	c.CornerRadius = UDim.new(0,20)
+
+	-- hover animation
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.2), {Size = btn.Size + UDim2.new(0,10,0,10)}):Play()
+	end)
+
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.2), {Size = btn.Size}):Play()
+	end)
+
+	return btn
+end
+
+-- TÀI / XỈU
+local tai = createBtn("Tài", UDim2.new(0.05,0,0.35,0))
+local xiu = createBtn("Xỉu", UDim2.new(0.65,0,0.35,0))
+
+-- NÚT TIỀN
+local moneyList = {"1M","5M","10M","100M"}
+for i,v in ipairs(moneyList) do
 	local btn = Instance.new("TextButton", frame)
 	btn.Size = UDim2.new(0, 80, 0, 40)
-	btn.Position = UDim2.new(0.1 + (i-1)*0.2, 0, 0.75, 0)
+	btn.Position = UDim2.new(0.1 + (i-1)*0.2, 0, 0.7, 0)
 	btn.Text = v
 	btn.TextScaled = true
 	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+
+	local c = Instance.new("UICorner", btn)
+	c.CornerRadius = UDim.new(0,15)
+
+	-- click animation
+	btn.MouseButton1Click:Connect(function()
+		local t = TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0,70,0,35)})
+		local t2 = TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0,80,0,40)})
+		t:Play(); t.Completed:Wait(); t2:Play()
+	end)
 end
 
--- Xác nhận
-local confirm = Instance.new("TextButton", frame)
-confirm.Size = UDim2.new(0, 100, 0, 40)
-confirm.Position = UDim2.new(0.6, 0, 0.9, 0)
-confirm.Text = "Xác Nhận"
-confirm.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-
--- Hủy
+-- HỦY
 local cancel = Instance.new("TextButton", frame)
 cancel.Size = UDim2.new(0, 100, 0, 40)
-cancel.Position = UDim2.new(0.2, 0, 0.9, 0)
-cancel.Text = "Hủy"
-cancel.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+cancel.Position = UDim2.new(0.25,0,0.88,0)
+cancel.Text = "Hủy Bỏ"
+cancel.BackgroundColor3 = Color3.fromRGB(200,0,0)
+
+Instance.new("UICorner", cancel).CornerRadius = UDim.new(0,15)
+
+-- XÁC NHẬN
+local confirm = Instance.new("TextButton", frame)
+confirm.Size = UDim2.new(0, 100, 0, 40)
+confirm.Position = UDim2.new(0.6,0,0.88,0)
+confirm.Text = "Xác Nhận"
+confirm.BackgroundColor3 = Color3.fromRGB(255,200,0)
+
+Instance.new("UICorner", confirm).CornerRadius = UDim.new(0,15)
