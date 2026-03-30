@@ -1,117 +1,94 @@
-local player = game.Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
 
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "TaiXiuUI"
+-- FPS BOOST cực mạnh
+pcall(function()
+	for _,v in pairs(game:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.Material = Enum.Material.SmoothPlastic
+			v.Reflectance = 0
+			v.CastShadow = false
+		elseif v:IsA("Decal") or v:IsA("Texture") then
+			v:Destroy()
+		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+			v.Enabled = false
+		elseif v:IsA("Explosion") then
+			v.BlastPressure = 0
+			v.BlastRadius = 0
+		elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+			v.Enabled = false
+		end
+	end
 
--- FRAME CHÍNH
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 550, 0, 260)
-frame.Position = UDim2.new(0.5, -275, 0.5, -130)
-frame.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+	local lighting = game:GetService("Lighting")
+	lighting.GlobalShadows = false
+	lighting.FogEnd = 9e9
+	lighting.Brightness = 0
+	lighting.ClockTime = 14
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(1, 0) -- oval
+	for _,v in pairs(lighting:GetChildren()) do
+		if v:IsA("PostEffect") then
+			v.Enabled = false
+		end
+	end
 
--- gradient
-local grad = Instance.new("UIGradient", frame)
-grad.Color = ColorSequence.new{
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(120,0,0))
-}
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 
--- TITLE
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.Text = "Số Tiền : 60s   #000001"
-title.BackgroundTransparency = 1
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.new(1,1,1)
-
--- NÚT TRÒN GIỮA
-local circle = Instance.new("Frame", frame)
-circle.Size = UDim2.new(0, 90, 0, 90)
-circle.Position = UDim2.new(0.5, -45, 0.45, -45)
-circle.BackgroundColor3 = Color3.fromRGB(240,240,240)
-
-local cc = Instance.new("UICorner", circle)
-cc.CornerRadius = UDim.new(1,0)
-
--- hiệu ứng pulse
-task.spawn(function()
-	while true do
-		local t1 = TweenService:Create(circle, TweenInfo.new(0.6), {Size = UDim2.new(0,100,0,100)})
-		local t2 = TweenService:Create(circle, TweenInfo.new(0.6), {Size = UDim2.new(0,90,0,90)})
-		t1:Play(); t1.Completed:Wait()
-		t2:Play(); t2.Completed:Wait()
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		terrain.WaterWaveSize = 0
+		terrain.WaterWaveSpeed = 0
+		terrain.WaterReflectance = 0
+		terrain.WaterTransparency = 1
 	end
 end)
 
--- FUNCTION tạo button đẹp
-local function createBtn(text, pos)
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.new(0, 160, 0, 70)
-	btn.Position = pos
-	btn.Text = text
-	btn.TextScaled = true
-	btn.Font = Enum.Font.GothamBold
-	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+-- Anti AFK
+player.Idled:Connect(function()
+	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	task.wait(1)
+	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
 
-	local c = Instance.new("UICorner", btn)
-	c.CornerRadius = UDim.new(0,20)
+-- NoClip luôn bật
+task.spawn(function()
+	while true do
+		task.wait()
+		if player.Character then
+			for _,v in pairs(player.Character:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = false
+				end
+			end
+		end
+	end
+end)
 
-	-- hover animation
-	btn.MouseEnter:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.2), {Size = btn.Size + UDim2.new(0,10,0,10)}):Play()
-	end)
+-- 🔥 AUTO BĂNG GẠT KHI MÁU < 80
+task.spawn(function()
+	while task.wait(0.2) do
+		local char = player.Character
+		if char then
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health < 80 then
+				
+				-- tìm tool băng gạt
+				local bandage = player.Backpack:FindFirstChild("Băng Gạt") 
+					or char:FindFirstChild("băng gạc")
 
-	btn.MouseLeave:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.2), {Size = btn.Size}):Play()
-	end)
-
-	return btn
-end
-
--- TÀI / XỈU
-local tai = createBtn("Tài", UDim2.new(0.05,0,0.35,0))
-local xiu = createBtn("Xỉu", UDim2.new(0.65,0,0.35,0))
-
--- NÚT TIỀN
-local moneyList = {"1M","5M","10M","100M"}
-for i,v in ipairs(moneyList) do
-	local btn = Instance.new("TextButton", frame)
-	btn.Size = UDim2.new(0, 80, 0, 40)
-	btn.Position = UDim2.new(0.1 + (i-1)*0.2, 0, 0.7, 0)
-	btn.Text = v
-	btn.TextScaled = true
-	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-
-	local c = Instance.new("UICorner", btn)
-	c.CornerRadius = UDim.new(0,15)
-
-	-- click animation
-	btn.MouseButton1Click:Connect(function()
-		local t = TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0,70,0,35)})
-		local t2 = TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0,80,0,40)})
-		t:Play(); t.Completed:Wait(); t2:Play()
-	end)
-end
-
--- HỦY
-local cancel = Instance.new("TextButton", frame)
-cancel.Size = UDim2.new(0, 100, 0, 40)
-cancel.Position = UDim2.new(0.25,0,0.88,0)
-cancel.Text = "Hủy Bỏ"
-cancel.BackgroundColor3 = Color3.fromRGB(200,0,0)
-
-Instance.new("UICorner", cancel).CornerRadius = UDim.new(0,15)
-
--- XÁC NHẬN
-local confirm = Instance.new("TextButton", frame)
-confirm.Size = UDim2.new(0, 100, 0, 40)
-confirm.Position = UDim2.new(0.6,0,0.88,0)
-confirm.Text = "Xác Nhận"
-confirm.BackgroundColor3 = Color3.fromRGB(255,200,0)
-
-Instance.new("UICorner", confirm).CornerRadius = UDim.new(0,15)
+				if bandage then
+					-- equip
+					humanoid:EquipTool(bandage)
+					
+					task.wait(0.2)
+					
+					-- dùng
+					pcall(function()
+						bandage:Activate()
+					end)
+				end
+			end
+		end
+	end
+end)
