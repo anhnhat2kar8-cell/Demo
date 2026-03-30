@@ -74,7 +74,7 @@ task.spawn(function()
 			if humanoid and humanoid.Health < 80 then
 				
 				-- tìm tool băng gạt
-				local bandage = player.Backpack:FindFirstChild("Băng Gạt") 
+				local bandage = player.Backpack:FindFirstChild("băng gạc") 
 					or char:FindFirstChild("băng gạc")
 
 				if bandage then
