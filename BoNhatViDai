@@ -1,57 +1,24 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = false
+local AutoFarm = true -- bật sẵn
 
--- ===== GUI =====
-local gui = Instance.new("ScreenGui")
-pcall(function()
-	gui.Parent = game.CoreGui -- delta dùng cái này
-end)
-
-gui.ResetOnSpawn = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,200,0,60)
-frame.Position = UDim2.new(0.75,0,0.35,0)
-frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
-frame.Active = true
-frame.Draggable = true
-
-local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1,0,1,0)
-button.Text = "Auto Farm OFF"
-button.TextColor3 = Color3.new(1,1,1)
-button.BackgroundColor3 = Color3.fromRGB(60,60,60)
-
-button.MouseButton1Click:Connect(function()
-	AutoFarm = not AutoFarm
-	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
-end)
-
--- ===== LẤY HRP =====
-local function getHRP()
-	local char = player.Character or player.CharacterAdded:Wait()
-	return char:WaitForChild("HumanoidRootPart")
-end
-
--- ===== TÌM NPC =====
+-- tìm NPC gần nhất (còn sống)
 local function getNPC()
 	local closest = nil
 	local dist = math.huge
 
-	for _,v in ipairs(workspace:GetDescendants()) do -- dùng lại Descendants cho chắc
-		if v.Name == "CityNPC" then
-			local hum = v:FindFirstChild("Humanoid")
-			local hrp = v:FindFirstChild("HumanoidRootPart")
+	for _,v in pairs(workspace:GetDescendants()) do
+		if v.Name == "CityNPC"
+		and v:FindFirstChild("HumanoidRootPart")
+		and v:FindFirstChild("Humanoid")
+		and v.Humanoid.Health > 0 then
 
-			if hum and hrp and hum.Health > 0 then
-				local d = (getHRP().Position - hrp.Position).Magnitude
+			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
 
-				if d < dist then
-					dist = d
-					closest = v
-				end
+			if d < dist then
+				dist = d
+				closest = v
 			end
 		end
 	end
@@ -59,39 +26,26 @@ local function getNPC()
 	return closest
 end
 
--- ===== AUTO FARM =====
+-- AUTO FARM (không bị đứng nữa)
 task.spawn(function()
-	while true do
-		task.wait(0.01)
+	while task.wait(0.01) do
+		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 
-		if not AutoFarm then continue end
+			local npc = getNPC()
 
-		local char = player.Character
-		if not char then continue end
+			if npc and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
+				local hrp = player.Character.HumanoidRootPart
 
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if not hrp then continue end
+				-- TELE LIÊN TỤC
+				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
 
-		local npc = getNPC()
-
-		if npc then
-			local npcHRP = npc:FindFirstChild("HumanoidRootPart")
-			local hum = npc:FindFirstChild("Humanoid")
-
-			if npcHRP and hum and hum.Health > 0 then
-				-- TELE SIÊU NHANH
-				pcall(function()
-					hrp.CFrame = npcHRP.CFrame * CFrame.new(0,3,3)
-				end)
-
-				-- ĐÁNH
-				local tool = char:FindFirstChildOfClass("Tool")
+				-- đánh liên tục
+				local tool = player.Character:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
 			end
-		else
-			task.wait(0.5)
+
 		end
 	end
 end)
