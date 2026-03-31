@@ -30,6 +30,10 @@ local function getNPC()
 	local closest = nil
 	local dist = math.huge
 
+	if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+		return nil
+	end
+
 	for _,v in pairs(workspace:GetDescendants()) do
 		if v.Name == "CityNPC"
 		and v:FindFirstChild("HumanoidRootPart")
@@ -51,35 +55,47 @@ end
 -- AUTO FARM CHÍNH
 task.spawn(function()
 	while task.wait() do
-		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		if AutoFarm 
+		and player.Character 
+		and player.Character:FindFirstChild("HumanoidRootPart") then
 
 			local npc = getNPC()
 
 			if npc then
 				local hrp = player.Character.HumanoidRootPart
 
-				-- TELE SIÊU NHANH (không đi bộ)
+				-- TELE tới NPC
 				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
 
-				-- đánh liên tục cho tới khi NPC chết
-				repeat
+				-- Đánh tới khi NPC chết
+				while npc
+				and npc.Parent
+				and npc:FindFirstChild("Humanoid")
+				and npc.Humanoid.Health > 0
+				and AutoFarm do
+
 					task.wait()
 
-					-- giữ vị trí luôn dính NPC
-					hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
+					-- giữ vị trí dính NPC
+					if npc:FindFirstChild("HumanoidRootPart") then
+						hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
+					end
 
+					-- dùng tool
 					local tool = player.Character:FindFirstChildOfClass("Tool")
 					if tool then
 						tool:Activate()
 					end
+				end
 
+				-- chờ NPC chết hẳn rồi mới tìm con khác
+				repeat task.wait(0.2)
 				until not npc
+				or not npc.Parent
 				or not npc:FindFirstChild("Humanoid")
 				or npc.Humanoid.Health <= 0
-				or not AutoFarm
 
 			end
-
 		end
 	end
 end)
