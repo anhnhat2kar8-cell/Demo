@@ -1,27 +1,52 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = true
+local AutoFarm = false
 
--- lấy HRP an toàn
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui")
+pcall(function()
+	gui.Parent = game.CoreGui -- delta dùng cái này
+end)
+
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,200,0,60)
+frame.Position = UDim2.new(0.75,0,0.35,0)
+frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+frame.Active = true
+frame.Draggable = true
+
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(1,0,1,0)
+button.Text = "Auto Farm OFF"
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(60,60,60)
+
+button.MouseButton1Click:Connect(function()
+	AutoFarm = not AutoFarm
+	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
+end)
+
+-- ===== LẤY HRP =====
 local function getHRP()
 	local char = player.Character or player.CharacterAdded:Wait()
 	return char:WaitForChild("HumanoidRootPart")
 end
 
--- tìm NPC gần nhất còn sống
+-- ===== TÌM NPC =====
 local function getNPC()
 	local closest = nil
 	local dist = math.huge
 
-	for _,v in ipairs(workspace:GetChildren()) do -- tối ưu hơn GetDescendants
+	for _,v in ipairs(workspace:GetDescendants()) do -- dùng lại Descendants cho chắc
 		if v.Name == "CityNPC" then
 			local hum = v:FindFirstChild("Humanoid")
 			local hrp = v:FindFirstChild("HumanoidRootPart")
 
 			if hum and hrp and hum.Health > 0 then
-				local myHRP = getHRP()
-				local d = (myHRP.Position - hrp.Position).Magnitude
+				local d = (getHRP().Position - hrp.Position).Magnitude
 
 				if d < dist then
 					dist = d
@@ -34,7 +59,7 @@ local function getNPC()
 	return closest
 end
 
--- AUTO FARM
+-- ===== AUTO FARM =====
 task.spawn(function()
 	while true do
 		task.wait(0.01)
@@ -54,19 +79,18 @@ task.spawn(function()
 			local hum = npc:FindFirstChild("Humanoid")
 
 			if npcHRP and hum and hum.Health > 0 then
+				-- TELE SIÊU NHANH
+				pcall(function()
+					hrp.CFrame = npcHRP.CFrame * CFrame.new(0,3,3)
+				end)
 
-				-- TELE LIÊN TỤC
-				hrp.CFrame = npcHRP.CFrame * CFrame.new(0,3,3)
-
-				-- đánh
+				-- ĐÁNH
 				local tool = char:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
-
 			end
 		else
-			-- KHÔNG CÓ NPC → đợi respawn
 			task.wait(0.5)
 		end
 	end
