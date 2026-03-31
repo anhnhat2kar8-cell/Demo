@@ -3,7 +3,7 @@ local player = Players.LocalPlayer
 
 local AutoFarm = false
 
--- GUI
+-- GUI bật/tắt
 local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.ResetOnSpawn = false
 
@@ -48,25 +48,36 @@ local function getNPC()
 	return closest
 end
 
--- Auto Farm
+-- AUTO FARM CHÍNH
 task.spawn(function()
 	while task.wait() do
 		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 
 			local npc = getNPC()
+
 			if npc then
-
 				local hrp = player.Character.HumanoidRootPart
-				local targetPos = npc.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
 
-				-- TELE SIÊU NHANH
-				hrp.CFrame = targetPos
+				-- TELE SIÊU NHANH (không đi bộ)
+				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
 
-				-- auto đánh liên tục
-				local tool = player.Character:FindFirstChildOfClass("Tool")
-				if tool then
-					tool:Activate()
-				end
+				-- đánh liên tục cho tới khi NPC chết
+				repeat
+					task.wait()
+
+					-- giữ vị trí luôn dính NPC
+					hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
+
+					local tool = player.Character:FindFirstChildOfClass("Tool")
+					if tool then
+						tool:Activate()
+					end
+
+				until not npc
+				or not npc:FindFirstChild("Humanoid")
+				or npc.Humanoid.Health <= 0
+				or not AutoFarm
+
 			end
 
 		end
