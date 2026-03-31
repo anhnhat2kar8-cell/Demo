@@ -1,29 +1,7 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = false
-
--- GUI bật/tắt
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.ResetOnSpawn = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,200,0,60)
-frame.Position = UDim2.new(0.75,0,0.35,0)
-frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
-frame.Active = true
-frame.Draggable = true
-
-local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(1,0,1,0)
-button.Text = "Auto Farm OFF"
-button.TextColor3 = Color3.new(1,1,1)
-button.BackgroundColor3 = Color3.fromRGB(60,60,60)
-
-button.MouseButton1Click:Connect(function()
-	AutoFarm = not AutoFarm
-	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
-end)
+local AutoFarm = true -- bật sẵn
 
 -- tìm NPC gần nhất (còn sống)
 local function getNPC()
@@ -48,36 +26,24 @@ local function getNPC()
 	return closest
 end
 
--- AUTO FARM CHÍNH
+-- AUTO FARM (không bị đứng nữa)
 task.spawn(function()
-	while task.wait() do
+	while task.wait(0.01) do
 		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 
 			local npc = getNPC()
 
-			if npc then
+			if npc and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
 				local hrp = player.Character.HumanoidRootPart
 
-				-- TELE SIÊU NHANH (không đi bộ)
+				-- TELE LIÊN TỤC
 				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
 
-				-- đánh liên tục cho tới khi NPC chết
-				repeat
-					task.wait()
-
-					-- giữ vị trí luôn dính NPC
-					hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
-
-					local tool = player.Character:FindFirstChildOfClass("Tool")
-					if tool then
-						tool:Activate()
-					end
-
-				until not npc
-				or not npc:FindFirstChild("Humanoid")
-				or npc.Humanoid.Health <= 0
-				or not AutoFarm
-
+				-- đánh liên tục
+				local tool = player.Character:FindFirstChildOfClass("Tool")
+				if tool then
+					tool:Activate()
+				end
 			end
 
 		end
