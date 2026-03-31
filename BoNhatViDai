@@ -1,24 +1,32 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = true -- bật sẵn
+local AutoFarm = true
 
--- tìm NPC gần nhất (còn sống)
+-- lấy HRP an toàn
+local function getHRP()
+	local char = player.Character or player.CharacterAdded:Wait()
+	return char:WaitForChild("HumanoidRootPart")
+end
+
+-- tìm NPC gần nhất còn sống
 local function getNPC()
 	local closest = nil
 	local dist = math.huge
 
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v.Name == "CityNPC"
-		and v:FindFirstChild("HumanoidRootPart")
-		and v:FindFirstChild("Humanoid")
-		and v.Humanoid.Health > 0 then
+	for _,v in ipairs(workspace:GetChildren()) do -- tối ưu hơn GetDescendants
+		if v.Name == "CityNPC" then
+			local hum = v:FindFirstChild("Humanoid")
+			local hrp = v:FindFirstChild("HumanoidRootPart")
 
-			local d = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			if hum and hrp and hum.Health > 0 then
+				local myHRP = getHRP()
+				local d = (myHRP.Position - hrp.Position).Magnitude
 
-			if d < dist then
-				dist = d
-				closest = v
+				if d < dist then
+					dist = d
+					closest = v
+				end
 			end
 		end
 	end
@@ -26,26 +34,40 @@ local function getNPC()
 	return closest
 end
 
--- AUTO FARM (không bị đứng nữa)
+-- AUTO FARM
 task.spawn(function()
-	while task.wait(0.01) do
-		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+	while true do
+		task.wait(0.01)
 
-			local npc = getNPC()
+		if not AutoFarm then continue end
 
-			if npc and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
-				local hrp = player.Character.HumanoidRootPart
+		local char = player.Character
+		if not char then continue end
+
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hrp then continue end
+
+		local npc = getNPC()
+
+		if npc then
+			local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+			local hum = npc:FindFirstChild("Humanoid")
+
+			if npcHRP and hum and hum.Health > 0 then
 
 				-- TELE LIÊN TỤC
-				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
+				hrp.CFrame = npcHRP.CFrame * CFrame.new(0,3,3)
 
-				-- đánh liên tục
-				local tool = player.Character:FindFirstChildOfClass("Tool")
+				-- đánh
+				local tool = char:FindFirstChildOfClass("Tool")
 				if tool then
 					tool:Activate()
 				end
-			end
 
+			end
+		else
+			-- KHÔNG CÓ NPC → đợi respawn
+			task.wait(0.5)
 		end
 	end
 end)
