@@ -1,8 +1,8 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local AutoFarm = false
-local ignoreNPC = {} -- 💥 lưu NPC vừa chết
+local AutoHeal = false
+local HEAL_THRESHOLD = 80
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -10,85 +10,46 @@ gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,200,0,60)
-frame.Position = UDim2.new(0.75,0,0.35,0)
+frame.Position = UDim2.new(0.75,0,0.45,0) -- 💥 chỉnh xuống dưới Auto Farm
 frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
 frame.Active = true
 frame.Draggable = true
 
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(1,0,1,0)
-button.Text = "Auto Farm OFF"
+button.Text = "Auto Heal OFF"
 button.TextColor3 = Color3.new(1,1,1)
 button.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
+-- bật/tắt
 button.MouseButton1Click:Connect(function()
-	AutoFarm = not AutoFarm
-	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
+	AutoHeal = not AutoHeal
+	button.Text = AutoHeal and "Auto Heal ON" or "Auto Heal OFF"
 end)
 
--- tìm NPC
-local function getNPC()
-	local closest = nil
-	local dist = math.huge
-
-	local char = player.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then
-		return nil
-	end
-
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v.Name == "CityNPC"
-		and v:FindFirstChild("HumanoidRootPart")
-		and v:FindFirstChild("Humanoid")
-		and v.Humanoid.Health > 0
-		and not ignoreNPC[v] then -- 💥 bỏ qua NPC đã chết gần đây
-
-			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
-
-			if d < dist then
-				dist = d
-				closest = v
-			end
-		end
-	end
-
-	return closest
-end
-
--- AUTO FARM
+-- AUTO HEAL
 task.spawn(function()
-	while task.wait(0.1) do
-		if not AutoFarm then continue end
+	while task.wait(0.2) do
+		if not AutoHeal then continue end
 
 		local char = player.Character
-		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+		if not char then continue end
 
-		local npc = getNPC()
-		if not npc then continue end
+		local humanoid = char:FindFirstChild("Humanoid")
+		if not humanoid then continue end
 
-		local hrp = char.HumanoidRootPart
+		if humanoid.Health < HEAL_THRESHOLD then
+			
+			local tool = char:FindFirstChild("băng gạc") 
+				or player.Backpack:FindFirstChild("băng gạc")
 
-		-- nếu chết → add vào ignore
-		if npc.Humanoid.Health <= 0 then
-			ignoreNPC[npc] = true
+			if tool then
+				if tool.Parent ~= char then
+					humanoid:EquipTool(tool)
+				end
 
-			-- xoá khỏi blacklist sau 5s (để nó respawn thì farm lại)
-			task.delay(5, function()
-				ignoreNPC[npc] = nil
-			end)
-
-			continue
-		end
-
-		-- TELE
-		if npc:FindFirstChild("HumanoidRootPart") then
-			hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
-		end
-
-		-- đánh
-		local tool = char:FindFirstChildOfClass("Tool")
-		if tool then
-			tool:Activate()
+				tool:Activate()
+			end
 		end
 	end
 end)
