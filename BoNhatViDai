@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local AutoFarm = false
+local ignoreNPC = {} -- 💥 lưu NPC vừa chết
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
@@ -25,7 +26,7 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm NPC sống gần nhất
+-- tìm NPC
 local function getNPC()
 	local closest = nil
 	local dist = math.huge
@@ -39,7 +40,8 @@ local function getNPC()
 		if v.Name == "CityNPC"
 		and v:FindFirstChild("HumanoidRootPart")
 		and v:FindFirstChild("Humanoid")
-		and v.Humanoid.Health > 0 then
+		and v.Humanoid.Health > 0
+		and not ignoreNPC[v] then -- 💥 bỏ qua NPC đã chết gần đây
 
 			local d = (char.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
 
@@ -53,39 +55,40 @@ local function getNPC()
 	return closest
 end
 
--- AUTO FARM (KHÔNG giữ NPC)
+-- AUTO FARM
 task.spawn(function()
 	while task.wait(0.1) do
-		if AutoFarm then
-			local char = player.Character
-			if not char or not char:FindFirstChild("HumanoidRootPart") then
-				continue
-			end
+		if not AutoFarm then continue end
 
-			local npc = getNPC()
+		local char = player.Character
+		if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
 
-			-- nếu không có NPC sống -> bỏ qua luôn (không đứng chờ)
-			if not npc then
-				continue
-			end
+		local npc = getNPC()
+		if not npc then continue end
 
-			local hrp = char.HumanoidRootPart
+		local hrp = char.HumanoidRootPart
 
-			-- nếu npc chết trong lúc đang xử lý thì skip ngay
-			if npc.Humanoid.Health <= 0 then
-				continue
-			end
+		-- nếu chết → add vào ignore
+		if npc.Humanoid.Health <= 0 then
+			ignoreNPC[npc] = true
 
-			-- TELE
-			if npc:FindFirstChild("HumanoidRootPart") then
-				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
-			end
+			-- xoá khỏi blacklist sau 5s (để nó respawn thì farm lại)
+			task.delay(5, function()
+				ignoreNPC[npc] = nil
+			end)
 
-			-- đánh
-			local tool = char:FindFirstChildOfClass("Tool")
-			if tool then
-				tool:Activate()
-			end
+			continue
+		end
+
+		-- TELE
+		if npc:FindFirstChild("HumanoidRootPart") then
+			hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
+		end
+
+		-- đánh
+		local tool = char:FindFirstChildOfClass("Tool")
+		if tool then
+			tool:Activate()
 		end
 	end
 end)
