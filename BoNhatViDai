@@ -25,7 +25,7 @@ button.MouseButton1Click:Connect(function()
 	button.Text = AutoFarm and "Auto Farm ON" or "Auto Farm OFF"
 end)
 
--- tìm NPC gần nhất (còn sống)
+-- tìm NPC gần nhất
 local function getNPC()
 	local closest = nil
 	local dist = math.huge
@@ -52,7 +52,7 @@ local function getNPC()
 	return closest
 end
 
--- AUTO FARM CHÍNH
+-- AUTO FARM
 task.spawn(function()
 	while task.wait() do
 		if AutoFarm 
@@ -64,37 +64,27 @@ task.spawn(function()
 			if npc then
 				local hrp = player.Character.HumanoidRootPart
 
-				-- TELE tới NPC
-				hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
-
-				-- Đánh tới khi NPC chết
-				while npc
-				and npc.Parent
-				and npc:FindFirstChild("Humanoid")
-				and npc.Humanoid.Health > 0
-				and AutoFarm do
-
-					task.wait()
-
-					-- giữ vị trí dính NPC
-					if npc:FindFirstChild("HumanoidRootPart") then
-						hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0, 3, 3)
+				while AutoFarm do
+					if not npc 
+					or not npc.Parent 
+					or not npc:FindFirstChild("Humanoid") 
+					or npc.Humanoid.Health <= 0 then
+						break -- 💥 chết là thoát luôn
 					end
 
-					-- dùng tool
+					-- tele bám NPC
+					if npc:FindFirstChild("HumanoidRootPart") then
+						hrp.CFrame = npc.HumanoidRootPart.CFrame * CFrame.new(0,3,3)
+					end
+
+					-- đánh
 					local tool = player.Character:FindFirstChildOfClass("Tool")
 					if tool then
 						tool:Activate()
 					end
+
+					task.wait()
 				end
-
-				-- chờ NPC chết hẳn rồi mới tìm con khác
-				repeat task.wait(0.2)
-				until not npc
-				or not npc.Parent
-				or not npc:FindFirstChild("Humanoid")
-				or npc.Humanoid.Health <= 0
-
 			end
 		end
 	end
