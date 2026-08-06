@@ -213,27 +213,23 @@ local function findPrompt()
 end
 
 -- auto cứu + lụm
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Template = ReplicatedStorage:WaitForChild("DinhHaiThanhCham")
+
 task.spawn(function()
 	while task.wait(0.05) do
 		if AutoRescue and player.Character then
 			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			local prompt, target = findPrompt()
 
-			if hrp and prompt and target then
-				prompt.MaxActivationDistance = 50
-				prompt.HoldDuration = 0
+			if hrp then
+				local clone = Template:Clone()
+				clone.Parent = workspace
 
-				hrp.CFrame = target.CFrame + Vector3.new(0, -10, 0)
-
-				task.wait(0.3)
-
-				hrp.CFrame = target.CFrame + Vector3.new(0, -35, 0)
-
-				task.wait()
-
-				pcall(function()
-					fireproximityprompt(prompt)
-				end)
+				if clone:IsA("BasePart") then
+					clone.CFrame = hrp.CFrame
+				elseif clone.PrimaryPart then
+					clone:SetPrimaryPartCFrame(hrp.CFrame)
+				end
 			end
 		end
 	end
