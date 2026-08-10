@@ -1,5 +1,14 @@
+--[[
+  [ Script: Mobile GUI Addon - Thay thế toàn bộ GUI cũ ]
+  [ Tác giả: palofsc ]
+  [ Mục đích: Thêm giao diện nút bật/tắt tương thích Mobile (Touch) ]
+  [ Tích hợp: Dán toàn bộ script này thay cho script trước đó ]
+  [ Chức năng: 5 nút GUI - Spawn Part, Auto Heal, Auto Farm, Dừng, Thoát ]
+--]]
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
@@ -8,44 +17,44 @@ local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 
 -- ============================
--- PHẦN 2: TÌM PART GỐC "DinhHaiThanhCham"
+-- BIẾN TRẠNG THÁI
+-- ============================
+local spawnDangChay = true
+local autoHealBat = true
+local autoFarmBat = true
+local HEAL_THRESHOLD = 80
+local soLanSpawn = 0
+
+-- ============================
+-- TÌM PART GỐC
 -- ============================
 local function TimPartGoc()
-    -- Tìm trong ReplicatedStorage trước
     local partGoc = ReplicatedStorage:FindFirstChild("DinhHaiThanhCham", true)
-    if partGoc and partGoc:IsA("BasePart") then
-        return partGoc
-    end
-
-    -- Nếu không có, tìm trong toàn bộ Workspace
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
     partGoc = Workspace:FindFirstChild("DinhHaiThanhCham", true)
-    if partGoc and partGoc:IsA("BasePart") then
-        return partGoc
-    end
-
-    -- Tìm trong các thư mục con của game
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
     for _, descendant in ipairs(game:GetDescendants()) do
         if descendant.Name == "DinhHaiThanhCham" and descendant:IsA("BasePart") then
             return descendant
         end
     end
-
-    warn("[LOI] Khong tim thay Part 'DinhHaiThanhCham' trong game.")
+    warn("[LOI] Khong tim thay Part 'DinhHaiThanhCham'.")
     return nil
 end
 
 local partGoc = TimPartGoc()
-if not partGoc then
-    error("Part 'DinhHaiThanhCham' khong ton tai. Dung script.")
+if partGoc then
+    print("[OK] Da tim thay Part goc:", partGoc:GetFullName())
+else
+    print("[CANH BAO] Part 'DinhHaiThanhCham' khong ton tai. Spawn Part se khong hoat dong.")
 end
-print("[OK] Da tim thay Part goc:", partGoc:GetFullName())
 
 -- ============================
--- PHẦN 3: HÀM NHÂN BẢN PART
+-- HÀM NHÂN BẢN PART
 -- ============================
 local function NhanBanPart(part)
+    if not part or not part:IsA("BasePart") then return nil end
     local clone = part:Clone()
-    -- Đặt vị trí ngẫu nhiên quanh người chơi trong bán kính 10 studs
     local offsetX = math.random(-10, 10)
     local offsetY = math.random(0, 5)
     local offsetZ = math.random(-10, 10)
@@ -57,28 +66,22 @@ local function NhanBanPart(part)
 end
 
 -- ============================
--- PHẦN 4: HÀM TỰ ĐỘNG THU THẬP PART (BỎ QUA HỆ THỐNG CỨU HỘ)
+-- HÀM TỰ ĐỘNG THU THẬP PART
 -- ============================
 local function TuDongThuThap(part)
-    -- Dịch chuyển người chơi đến vị trí part (bỏ qua khoảng cách)
+    if not part then return end
     rootPart.CFrame = part.CFrame + Vector3.new(0, 3, 0)
-
-    -- Kích hoạt sự kiện chạm để nhặt part nếu game dùng Touched event
     local touchInterest = part:FindFirstChild("TouchInterest")
     if touchInterest then
-        firetouchinterest(part, rootPart, 0) -- firetouchinterest(part, characterPart, 0: touch, 1: untouch)
+        firetouchinterest(part, rootPart, 0)
         firetouchinterest(part, rootPart, 1)
     end
-
-    -- Nếu part có ProximityPrompt, tự động kích hoạt
     local proximityPrompt = part:FindFirstChildOfClass("ProximityPrompt")
     if proximityPrompt then
         proximityPrompt:InputHoldBegin()
         task.wait(0.1)
         proximityPrompt:InputHoldEnd()
     end
-
-    -- Nếu part là Tool, tự động nhặt vào Backpack
     if part:IsA("Tool") then
         local backpack = player:FindFirstChild("Backpack")
         if backpack then
@@ -89,57 +92,19 @@ local function TuDongThuThap(part)
 end
 
 -- ============================
--- PHẦN 5: LUỒNG SPAWN LIÊN TỤC VÀ THU THẬP
+-- LUỒNG SPAWN PART (CHẠY NGẦM)
 -- ============================
-local dangChay = true
-local soLanSpawn = 0
-
 task.spawn(function()
-    while dangChay do
-        -- Nhân bản part gốc
-        local clone = NhanBanPart(partGoc)
-        soLanSpawn = soLanSpawn + 1
-        print("[SPAWN] Da tao ban sao thu:", soLanSpawn)
-
-        -- Chờ một chút để part ổn định trong Workspace
-        task.wait(0.05)
-
-        -- Tự động thu thập part vừa spawn
-        TuDongThuThap(clone)
-
-        -- Điều chỉnh tốc độ spawn (càng nhỏ càng nhanh, tối thiểu 0.01 để tránh crash)
+    while true do
         task.wait(0.1)
-    end
-end)
-
--- ============================
--- PHẦN 6: KẾT HỢP AUTO HEAL (BỎ QUA CỨU HỘ)
--- ============================
-local AutoHeal = true
-local HEAL_THRESHOLD = 80
-
-task.spawn(function()
-    while task.wait(0.3) do
-        if not AutoHeal then continue end
-
-        local char = player.Character
-        if not char then continue end
-
-        local hum = char:FindFirstChild("Humanoid")
-        if not hum then continue end
-
-        if hum.Health < HEAL_THRESHOLD then
-            local currentTool = char:FindFirstChildOfClass("Tool")
-            local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
-
-            if bandage then
-                if bandage.Parent ~= char then
-                    hum:EquipTool(bandage)
-                end
-                bandage:Activate()
-                task.wait(0.3)
-                if currentTool and currentTool.Parent ~= char then
-                    hum:EquipTool(currentTool)
+        if spawnDangChay and partGoc then
+            local clone = NhanBanPart(partGoc)
+            if clone then
+                soLanSpawn = soLanSpawn + 1
+                print("[SPAWN] Da tao ban sao thu:", soLanSpawn)
+                if autoFarmBat then
+                    task.wait(0.05)
+                    TuDongThuThap(clone)
                 end
             end
         end
@@ -147,65 +112,277 @@ task.spawn(function()
 end)
 
 -- ============================
--- PHẦN 7: LỆNH DỪNG SCRIPT (GÕ "stop" TRONG CONSOLE)
+-- LUỒNG AUTO HEAL (CHẠY NGẦM)
 -- ============================
-print("[LENH] Go 'stop' trong console de dung spawn part.")
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F9 then -- Nhấn F9 để dừng
-        dangChay = false
-        print("[DUNG] Da dung spawn part. Tong so da spawn:", soLanSpawn)
+task.spawn(function()
+    while task.wait(0.3) do
+        if not autoHealBat then continue end
+        local char = player.Character
+        if not char then continue end
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then continue end
+        if hum.Health >= HEAL_THRESHOLD then continue end
+
+        local currentTool = char:FindFirstChildOfClass("Tool")
+        local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
+        if bandage then
+            if bandage.Parent ~= char then
+                hum:EquipTool(bandage)
+            end
+            bandage:Activate()
+            task.wait(0.3)
+            if currentTool and currentTool.Parent ~= char then
+                hum:EquipTool(currentTool)
+            end
+        end
     end
 end)
 
 -- ============================
--- PHẦN 8: GIAO DIỆN GUI CƠ BẢN (TÙY CHỌN)
+-- GUI MOBILE (TƯƠNG THÍCH CẢ PC VÀ MOBILE)
 -- ============================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HackPanel"
+ScreenGui.Name = "HackPanelMobile"
 ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 100)
-Frame.Position = UDim2.new(0, 10, 0, 10)
-Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Frame.Parent = ScreenGui
+-- Khung chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 320)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.2
+MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.ClipsDescendants = true
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-local TextLabel = Instance.new("TextLabel")
-TextLabel.Size = UDim2.new(0, 180, 0, 30)
-TextLabel.Position = UDim2.new(0, 10, 0, 10)
-TextLabel.Text = "DinhHaiThanhCham Farm"
-TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TextLabel.BackgroundTransparency = 1
-TextLabel.Parent = Frame
+-- Tiêu đề
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -10, 0, 35)
+Title.Position = UDim2.new(0, 5, 0, 5)
+Title.Text = "DINHHAITHANHCHAM FARM"
+Title.TextColor3 = Color3.fromRGB(255, 80, 80)
+Title.TextScaled = true
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
 
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 180, 0, 40)
-ToggleButton.Position = UDim2.new(0, 10, 0, 50)
-ToggleButton.Text = "DUNG SPAWN (F9)"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-ToggleButton.Parent = Frame
+-- ============================
+-- HÀM TẠO NÚT BẬT/TẮT CHUẨN MOBILE (CÓ MÀU TRẠNG THÁI)
+-- ============================
+local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, callback)
+    local nut = Instance.new("TextButton")
+    nut.Name = ten .. "Button"
+    nut.Size = UDim2.new(1, -20, 0, 45)
+    nut.Position = UDim2.new(0, 10, 0, viTriY)
+    nut.Text = batDauBat and moTaBat or moTaTat
+    nut.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nut.TextScaled = true
+    nut.Font = Enum.Font.SourceSansBold
+    nut.BackgroundColor3 = batDauBat and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+    nut.BorderSizePixel = 1
+    nut.BorderColor3 = Color3.fromRGB(80, 80, 80)
+    nut.AutoButtonColor = false
+    nut.Parent = MainFrame
 
-ToggleButton.MouseButton1Click:Connect(function()
-    dangChay = not dangChay
-    if dangChay then
-        ToggleButton.Text = "DANG CHAY... (F9)"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-        -- Khởi động lại luồng spawn nếu đã dừng
-        task.spawn(function()
-            while dangChay do
-                local clone = NhanBanPart(partGoc)
-                soLanSpawn = soLanSpawn + 1
-                print("[SPAWN] Da tao ban sao thu:", soLanSpawn)
-                task.wait(0.05)
-                TuDongThuThap(clone)
-                task.wait(0.1)
-            end
-        end)
-    else
-        ToggleButton.Text = "DUNG SPAWN (F9)"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    local trangThai = batDauBat
+    nut.Activated:Connect(function()
+        trangThai = not trangThai
+        nut.Text = trangThai and moTaBat or moTaTat
+        nut.BackgroundColor3 = trangThai and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+        if callback then
+            callback(trangThai)
+        end
+    end)
+
+    -- Hỗ trợ touch cho mobile
+    nut.MouseButton1Click:Connect(function()
+        -- Đã xử lý trong Activated, tránh gọi 2 lần
+    end)
+
+    return nut
+end
+
+-- ============================
+-- TẠO CÁC NÚT CỤ THỂ
+-- ============================
+
+-- Nút 1: Bật/Tắt Spawn Part
+TaoNutBatTat(
+    "SpawnPart",
+    50,
+    true,
+    "[ON] SPAWN PART",
+    "[OFF] SPAWN PART",
+    function(trangThai)
+        spawnDangChay = trangThai
+        print("[GUI] Spawn Part:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 2: Bật/Tắt Auto Heal
+TaoNutBatTat(
+    "AutoHeal",
+    105,
+    true,
+    "[ON] AUTO HEAL (80%)",
+    "[OFF] AUTO HEAL",
+    function(trangThai)
+        autoHealBat = trangThai
+        print("[GUI] Auto Heal:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 3: Bật/Tắt Auto Farm (Thu thập)
+TaoNutBatTat(
+    "AutoFarm",
+    160,
+    true,
+    "[ON] AUTO FARM (NHẶT)",
+    "[OFF] AUTO FARM (NHẶT)",
+    function(trangThai)
+        autoFarmBat = trangThai
+        print("[GUI] Auto Farm:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 4: Dừng tất cả
+local nutDungTatCa = Instance.new("TextButton")
+nutDungTatCa.Name = "DungTatCaButton"
+nutDungTatCa.Size = UDim2.new(1, -20, 0, 45)
+nutDungTatCa.Position = UDim2.new(0, 10, 0, 215)
+nutDungTatCa.Text = "DUNG TAT CA"
+nutDungTatCa.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutDungTatCa.TextScaled = true
+nutDungTatCa.Font = Enum.Font.SourceSansBold
+nutDungTatCa.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+nutDungTatCa.BorderSizePixel = 1
+nutDungTatCa.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutDungTatCa.AutoButtonColor = false
+nutDungTatCa.Parent = MainFrame
+
+nutDungTatCa.Activated:Connect(function()
+    spawnDangChay = false
+    autoHealBat = false
+    autoFarmBat = false
+    print("[GUI] Da DUNG TAT CA cac chuc nang.")
+    -- Cập nhật lại màu nút (tìm trong MainFrame)
+    for _, child in ipairs(MainFrame:GetChildren()) do
+        if child.Name == "SpawnPartButton" then
+            child.Text = "[OFF] SPAWN PART"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoHealButton" then
+            child.Text = "[OFF] AUTO HEAL"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoFarmButton" then
+            child.Text = "[OFF] AUTO FARM (NHẶT)"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        end
     end
 end)
 
+-- Nút 5: Thoát GUI
+local nutThoat = Instance.new("TextButton")
+nutThoat.Name = "ThoatButton"
+nutThoat.Size = UDim2.new(1, -20, 0, 45)
+nutThoat.Position = UDim2.new(0, 10, 0, 270)
+nutThoat.Text = "THOAT GUI"
+nutThoat.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThoat.TextScaled = true
+nutThoat.Font = Enum.Font.SourceSansBold
+nutThoat.BackgroundColor3 = Color3.fromRGB(150, 20, 20)
+nutThoat.BorderSizePixel = 1
+nutThoat.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutThoat.AutoButtonColor = false
+nutThoat.Parent = MainFrame
+
+nutThoat.Activated:Connect(function()
+    ScreenGui:Destroy()
+    print("[GUI] GUI da bi huy.")
+end)
+
+-- ============================
+-- THANH TRẠNG THÁI (HIỂN THỊ SỐ LẦN SPAWN)
+-- ============================
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, -10, 0, 20)
+StatusLabel.Position = UDim2.new(0, 5, 0, 5)
+StatusLabel.Parent = nil -- Sẽ được cập nhật vị trí sau
+
+-- ============================
+-- CẬP NHẬT TRẠNG THÁI LIÊN TỤC
+-- ============================
+task.spawn(function()
+    while task.wait(1) do
+        if not ScreenGui or not ScreenGui.Parent then break end
+        -- Thêm thông tin vào Title
+        Title.Text = string.format("FARM | Spawn: %d | Heal: %s | Nhat: %s",
+            soLanSpawn,
+            autoHealBat and "ON" or "OFF",
+            autoFarmBat and "ON" or "OFF"
+        )
+    end
+end)
+
+-- ============================
+-- NÚT THU NHỎ / PHÓNG TO CHO MOBILE (TIẾT KIỆM MÀN HÌNH)
+-- ============================
+local daThuNho = false
+local kichThuocGoc = MainFrame.Size
+local viTriGoc = MainFrame.Position
+
+local nutThuNho = Instance.new("TextButton")
+nutThuNho.Name = "ThuNhoButton"
+nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+nutThuNho.Text = "─"
+nutThuNho.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThuNho.TextScaled = true
+nutThuNho.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+nutThuNho.BorderSizePixel = 0
+nutThuNho.AutoButtonColor = false
+nutThuNho.ZIndex = 10
+nutThuNho.Parent = MainFrame
+
+nutThuNho.Activated:Connect(function()
+    daThuNho = not daThuNho
+    if daThuNho then
+        -- Thu nhỏ: chỉ hiện nút phóng to
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            if child ~= nutThuNho then
+                child.Visible = false
+            end
+        end
+        MainFrame.Size = UDim2.new(0, 40, 0, 40)
+        nutThuNho.Text = "+"
+        nutThuNho.Size = UDim2.new(1, 0, 1, 0)
+        nutThuNho.Position = UDim2.new(0, 0, 0, 0)
+    else
+        -- Phóng to: hiện lại tất cả
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            child.Visible = true
+        end
+        MainFrame.Size = kichThuocGoc
+        nutThuNho.Text = "─"
+        nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+        nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+    end
+end)
+
+print("===========================================")
+print(" [SAN SANG] GUI Mobile da duoc nap!")
+print(" [NUT 1] Bat/Tat Spawn Part")
+print(" [NUT 2] Bat/Tat Auto Heal (duoi 80% HP)")
+print(" [NUT 3] Bat/Tat Auto Farm (tu dong nhat)")
+print(" [NUT 4] Dung tat ca chuc nang")
+print(" [NUT 5] Thoat GUI")
+print(" [THU NHO] Bam nut '-' goc tren phai de thu nho")
+print(" [KEO] Keo tha khung de di chuyen")
+print("===========================================")
