@@ -1,236 +1,229 @@
+--[[
+  [ Script: Repli Part Duplicator + Auto-Farm "DinhHaiThanhCham" ]
+  [ Tác giả: palofsc ]
+  [ Môi trường: Roblox Executor (Synapse X, Krnl, v.v.) ]
+  [ Mục tiêu: Game có chứa Part tên "DinhHaiThanhCham" trong ReplicatedStorage hoặc Workspace ]
+  [ Chức năng: Tìm part, nhân bản liên tục, spawn ra Workspace, tự động thu thập vào Backpack ]
+--]]
+
+-- ============================
+-- PHẦN 1: KHAI BÁO BIẾN VÀ DỊCH VỤ
+-- ============================
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local VirtualUser = game:GetService("VirtualUser")
-
--- FPS BOOST cực mạnh
-pcall(function()
-	for _,v in pairs(game:GetDescendants()) do
-		if v:IsA("BasePart") then
-			v.Material = Enum.Material.SmoothPlastic
-			v.Reflectance = 0
-			v.CastShadow = false
-		elseif v:IsA("Decal") or v:IsA("Texture") then
-			v:Destroy()
-		elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-			v.Enabled = false
-		elseif v:IsA("Explosion") then
-			v.BlastPressure = 0
-			v.BlastRadius = 0
-		elseif v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-			v.Enabled = false
-		end
-	end
-
-	local lighting = game:GetService("Lighting")
-	lighting.GlobalShadows = false
-	lighting.FogEnd = 9e9
-	lighting.Brightness = 0
-	lighting.ClockTime = 14
-
-	for _,v in pairs(lighting:GetChildren()) do
-		if v:IsA("PostEffect") then
-			v.Enabled = false
-		end
-	end
-
-	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-
-	local terrain = workspace:FindFirstChildOfClass("Terrain")
-	if terrain then
-		terrain.WaterWaveSize = 0
-		terrain.WaterWaveSpeed = 0
-		terrain.WaterReflectance = 0
-		terrain.WaterTransparency = 1
-	end
-end)
-
-local AutoRescue = false
-local SavedPos = nil
-local UNDERGROUND = -10
-
--- Anti AFK
-player.Idled:Connect(function()
-	VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-	task.wait(1)
-	VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
-
--- GUI
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.ResetOnSpawn = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,70,0,70)
-frame.Position = UDim2.new(0.78,0,0.6,0)
-frame.BackgroundColor3 = Color3.fromRGB(15,15,15)
-frame.BackgroundTransparency = 0.9
-frame.Active = true
-frame.Draggable = true
-
-local frameCorner = Instance.new("UICorner", frame)
-frameCorner.CornerRadius = UDim.new(0,10)
-
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 2
-
-task.spawn(function()
-	local hue = 0
-	while true do
-		hue += 0.002
-		if hue > 1 then hue = 0 end
-		stroke.Color = Color3.fromHSV(hue,0.7,1)
-		task.wait(0.02)
-	end
-end)
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0,22)
-title.BackgroundTransparency = 1
-title.Text = "Tele"
-title.TextColor3 = Color3.fromRGB(255,170,0)
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-
-local switchBg = Instance.new("Frame", frame)
-switchBg.Size = UDim2.new(0,60,0,30)
-switchBg.Position = UDim2.new(0,5,0.52,0)
-switchBg.BackgroundColor3 = Color3.fromRGB(0,220,220)
-switchBg.BackgroundTransparency = 0.2
-
-local switchCorner = Instance.new("UICorner", switchBg)
-switchCorner.CornerRadius = UDim.new(1,0)
-
-local knob = Instance.new("TextButton", switchBg)
-knob.Size = UDim2.new(0,28,0,28)
-knob.Position = UDim2.new(0,1,0,1)
-knob.Text = ""
-knob.BackgroundColor3 = Color3.new(1,1,1)
-
-local knobCorner = Instance.new("UICorner", knob)
-knobCorner.CornerRadius = UDim.new(1,0)
-
--- bật tắt
-knob.MouseButton1Click:Connect(function()
-	AutoRescue = not AutoRescue
-
-	if AutoRescue then
-		knob:TweenPosition(UDim2.new(0.52,0,0,1),"Out","Quad",0.2,true)
-
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			SavedPos = player.Character.HumanoidRootPart.CFrame
-		end
-	else
-		knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Quad",0.2,true)
-
-		if SavedPos and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			player.Character.HumanoidRootPart.CFrame = SavedPos
-		end
-	end
-end)
-
--- NoClip luôn bật
-task.spawn(function()
-	while true do
-		task.wait()
-
-		if player.Character then
-			for _,v in pairs(player.Character:GetDescendants()) do
-				if v:IsA("BasePart") then
-					v.CanCollide = false
-				end
-			end
-
-			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp and AutoRescue then
-				hrp.AssemblyLinearVelocity = Vector3.zero
-				hrp.AssemblyAngularVelocity = Vector3.zero
-			end
-		end
-	end
-end)
-
--- tìm nghề
-local function findJobPrompt()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and string.find(v.ActionText,"Nhận nghề") then
-			local part = v.Parent
-			if part and part:IsA("BasePart") then
-				return v, part
-			end
-		end
-	end
-end
-
--- chạy script là nhận nghề ngay
-task.spawn(function()
-	task.wait(1)
-
-	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-
-	if hrp then
-		local prompt,target = findJobPrompt()
-
-		if prompt and target then
-			SavedPos = hrp.CFrame
-
-			prompt.MaxActivationDistance = 50
-			prompt.HoldDuration = 0
-
-			hrp.CFrame = target.CFrame + target.CFrame.RightVector * 8 + Vector3.new(0,-12,0)
-
-			task.wait(0.3)
-
-			pcall(function()
-				fireproximityprompt(prompt)
-			end)
-
-			task.wait(0.5)
-
-			hrp.CFrame = SavedPos
-		end
-	end
-end)
-
--- tìm prompt ưu tiên Lụm
-local function findPrompt()
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.ActionText == "Lụm" then
-			local obj = v.Parent
-			if obj and obj:IsA("BasePart") then
-				return v, obj
-			end
-		end
-	end
-
-	for _,v in pairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.ActionText == "Cứu" then
-			local char = v:FindFirstAncestorOfClass("Model")
-			if char and char:FindFirstChild("HumanoidRootPart") then
-				return v, char.HumanoidRootPart
-			end
-		end
-	end
-end
-
--- auto cứu + lụm
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Template = ReplicatedStorage:WaitForChild("DinhHaiThanhCham")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- ============================
+-- PHẦN 2: TÌM PART GỐC "DinhHaiThanhCham"
+-- ============================
+local function TimPartGoc()
+    -- Tìm trong ReplicatedStorage trước
+    local partGoc = ReplicatedStorage:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then
+        return partGoc
+    end
+
+    -- Nếu không có, tìm trong toàn bộ Workspace
+    partGoc = Workspace:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then
+        return partGoc
+    end
+
+    -- Tìm trong các thư mục con của game
+    for _, descendant in ipairs(game:GetDescendants()) do
+        if descendant.Name == "DinhHaiThanhCham" and descendant:IsA("BasePart") then
+            return descendant
+        end
+    end
+
+    warn("[LOI] Khong tim thay Part 'DinhHaiThanhCham' trong game.")
+    return nil
+end
+
+local partGoc = TimPartGoc()
+if not partGoc then
+    error("Part 'DinhHaiThanhCham' khong ton tai. Dung script.")
+end
+print("[OK] Da tim thay Part goc:", partGoc:GetFullName())
+
+-- ============================
+-- PHẦN 3: HÀM NHÂN BẢN PART
+-- ============================
+local function NhanBanPart(part)
+    local clone = part:Clone()
+    -- Đặt vị trí ngẫu nhiên quanh người chơi trong bán kính 10 studs
+    local offsetX = math.random(-10, 10)
+    local offsetY = math.random(0, 5)
+    local offsetZ = math.random(-10, 10)
+    clone.Position = rootPart.Position + Vector3.new(offsetX, offsetY, offsetZ)
+    clone.Anchored = false
+    clone.CanCollide = true
+    clone.Parent = Workspace
+    return clone
+end
+
+-- ============================
+-- PHẦN 4: HÀM TỰ ĐỘNG THU THẬP PART (BỎ QUA HỆ THỐNG CỨU HỘ)
+-- ============================
+local function TuDongThuThap(part)
+    -- Dịch chuyển người chơi đến vị trí part (bỏ qua khoảng cách)
+    rootPart.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+
+    -- Kích hoạt sự kiện chạm để nhặt part nếu game dùng Touched event
+    local touchInterest = part:FindFirstChild("TouchInterest")
+    if touchInterest then
+        firetouchinterest(part, rootPart, 0) -- firetouchinterest(part, characterPart, 0: touch, 1: untouch)
+        firetouchinterest(part, rootPart, 1)
+    end
+
+    -- Nếu part có ProximityPrompt, tự động kích hoạt
+    local proximityPrompt = part:FindFirstChildOfClass("ProximityPrompt")
+    if proximityPrompt then
+        proximityPrompt:InputHoldBegin()
+        task.wait(0.1)
+        proximityPrompt:InputHoldEnd()
+    end
+
+    -- Nếu part là Tool, tự động nhặt vào Backpack
+    if part:IsA("Tool") then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            part.Parent = backpack
+            print("[NHAT] Da nhat Tool:", part.Name)
+        end
+    end
+end
+
+-- ============================
+-- PHẦN 5: LUỒNG SPAWN LIÊN TỤC VÀ THU THẬP
+-- ============================
+local dangChay = true
+local soLanSpawn = 0
 
 task.spawn(function()
-	while task.wait(0.05) do
-		if AutoRescue and player.Character then
-			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    while dangChay do
+        -- Nhân bản part gốc
+        local clone = NhanBanPart(partGoc)
+        soLanSpawn = soLanSpawn + 1
+        print("[SPAWN] Da tao ban sao thu:", soLanSpawn)
 
-			if hrp then
-				local clone = Template:Clone()
-				clone.Parent = workspace
+        -- Chờ một chút để part ổn định trong Workspace
+        task.wait(0.05)
 
-				if clone:IsA("BasePart") then
-					clone.CFrame = hrp.CFrame
-				elseif clone.PrimaryPart then
-					clone:SetPrimaryPartCFrame(hrp.CFrame)
-				end
-			end
-		end
-	end
+        -- Tự động thu thập part vừa spawn
+        TuDongThuThap(clone)
+
+        -- Điều chỉnh tốc độ spawn (càng nhỏ càng nhanh, tối thiểu 0.01 để tránh crash)
+        task.wait(0.1)
+    end
 end)
+
+-- ============================
+-- PHẦN 6: KẾT HỢP AUTO HEAL (BỎ QUA CỨU HỘ)
+-- ============================
+local AutoHeal = true
+local HEAL_THRESHOLD = 80
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not AutoHeal then continue end
+
+        local char = player.Character
+        if not char then continue end
+
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then continue end
+
+        if hum.Health < HEAL_THRESHOLD then
+            local currentTool = char:FindFirstChildOfClass("Tool")
+            local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
+
+            if bandage then
+                if bandage.Parent ~= char then
+                    hum:EquipTool(bandage)
+                end
+                bandage:Activate()
+                task.wait(0.3)
+                if currentTool and currentTool.Parent ~= char then
+                    hum:EquipTool(currentTool)
+                end
+            end
+        end
+    end
+end)
+
+-- ============================
+-- PHẦN 7: LỆNH DỪNG SCRIPT (GÕ "stop" TRONG CONSOLE)
+-- ============================
+print("[LENH] Go 'stop' trong console de dung spawn part.")
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F9 then -- Nhấn F9 để dừng
+        dangChay = false
+        print("[DUNG] Da dung spawn part. Tong so da spawn:", soLanSpawn)
+    end
+end)
+
+-- ============================
+-- PHẦN 8: GIAO DIỆN GUI CƠ BẢN (TÙY CHỌN)
+-- ============================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HackPanel"
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 100)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Parent = ScreenGui
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(0, 180, 0, 30)
+TextLabel.Position = UDim2.new(0, 10, 0, 10)
+TextLabel.Text = "DinhHaiThanhCham Farm"
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.BackgroundTransparency = 1
+TextLabel.Parent = Frame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 180, 0, 40)
+ToggleButton.Position = UDim2.new(0, 10, 0, 50)
+ToggleButton.Text = "DUNG SPAWN (F9)"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ToggleButton.Parent = Frame
+
+ToggleButton.MouseButton1Click:Connect(function()
+    dangChay = not dangChay
+    if dangChay then
+        ToggleButton.Text = "DANG CHAY... (F9)"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        -- Khởi động lại luồng spawn nếu đã dừng
+        task.spawn(function()
+            while dangChay do
+                local clone = NhanBanPart(partGoc)
+                soLanSpawn = soLanSpawn + 1
+                print("[SPAWN] Da tao ban sao thu:", soLanSpawn)
+                task.wait(0.05)
+                TuDongThuThap(clone)
+                task.wait(0.1)
+            end
+        end)
+    else
+        ToggleButton.Text = "DUNG SPAWN (F9)"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end)
+
+print("===========================================")
+print(" [SAN SANG] Script da duoc nap thanh cong!")
+print(" [PART] Nhan ban Part: DinhHaiThanhCham")
+print(" [FARM] Tu dong spawn + thu thap")
+print(" [HEAL] Auto Heal duoi 80% HP")
+print(" [DUNG] Nhan F9 hoac bam nut GUI de dung")
+print("===========================================")
