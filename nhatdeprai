@@ -1,11 +1,3 @@
---[[
-  [ Script: SERVER-SIDE Part Spawner - TẤT CẢ MỌI NGƯỜI ĐỀU THẤY ]
-  [ Tác giả: palofsc ]
-  [ Cơ chế: Dùng FireServer / RemoteEvent để yêu cầu Server tạo part ]
-  [ Yêu cầu: Game phải có RemoteEvent cho phép spawn hoặc dùng phương pháp khác ]
-  [ Cảnh báo: Dễ bị phát hiện, dùng cẩn thận ]
---]]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -279,14 +271,3 @@ else
     warn("[GOI Y] Hay dam bao part co ten CHINH XAC nhu tren.")
 end
 
--- ============================
--- HƯỚNG DẪN TỰ TÌM CƠ CHẾ SPAWN CỦA GAME
--- ============================
-print("===========================================")
-print("[HUONG DAN] Neu cac phuong phap tren khong hoat dong:")
-print("1. Quan sat cach game spawn part thu cong (an nut, cham pad, v.v.)")
-print("2. Dung RemoteSpy cua executor de bat su kien khi spawn")
-print("3. Tim RemoteEvent duoc goi khi spawn part")
-print("4. Thay the phan FireServer trong script bang RemoteEvent do")
-print("5. Hoac lien he nguoi tao script de duoc ho tro rieng cho game cu the")
-print("===========================================")
