@@ -1,14 +1,3 @@
---[[
-  [ Script: Repli Part Duplicator + Auto-Farm "DinhHaiThanhCham" ]
-  [ Tác giả: palofsc ]
-  [ Môi trường: Roblox Executor (Synapse X, Krnl, v.v.) ]
-  [ Mục tiêu: Game có chứa Part tên "DinhHaiThanhCham" trong ReplicatedStorage hoặc Workspace ]
-  [ Chức năng: Tìm part, nhân bản liên tục, spawn ra Workspace, tự động thu thập vào Backpack ]
---]]
-
--- ============================
--- PHẦN 1: KHAI BÁO BIẾN VÀ DỊCH VỤ
--- ============================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -220,10 +209,3 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
-print("===========================================")
-print(" [SAN SANG] Script da duoc nap thanh cong!")
-print(" [PART] Nhan ban Part: DinhHaiThanhCham")
-print(" [FARM] Tu dong spawn + thu thap")
-print(" [HEAL] Auto Heal duoi 80% HP")
-print(" [DUNG] Nhan F9 hoac bam nut GUI de dung")
-print("===========================================")
