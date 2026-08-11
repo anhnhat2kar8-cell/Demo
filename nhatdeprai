@@ -1,540 +1,423 @@
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
-
--- Chặn tất cả lệnh kick
-local oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if (method == "Kick" or method == "Disconnect" or method == "Remove" or method == "Destroy") and self == player then
-        print("[ANTI-KICK] DA CHAN:", method)
-        return nil
-    end
-    return oldNamecall(self, ...)
-end)
-
--- Chặn Remote báo cáo hack
-local function VoHieuRemoteBaoCao()
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            local ten = obj.Name:lower()
-            local tenCha = obj.Parent and obj.Parent.Name:lower() or ""
-            if ten:find("anticheat") or ten:find("detect") or ten:find("report") or
-               ten:find("flag") or ten:find("check") or ten:find("verify") or
-               tenCha:find("anticheat") or tenCha:find("security") then
-                pcall(function() obj.FireServer = function() end end)
-                print("[ANTI-CHEAT] Vo hieu:", obj:GetFullName())
-            end
-        end
-    end
-end
-VoHieuRemoteBaoCao()
-
--- Giấu CoreGui
-pcall(function()
-    game:GetService("CoreGui").Name = "RobloxGui_" .. math.random(10000, 99999)
-end)
-
--- Chặn require Anti-Cheat
-local oldRequire = require
-require = function(m)
-    local ten = tostring(m):lower()
-    if ten:find("anticheat") or ten:find("detect") or ten:find("ban") then return {} end
-    return oldRequire(m)
-end
-
--- Chống Teleport Detection
-local oldPos = nil
-task.spawn(function()
-    while true do
-        pcall(function()
-            local char = player.Character
-            if char then
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    if oldPos and (root.Position - oldPos).Magnitude > 800 then
-                        root.CFrame = CFrame.new(oldPos)
-                    end
-                    oldPos = root.Position
-                end
-            end
-        end)
-        task.wait(1)
-    end
-end)
-
--- Rejoin nếu sắp kick
-player.OnKicked:Connect(function(lyDo)
-    pcall(function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
-    end)
-end)
-
-task.spawn(function()
-    while true do VoHieuRemoteBaoCao(); task.wait(10) end
-end)
-
-print("[ANTI-KICK] DA KICH HOAT!")
-
--- ============================
--- PHẦN 2: SUPER HITBOX - ĐÁNH SIÊU XA
--- ============================
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
-local backpack = player:FindFirstChild("Backpack")
 
 -- ============================
--- CẤU HÌNH HITBOX
+-- BIẾN TRẠNG THÁI
 -- ============================
-local HITBOX_BAN_KINH = 50 -- Bán kính hitbox (studs), có thể tăng lên 500+
-local AUTO_ATTACK = true -- Tự động đánh
-local BO_QUA_NGUOI_CHOI = true -- Không đánh người chơi khác
-local DAMAGE = 999999 -- Sát thương mỗi lần đánh
-local DELAY_DANH = 0.3 -- Delay giữa các lần đánh
-local HIEN_VONG_TRON = true -- Hiện vòng tròn hitbox
-local TOOL_NAME = "Hắc Long Katana" -- Tên tool ưu tiên (để trống nếu dùng tool bất kỳ)
-
--- ============================
--- BIẾN TOÀN CỤC
--- ============================
-local SO_LAN_KILL = 0
-local remoteDamage = nil -- Remote dùng để gây damage
-local tatCaRemote = {} -- Tất cả Remote trong game
-local vongTron = nil -- Vòng tròn hiển thị hitbox
+local spawnDangChay = true
+local autoHealBat = true
+local autoFarmBat = true -- Bật lại Auto Farm vì part giờ nằm trong Workspace
+local HEAL_THRESHOLD = 80
+local soLanSpawn = 0
+local danhSachPart = {} -- Lưu trữ các part để quản lý và dọn dẹp
 
 -- ============================
--- BƯỚC 1: DÒ TÌM REMOTE EVENT GÂY DAMAGE
+-- TÌM PART GỐC
 -- ============================
-local function DoTimRemoteDamage()
-    tatCaRemote = {}
-    remoteDamage = nil
-
-    print("[DÒ REMOTE] Đang quét tất cả RemoteEvent trong game...")
-
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            table.insert(tatCaRemote, obj)
-
-            local ten = obj.Name:lower()
-            local tenCha = obj.Parent and obj.Parent.Name:lower() or ""
-
-            -- Ưu tiên Remote có tên liên quan đến damage
-            if ten:find("damage") or ten:find("hit") or ten:find("deal") or
-               ten:find("hurt") or ten:find("attack") or ten:find("swing") or
-               ten:find("slash") or ten:find("punch") or ten:find("shoot") or
-               ten:find("melee") or ten:find("weapon") or ten:find("combat") then
-                remoteDamage = obj
-                print("  [★★★ REMOTE DAMAGE] " .. obj:GetFullName())
-            end
+local function TimPartGoc()
+    local partGoc = ReplicatedStorage:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
+    partGoc = Workspace:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
+    for _, descendant in ipairs(game:GetDescendants()) do
+        if descendant.Name == "DinhHaiThanhCham" and descendant:IsA("BasePart") then
+            return descendant
         end
     end
+    warn("[LOI] Khong tim thay Part 'DinhHaiThanhCham'.")
+    return nil
+end
 
-    print("[DÒ REMOTE] Tìm thấy " .. #tatCaRemote .. " RemoteEvent, ưu tiên: " .. (remoteDamage and remoteDamage.Name or "KHÔNG CÓ"))
+local partGoc = TimPartGoc()
+if partGoc then
+    print("[OK] Da tim thay Part goc:", partGoc:GetFullName())
+else
+    print("[CANH BAO] Part 'DinhHaiThanhCham' khong ton tai.")
 end
 
 -- ============================
--- BƯỚC 2: GỬI DAMAGE QUA REMOTE (ĐẢM BẢO KILL)
+-- HÀM NHÂN BẢN PART VÀO WORKSPACE (SERVER-SIDE, MỌI NGƯỜI ĐỀU THẤY)
 -- ============================
-local function GuiDamageQuaRemote(mucTieu)
-    if not mucTieu or not mucTieu.Parent then return false end
+local function NhanBanPartServer(part)
+    if not part or not part:IsA("BasePart") then return nil end
 
-    local humanoidDich = mucTieu:FindFirstChild("Humanoid")
-    if not humanoidDich or humanoidDich.Health <= 0 then return false end
+    local clone = part:Clone()
 
-    local rootDich = mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")
-    if not rootDich then return false end
+    -- Đặt vị trí ngẫu nhiên quanh người chơi
+    local offsetX = math.random(-10, 10)
+    local offsetY = math.random(0, 5)
+    local offsetZ = math.random(-10, 10)
 
-    -- Danh sách format tham số thử nghiệm (theo thứ tự ưu tiên)
-    local cacFormat = {
-        -- Format 1: (mục tiêu, damage)
-        {mucTieu, DAMAGE},
-        {humanoidDich, DAMAGE},
-        -- Format 2: (mục tiêu, damage, người đánh)
-        {mucTieu, DAMAGE, character},
-        {mucTieu, DAMAGE, rootPart},
-        -- Format 3: (người đánh, mục tiêu, damage)
-        {character, mucTieu, DAMAGE},
-        {rootPart, mucTieu, DAMAGE},
-        -- Format 4: Chỉ gửi mục tiêu (game tự tính damage)
-        {mucTieu},
-        {humanoidDich},
-        -- Format 5: (damage, mục tiêu)
-        {DAMAGE, mucTieu},
-        -- Format 6: (mục tiêu, vị trí đánh, damage)
-        {mucTieu, rootDich.Position, DAMAGE},
-    }
+    clone.CFrame = rootPart.CFrame * CFrame.new(offsetX, offsetY, offsetZ)
+    clone.Anchored = false -- Không neo, để part có thể rơi tự nhiên
+    clone.CanCollide = true -- Bật va chạm để người khác có thể tương tác
+    clone.Parent = Workspace -- <<< THAY ĐỔI CHÍNH: Đặt vào Workspace, Server quản lý
 
-    -- Danh sách Remote để thử (ưu tiên remoteDamage trước)
-    local remotesToTry = {}
-    if remoteDamage then table.insert(remotesToTry, remoteDamage) end
-    for _, r in ipairs(tatCaRemote) do
-        if r ~= remoteDamage then table.insert(remotesToTry, r) end
-        if #remotesToTry >= 20 then break end -- Giới hạn 20 Remote để tránh lag
+    -- Thêm Highlight để dễ nhận biết (mọi người đều thấy)
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255, 255, 0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = clone
+
+    return clone
+end
+
+-- ============================
+-- HÀM TỰ ĐỘNG THU THẬP PART (AUTO FARM)
+-- ============================
+local function TuDongThuThap(part)
+    if not part or not part.Parent then return end
+
+    -- Dịch chuyển người chơi đến vị trí part
+    rootPart.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+
+    -- Kích hoạt TouchInterest nếu có
+    local touchInterest = part:FindFirstChild("TouchInterest")
+    if touchInterest then
+        firetouchinterest(part, rootPart, 0) -- Touch
+        task.wait(0.05)
+        firetouchinterest(part, rootPart, 1) -- Untouch
     end
 
-    -- Thử từng Remote với từng format
-    for _, remote in ipairs(remotesToTry) do
-        for i, thamSo in ipairs(cacFormat) do
-            local thanhCong, loi = pcall(function()
-                remote:FireServer(unpack(thamSo))
-            end)
+    -- Kích hoạt ProximityPrompt nếu có
+    local proximityPrompt = part:FindFirstChildOfClass("ProximityPrompt")
+    if proximityPrompt then
+        proximityPrompt:InputHoldBegin()
+        task.wait(0.1)
+        proximityPrompt:InputHoldEnd()
+    end
 
-            if thanhCong then
-                task.wait(0.05)
-                -- Kiểm tra xem mục tiêu đã chết chưa
-                if not humanoidDich.Parent or humanoidDich.Health <= 0 then
-                    if not remoteDamage then
-                        remoteDamage = remote
-                        print("[★★★ TÌM THẤY REMOTE] " .. remote:GetFullName() .. " | Format: " .. i)
-                    end
-                    return true
+    -- Nếu part là Tool, tự động nhặt vào Backpack
+    if part:IsA("Tool") and part.Parent == Workspace then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            part.Parent = backpack
+            print("[NHAT] Da nhat Tool:", part.Name)
+        end
+    end
+end
+
+-- ============================
+-- HÀM DỌN DẸP PART CŨ (TRÁNH LAG SERVER)
+-- ============================
+local function DonDepPart()
+    -- Giới hạn tối đa 100 part trong Workspace cùng lúc
+    while #danhSachPart > 100 do
+        local partCu = table.remove(danhSachPart, 1)
+        if partCu and partCu.Parent then
+            partCu:Destroy()
+        end
+    end
+end
+
+-- ============================
+-- LUỒNG SPAWN PART SERVER-SIDE (MỌI NGƯỜI ĐỀU THẤY)
+-- ============================
+task.spawn(function()
+    while true do
+        task.wait(0.15) -- Tốc độ spawn (có thể điều chỉnh)
+        if spawnDangChay and partGoc then
+            local clone = NhanBanPartServer(partGoc)
+            if clone then
+                soLanSpawn = soLanSpawn + 1
+                table.insert(danhSachPart, clone)
+                DonDepPart()
+                print("[SPAWN SERVER] Da tao ban sao thu:", soLanSpawn, "| Part trong Workspace - MOI NGUOI DEU THAY")
+
+                -- Tự động thu thập nếu Auto Farm đang bật
+                if autoFarmBat then
+                    task.wait(0.05)
+                    TuDongThuThap(clone)
                 end
             end
         end
     end
+end)
 
-    -- Nếu không kill được bằng Remote, thử trực tiếp
-    pcall(function() humanoidDich.Health = 0 end)
-    pcall(function() humanoidDich:TakeDamage(999999999) end)
-
-    if not humanoidDich.Parent or humanoidDich.Health <= 0 then
-        return true
+-- ============================
+-- HÀM XÓA TOÀN BỘ PART
+-- ============================
+local function XoaTatCaPart()
+    for _, part in ipairs(danhSachPart) do
+        if part and part.Parent then
+            part:Destroy()
+        end
     end
-
-    return false
+    danhSachPart = {}
+    soLanSpawn = 0
+    print("[DON DEP] Da xoa tat ca part trong Workspace.")
 end
 
 -- ============================
--- BƯỚC 3: TÌM TẤT CẢ MỤC TIÊU TRONG PHẠM VI HITBOX
+-- LUỒNG AUTO HEAL
 -- ============================
-local function TimTatCaMucTieu()
-    local danhSach = {}
-
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if not obj:IsA("Model") then continue end
-        if obj == character then continue end
-
-        local humanoidDich = obj:FindFirstChild("Humanoid")
-        if not humanoidDich or humanoidDich.Health <= 0 then continue end
-
-        local rootDich = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-        if not rootDich then continue end
-
-        -- Bỏ qua người chơi nếu cần
-        if BO_QUA_NGUOI_CHOI and Players:GetPlayerFromCharacter(obj) then continue end
-
-        -- Tính khoảng cách
-        local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
-        if khoangCach <= HITBOX_BAN_KINH then
-            table.insert(danhSach, obj)
-        end
-    end
-
-    -- Sắp xếp theo khoảng cách gần nhất
-    table.sort(danhSach, function(a, b)
-        local rdA = a:FindFirstChild("HumanoidRootPart") or a:FindFirstChild("Head")
-        local rdB = b:FindFirstChild("HumanoidRootPart") or b:FindFirstChild("Head")
-        if rdA and rdB then
-            return (rootPart.Position - rdA.Position).Magnitude < (rootPart.Position - rdB.Position).Magnitude
-        end
-        return false
-    end)
-
-    return danhSach
-end
-
--- ============================
--- BƯỚC 4: AUTO ATTACK VỚI HITBOX SIÊU XA
--- ============================
-local function AutoAttackHitbox()
-    if not AUTO_ATTACK then return end
-    if not character or not character.Parent then return end
-
-    -- Cố gắng cầm Tool nếu có
-    local toolHienTai = character:FindFirstChildOfClass("Tool")
-    if not toolHienTai and backpack then
-        local toolBatKy = backpack:FindFirstChildOfClass("Tool")
-        if toolBatKy then
-            humanoid:EquipTool(toolBatKy)
-            task.wait(0.2)
-        end
-    end
-
-    local cacMucTieu = TimTatCaMucTieu()
-
-    for _, mucTieu in ipairs(cacMucTieu) do
-        if not mucTieu or not mucTieu.Parent then continue end
-        if not AUTO_ATTACK then break end
-
-        local humanoidDich = mucTieu:FindFirstChild("Humanoid")
-        if not humanoidDich or humanoidDich.Health <= 0 then continue end
-
-        -- Kích hoạt Tool nếu có
-        local tool = character:FindFirstChildOfClass("Tool")
-        if tool then
-            pcall(function() tool:Activate() end)
-        end
-
-        -- Gửi damage
-        local daKill = GuiDamageQuaRemote(mucTieu)
-
-        if daKill then
-            SO_LAN_KILL = SO_LAN_KILL + 1
-            print("[HITBOX KILL] " .. mucTieu.Name .. " | Khoảng cách: " .. math.floor((rootPart.Position - (mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")).Position).Magnitude) .. " studs | Tổng: " .. SO_LAN_KILL)
-        end
-
-        -- Delay giữa các lần đánh
-        task.wait(DELAY_DANH)
-    end
-end
-
--- ============================
--- BƯỚC 5: VÒNG TRÒN HIỂN THỊ HITBOX
--- ============================
-local function TaoVongTronHitbox()
-    if not HIEN_VONG_TRON then
-        if vongTron then vongTron:Destroy(); vongTron = nil end
-        return
-    end
-
-    if vongTron and vongTron.Parent then vongTron:Destroy() end
-
-    vongTron = Instance.new("Part")
-    vongTron.Name = "HitboxRing"
-    vongTron.Shape = Enum.PartType.Cylinder
-    vongTron.Size = Vector3.new(HITBOX_BAN_KINH * 2, 0.3, HITBOX_BAN_KINH * 2)
-    vongTron.Anchored = true
-    vongTron.CanCollide = false
-    vongTron.Transparency = 0.7
-    vongTron.Color = Color3.fromRGB(255, 100, 0)
-    vongTron.Material = Enum.Material.Neon
-    vongTron.Parent = character
-
-    print("[HITBOX] Đã tạo vòng tròn bán kính " .. HITBOX_BAN_KINH .. " studs")
-end
-
--- Cập nhật vị trí vòng tròn
 task.spawn(function()
-    while true do
-        if vongTron and vongTron.Parent and character and character.Parent then
-            vongTron.Position = rootPart.Position
-            vongTron.Size = Vector3.new(HITBOX_BAN_KINH * 2, 0.3, HITBOX_BAN_KINH * 2)
-            -- Hiệu ứng nhấp nháy
-            vongTron.Transparency = 0.7 + math.sin(tick() * 3) * 0.2
+    while task.wait(0.3) do
+        if not autoHealBat then continue end
+        local char = player.Character
+        if not char then continue end
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then continue end
+        if hum.Health >= HEAL_THRESHOLD then continue end
+
+        local currentTool = char:FindFirstChildOfClass("Tool")
+        local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
+        if bandage then
+            if bandage.Parent ~= char then
+                hum:EquipTool(bandage)
+            end
+            bandage:Activate()
+            task.wait(0.3)
+            if currentTool and currentTool.Parent ~= char then
+                hum:EquipTool(currentTool)
+            end
         end
-        task.wait(0.1)
     end
 end)
 
 -- ============================
--- BƯỚC 6: LUỒNG CHÍNH
--- ============================
-DoTimRemoteDamage()
-TaoVongTronHitbox()
-
-task.spawn(function()
-    while true do
-        if AUTO_ATTACK then
-            AutoAttackHitbox()
-        end
-        task.wait(DELAY_DANH)
-    end
-end)
-
--- Cập nhật khi respawn
-player.CharacterAdded:Connect(function(char)
-    character = char
-    humanoid = char:WaitForChild("Humanoid")
-    rootPart = char:WaitForChild("HumanoidRootPart")
-    backpack = player:FindFirstChild("Backpack")
-    task.wait(1)
-    TaoVongTronHitbox()
-    DoTimRemoteDamage()
-end)
-
--- ============================
--- BƯỚC 7: GUI MOBILE ĐIỀU KHIỂN
+-- GUI MOBILE
 -- ============================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SuperHitboxGUI"
+ScreenGui.Name = "HackPanelMobile"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 400)
-MainFrame.Position = UDim2.new(1, -270, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 420)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(255, 100, 0)
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -10, 0, 28)
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -10, 0, 35)
 Title.Position = UDim2.new(0, 5, 0, 5)
-Title.Text = "🔥 SUPER HITBOX 🔥"
-Title.TextColor3 = Color3.fromRGB(255, 100, 0)
+Title.Text = "SERVER SPAWN (ALL SEE)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
 Title.TextScaled = true
-Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
-local function TaoNut(ten, y, bat, onText, offText, mauOn, mauOff, cb)
+-- Hàm tạo nút bật/tắt
+local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, callback)
     local nut = Instance.new("TextButton")
-    nut.Name = ten .. "Btn"
-    nut.Size = UDim2.new(1, -20, 0, 34)
-    nut.Position = UDim2.new(0, 10, 0, y)
-    nut.Text = bat and onText or offText
+    nut.Name = ten .. "Button"
+    nut.Size = UDim2.new(1, -20, 0, 45)
+    nut.Position = UDim2.new(0, 10, 0, viTriY)
+    nut.Text = batDauBat and moTaBat or moTaTat
     nut.TextColor3 = Color3.fromRGB(255, 255, 255)
     nut.TextScaled = true
     nut.Font = Enum.Font.SourceSansBold
-    nut.BackgroundColor3 = bat and mauOn or mauOff
+    nut.BackgroundColor3 = batDauBat and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
     nut.BorderSizePixel = 1
+    nut.BorderColor3 = Color3.fromRGB(80, 80, 80)
     nut.AutoButtonColor = false
     nut.Parent = MainFrame
 
-    local state = bat
+    local trangThai = batDauBat
     nut.Activated:Connect(function()
-        state = not state
-        nut.Text = state and onText or offText
-        nut.BackgroundColor3 = state and mauOn or mauOff
-        if cb then cb(state) end
+        trangThai = not trangThai
+        nut.Text = trangThai and moTaBat or moTaTat
+        nut.BackgroundColor3 = trangThai and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+        if callback then
+            callback(trangThai)
+        end
     end)
+
     return nut
 end
 
-TaoNut("AutoAttack", 38, AUTO_ATTACK, "[ON] AUTO ATTACK", "[OFF] AUTO ATTACK",
-    Color3.fromRGB(200, 30, 30), Color3.fromRGB(80, 80, 80),
-    function(t) AUTO_ATTACK = t end)
+-- Nút 1: Bật/Tắt Spawn Part Server
+TaoNutBatTat(
+    "SpawnServer",
+    50,
+    true,
+    "[ON] SPAWN PART (ALL SEE)",
+    "[OFF] SPAWN PART (ALL SEE)",
+    function(trangThai)
+        spawnDangChay = trangThai
+        print("[GUI] Spawn Part Server:", trangThai and "BAT" or "TAT")
+    end
+)
 
-TaoNut("BoQuaNguoiChoi", 77, BO_QUA_NGUOI_CHOI, "[ON] BỎ QUA NGƯỜI CHƠI", "[OFF] BỎ QUA NGƯỜI CHƠI",
-    Color3.fromRGB(0, 150, 200), Color3.fromRGB(80, 80, 80),
-    function(t) BO_QUA_NGUOI_CHOI = t end)
+-- Nút 2: Bật/Tắt Auto Heal
+TaoNutBatTat(
+    "AutoHeal",
+    105,
+    true,
+    "[ON] AUTO HEAL (80%)",
+    "[OFF] AUTO HEAL",
+    function(trangThai)
+        autoHealBat = trangThai
+        print("[GUI] Auto Heal:", trangThai and "BAT" or "TAT")
+    end
+)
 
-TaoNut("VongTron", 116, HIEN_VONG_TRON, "[ON] VÒNG TRÒN HITBOX", "[OFF] VÒNG TRÒN HITBOX",
-    Color3.fromRGB(200, 150, 0), Color3.fromRGB(80, 80, 80),
-    function(t)
-        HIEN_VONG_TRON = t
-        if t then TaoVongTronHitbox() else if vongTron then vongTron:Destroy(); vongTron = nil end end
-    end)
+-- Nút 3: Bật/Tắt Auto Farm (Thu thập part)
+TaoNutBatTat(
+    "AutoFarm",
+    160,
+    true,
+    "[ON] AUTO FARM (NHẶT)",
+    "[OFF] AUTO FARM (NHẶT)",
+    function(trangThai)
+        autoFarmBat = trangThai
+        print("[GUI] Auto Farm:", trangThai and "BAT" or "TAT")
+    end
+)
 
--- Nút tăng/giảm bán kính
-local nutTangBK = Instance.new("TextButton")
-nutTangBK.Size = UDim2.new(0.45, -5, 0, 34)
-nutTangBK.Position = UDim2.new(0, 10, 0, 155)
-nutTangBK.Text = "🔺 + BÁN KÍNH"
-nutTangBK.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutTangBK.TextScaled = true
-nutTangBK.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-nutTangBK.Parent = MainFrame
-nutTangBK.Activated:Connect(function()
-    HITBOX_BAN_KINH = math.min(HITBOX_BAN_KINH + 10, 500)
-    print("[HITBOX] Bán kính: " .. HITBOX_BAN_KINH .. " studs")
+-- Nút 4: Xóa toàn bộ part
+local nutXoaPart = Instance.new("TextButton")
+nutXoaPart.Name = "XoaPartButton"
+nutXoaPart.Size = UDim2.new(1, -20, 0, 45)
+nutXoaPart.Position = UDim2.new(0, 10, 0, 215)
+nutXoaPart.Text = "XOA HET PART"
+nutXoaPart.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutXoaPart.TextScaled = true
+nutXoaPart.Font = Enum.Font.SourceSansBold
+nutXoaPart.BackgroundColor3 = Color3.fromRGB(180, 100, 0)
+nutXoaPart.BorderSizePixel = 1
+nutXoaPart.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutXoaPart.AutoButtonColor = false
+nutXoaPart.Parent = MainFrame
+
+nutXoaPart.Activated:Connect(function()
+    XoaTatCaPart()
+    print("[GUI] Da xoa tat ca part trong Workspace.")
 end)
 
-local nutGiamBK = Instance.new("TextButton")
-nutGiamBK.Size = UDim2.new(0.45, -5, 0, 34)
-nutGiamBK.Position = UDim2.new(0.55, -5, 0, 155)
-nutGiamBK.Text = "🔻 - BÁN KÍNH"
-nutGiamBK.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutGiamBK.TextScaled = true
-nutGiamBK.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-nutGiamBK.Parent = MainFrame
-nutGiamBK.Activated:Connect(function()
-    HITBOX_BAN_KINH = math.max(HITBOX_BAN_KINH - 10, 10)
-    print("[HITBOX] Bán kính: " .. HITBOX_BAN_KINH .. " studs")
-end)
+-- Nút 5: Dừng tất cả
+local nutDungTatCa = Instance.new("TextButton")
+nutDungTatCa.Name = "DungTatCaButton"
+nutDungTatCa.Size = UDim2.new(1, -20, 0, 45)
+nutDungTatCa.Position = UDim2.new(0, 10, 0, 270)
+nutDungTatCa.Text = "DUNG TAT CA"
+nutDungTatCa.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutDungTatCa.TextScaled = true
+nutDungTatCa.Font = Enum.Font.SourceSansBold
+nutDungTatCa.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+nutDungTatCa.BorderSizePixel = 1
+nutDungTatCa.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutDungTatCa.AutoButtonColor = false
+nutDungTatCa.Parent = MainFrame
 
--- Nút dò lại Remote
-local nutDoRemote = Instance.new("TextButton")
-nutDoRemote.Size = UDim2.new(1, -20, 0, 34)
-nutDoRemote.Position = UDim2.new(0, 10, 0, 194)
-nutDoRemote.Text = "🔄 DÒ LẠI REMOTE"
-nutDoRemote.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutDoRemote.BackgroundColor3 = Color3.fromRGB(200, 140, 0)
-nutDoRemote.Parent = MainFrame
-nutDoRemote.Activated:Connect(function()
-    DoTimRemoteDamage()
-    print("[GUI] Đã dò lại. Tìm thấy " .. #tatCaRemote .. " Remote")
-end)
-
--- Nút set bán kính cực đại
-local nutMaxBK = Instance.new("TextButton")
-nutMaxBK.Size = UDim2.new(1, -20, 0, 34)
-nutMaxBK.Position = UDim2.new(0, 10, 0, 233)
-nutMaxBK.Text = "💀 BÁN KÍNH TỐI ĐA (500)"
-nutMaxBK.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutMaxBK.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-nutMaxBK.Parent = MainFrame
-nutMaxBK.Activated:Connect(function()
-    HITBOX_BAN_KINH = 500
-    print("[HITBOX] Bán kính đã set: 500 studs!")
-end)
-
--- Trạng thái
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -20, 0, 40)
-Status.Position = UDim2.new(0, 10, 0, 272)
-Status.Text = "BK: " .. HITBOX_BAN_KINH .. " | Kill: 0 | Remote: " .. #tatCaRemote
-Status.TextColor3 = Color3.fromRGB(200, 200, 200)
-Status.TextScaled = true
-Status.BackgroundTransparency = 1
-Status.Font = Enum.Font.SourceSans
-Status.Parent = MainFrame
-
--- Nút thu nhỏ
-local minimized = false
-local origSize = MainFrame.Size
-local minBtn = Instance.new("TextButton")
-minBtn.Size = UDim2.new(0, 28, 0, 28)
-minBtn.Position = UDim2.new(1, -33, 0, 0)
-minBtn.Text = "─"
-minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-minBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-minBtn.BorderSizePixel = 0
-minBtn.ZIndex = 10
-minBtn.Parent = MainFrame
-minBtn.Activated:Connect(function()
-    minimized = not minimized
-    if minimized then
-        for _, c in ipairs(MainFrame:GetChildren()) do if c ~= minBtn then c.Visible = false end end
-        MainFrame.Size = UDim2.new(0, 38, 0, 38)
-        minBtn.Text = "🔥"
-        minBtn.Size = UDim2.new(1, 0, 1, 0)
-        minBtn.Position = UDim2.new(0, 0, 0, 0)
-        minBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-    else
-        for _, c in ipairs(MainFrame:GetChildren()) do c.Visible = true end
-        MainFrame.Size = origSize
-        minBtn.Text = "─"
-        minBtn.Size = UDim2.new(0, 28, 0, 28)
-        minBtn.Position = UDim2.new(1, -33, 0, 0)
-        minBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+nutDungTatCa.Activated:Connect(function()
+    spawnDangChay = false
+    autoHealBat = false
+    autoFarmBat = false
+    XoaTatCaPart()
+    print("[GUI] Da DUNG TAT CA cac chuc nang.")
+    for _, child in ipairs(MainFrame:GetChildren()) do
+        if child.Name == "SpawnServerButton" then
+            child.Text = "[OFF] SPAWN PART (ALL SEE)"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoHealButton" then
+            child.Text = "[OFF] AUTO HEAL"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoFarmButton" then
+            child.Text = "[OFF] AUTO FARM (NHẶT)"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        end
     end
 end)
 
--- Cập nhật trạng thái
+-- Nút 6: Thoát GUI
+local nutThoat = Instance.new("TextButton")
+nutThoat.Name = "ThoatButton"
+nutThoat.Size = UDim2.new(1, -20, 0, 45)
+nutThoat.Position = UDim2.new(0, 10, 0, 325)
+nutThoat.Text = "THOAT GUI"
+nutThoat.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThoat.TextScaled = true
+nutThoat.Font = Enum.Font.SourceSansBold
+nutThoat.BackgroundColor3 = Color3.fromRGB(150, 20, 20)
+nutThoat.BorderSizePixel = 1
+nutThoat.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutThoat.AutoButtonColor = false
+nutThoat.Parent = MainFrame
+
+nutThoat.Activated:Connect(function()
+    XoaTatCaPart()
+    ScreenGui:Destroy()
+    print("[GUI] GUI da bi huy.")
+end)
+
+-- Nút thu nhỏ
+local daThuNho = false
+local kichThuocGoc = MainFrame.Size
+local nutThuNho = Instance.new("TextButton")
+nutThuNho.Name = "ThuNhoButton"
+nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+nutThuNho.Text = "─"
+nutThuNho.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThuNho.TextScaled = true
+nutThuNho.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+nutThuNho.BorderSizePixel = 0
+nutThuNho.AutoButtonColor = false
+nutThuNho.ZIndex = 10
+nutThuNho.Parent = MainFrame
+
+nutThuNho.Activated:Connect(function()
+    daThuNho = not daThuNho
+    if daThuNho then
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            if child ~= nutThuNho then
+                child.Visible = false
+            end
+        end
+        MainFrame.Size = UDim2.new(0, 40, 0, 40)
+        nutThuNho.Text = "+"
+        nutThuNho.Size = UDim2.new(1, 0, 1, 0)
+        nutThuNho.Position = UDim2.new(0, 0, 0, 0)
+    else
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            child.Visible = true
+        end
+        MainFrame.Size = kichThuocGoc
+        nutThuNho.Text = "─"
+        nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+        nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+    end
+end)
+
+-- Cập nhật Title liên tục
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(1) do
         if not ScreenGui or not ScreenGui.Parent then break end
-        Status.Text = "BK: " .. HITBOX_BAN_KINH .. " | Kill: " .. SO_LAN_KILL .. " | R: " .. #tatCaRemote
+        Title.Text = string.format("SERVER | Spawn: %d | Heal: %s | Farm: %s",
+            soLanSpawn,
+            autoHealBat and "ON" or "OFF",
+            autoFarmBat and "ON" or "OFF"
+        )
     end
 end)
 
 print("===========================================")
-print(" 🔥 SUPER HITBOX - ĐÃ SẴN SÀNG!")
-print(" [BÁN KÍNH] " .. HITBOX_BAN_KINH .. " studs (có thể tăng lên 500)")
-print(" [ANTI-KICK] Đã kích hoạt chống kick")
-print(" [REMOTE] Tự động dò tìm Remote gây damage")
-print(" [AUTO] Tự động đánh tất cả trong phạm vi")
-print(" [GUI] Kéo thả, bấm '-' thu nhỏ")
-print(" [NÚT MAX] Bấm 'Bán Kính Tối Đa' để set 500 studs")
+print(" [SAN SANG] SERVER-SIDE Part Spawner!")
+print(" [CO CHE] Part dat trong Workspace -> MOI NGUOI DEU THAY")
+print(" [NGUOI KHAC] CO THE NHIN THAY VA TUONG TAC VOI PART")
+print(" [AUTO FARM] Da bat lai, tu dong nhat part sau khi spawn")
+print(" [HIGHLIGHT] Part co vien sang do/de nhan biet")
+print(" [DON DEP] Gioi han 100 part, tu dong xoa part cu")
 print("===========================================")
