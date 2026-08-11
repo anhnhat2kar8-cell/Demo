@@ -1,412 +1,353 @@
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 
 -- ============================
--- BIẾN TOÀN CỤC
+-- CẤU HÌNH
 -- ============================
-local spawnDangChay = true
-local autoHealBat = true
-local autoFarmBat = true
-local HEAL_THRESHOLD = 80
-local SO_LAN_SPAWN_MOI_DOT = 15
-local THOI_GIAN_GIUA_CAC_DOT = 3
-local dotHienTai = 0
-local remoteTimThay = nil -- Lưu RemoteEvent tìm được
-local cacThamSoServer = nil -- Lưu tham số cần gửi
+local DAMAGE_MULTIPLIER = 999999 -- Hệ số nhân sát thương
+local HITBOX_MO_RONG = 15 -- Bán kính hitbox mở rộng (studs)
+local AUTO_ATTACK = true -- Tự động đánh kẻ địch gần nhất
+local KHOANG_CACH_PAT_HIEN = 50 -- Khoảng cách phát hiện kẻ địch (studs)
+local AN_TOAN_NGUOI_CHOI = true -- Không đánh người chơi khác (tránh bị report)
 
 -- ============================
--- BƯỚC 1: TÌM PART GỐC
+-- PHƯƠNG PHÁP 1: CAN THIỆP VÀO WEAPON/TOOL ĐỂ TĂNG SÁT THƯƠNG
 -- ============================
-local function TimPartGoc()
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj.Name == "DinhHaiThanhCham" and obj:IsA("BasePart") then
-            return obj
-        end
-    end
-    return nil
-end
+local function TangSatThuongVuKhi()
+    print("[PHUONG PHAP 1] Dang tang sat thuong vu khi...")
 
-local partGoc = TimPartGoc()
-if partGoc then
-    print("[PART GOC] Tim thay:", partGoc:GetFullName())
-else
-    warn("[PART GOC] KHONG tim thay Part 'DinhHaiThanhCham' trong game!")
-end
+    -- Hook vào hàm tạo sát thương của Roblox
+    local oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
 
--- ============================
--- BƯỚC 2: PHÂN TÍCH TẤT CẢ REMOTEEVENT ĐỂ TÌM REMOTE SPAWN ITEM
--- ============================
-local function PhanTichRemoteEvent()
-    print("===========================================")
-    print("[DANG DO] Dang phan tich tat ca RemoteEvent...")
-
-    local tatCaRemote = {}
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            table.insert(tatCaRemote, obj)
-        end
-    end
-
-    print("[TIM THAY] Tong so RemoteEvent:", #tatCaRemote)
-
-    -- Kiểm tra từng RemoteEvent
-    for _, remote in ipairs(tatCaRemote) do
-        local tenRemote = remote.Name:lower()
-        local tenCha = remote.Parent and remote.Parent.Name:lower() or ""
-
-        -- In ra tất cả RemoteEvent để người dùng biết
-        print("  [KHAO SAT]", remote:GetFullName())
-
-        -- Đoán xem remote này có liên quan đến spawn item không
-        local coKhaNang = false
-        if tenRemote:find("spawn") or tenRemote:find("item") or tenRemote:find("drop") or
-           tenRemote:find("give") or tenRemote:find("create") or tenRemote:find("add") or
-           tenCha:find("spawn") or tenCha:find("item") or tenCha:find("drop") then
-            coKhaNang = true
-            print("    [PHA HIEN] Remote co kha nang spawn item!")
-            remoteTimThay = remote
-            return remote
-        end
-    end
-
-    warn("[THAT BAI] Khong tim thay RemoteEvent spawn tu dong.")
-    warn("[HUONG DAN] Hay thu spawn item thu cong trong game, sau do xem RemoteSpy")
-    return nil
-end
-
--- ============================
--- BƯỚC 3: THỬ TẤT CẢ CÁC CÁCH GỬI YÊU CẦU SPAWN LÊN SERVER
--- ============================
-local function ThuTatCaCachSpawn()
-    print("===========================================")
-    print("[DANG THU] Dang thu tat ca cac cach spawn Part len Server...")
-
-    -- Cách 1: Dùng RemoteEvent đã tìm thấy
-    if remoteTimThay then
-        print("[CACH 1] Thu gui qua RemoteEvent:", remoteTimThay:GetFullName())
-
-        -- Thử nhiều format tham số khác nhau
-        local cacFormatThamSo = {
-            {"DinhHaiThanhCham"},
-            {"DinhHaiThanhCham", 1},
-            {"DinhHaiThanhCham", rootPart.Position},
-            {partGoc},
-            {"Spawn", "DinhHaiThanhCham"},
-            {"Give", "DinhHaiThanhCham"},
-            {"Create", "DinhHaiThanhCham", rootPart.Position},
-        }
-
-        for i, thamSo in ipairs(cacFormatThamSo) do
-            local thanhCong, loi = pcall(function()
-                remoteTimThay:FireServer(unpack(thamSo))
-            end)
-            if thanhCong then
-                print("  [THANH CONG] Format", i, "thanh cong!")
-                cacThamSoServer = thamSo
-                return true
-            else
-                print("  [THAT BAI] Format", i, "loi:", loi)
-            end
-            task.wait(0.2)
-        end
-    end
-
-    -- Cách 2: Thử TẤT CẢ RemoteEvent với nhiều tham số
-    print("[CACH 2] Thu TAT CA RemoteEvent voi nhieu tham so...")
-    local tatCaRemote = {}
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            table.insert(tatCaRemote, obj)
-        end
-    end
-
-    for _, remote in ipairs(tatCaRemote) do
-        local cacThamSo = {
-            {"DinhHaiThanhCham"},
-            {"DinhHaiThanhCham", rootPart.Position},
-            {partGoc},
-        }
-        for _, thamSo in ipairs(cacThamSo) do
-            local thanhCong, loi = pcall(function()
-                remote:FireServer(unpack(thamSo))
-            end)
-            if thanhCong then
-                print("  [THANH CONG] Remote:", remote:GetFullName(), "| Tham so:", table.concat(thamSo, ", "))
-                remoteTimThay = remote
-                cacThamSoServer = thamSo
-                return true
+        -- Bắt sự kiện gây sát thương (TakeDamage, :Damage, Hit, v.v.)
+        if method == "FireServer" and self.Name == "Damage" or self.Name == "Hit" or self.Name == "DealDamage" then
+            -- Tăng damage lên
+            if args[1] and type(args[1]) == "number" then
+                args[1] = args[1] * DAMAGE_MULTIPLIER
+                print("[DAMAGE] Da tang sat thuong len:", args[1])
+                return oldNamecall(self, unpack(args))
             end
         end
-    end
 
-    warn("[THAT BAI] Khong the spawn Part len Server bang RemoteEvent.")
+        -- Bắt sự kiện TakeDamage trên Humanoid
+        if method == "TakeDamage" and tostring(self) == "Humanoid" then
+            local nhanVat = self.Parent
+            -- Kiểm tra nếu không phải người chơi thì cho damage lớn
+            if nhanVat and not Players:GetPlayerFromCharacter(nhanVat) then
+                local damageMoi = args[1] and args[1] * DAMAGE_MULTIPLIER or 999999
+                args[1] = damageMoi
+                print("[DAMAGE] Gay", damageMoi, "sat thuong len:", nhanVat.Name)
+                return oldNamecall(self, unpack(args))
+            end
+        end
+
+        return oldNamecall(self, ...)
+    end)
+
+    print("[PHUONG PHAP 1] Da kich hoat!")
+end
+
+-- ============================
+-- PHƯƠNG PHÁP 2: SET TRỰC TIẾP HEALTH KẺ ĐỊCH VỀ 0 (HIỆU QUẢ NHẤT)
+-- ============================
+local function SetHealthDichVe0(mucTieu)
+    if not mucTieu then return false end
+
+    local humanoidDich = mucTieu:FindFirstChild("Humanoid")
+    if humanoidDich and humanoidDich.Health > 0 then
+        -- Cách 1: Set thẳng Health về 0
+        pcall(function()
+            humanoidDich.Health = 0
+        end)
+
+        -- Cách 2: Dùng sự kiện TakeDamage với damage cực lớn
+        pcall(function()
+            humanoidDich:TakeDamage(999999)
+        end)
+
+        -- Cách 3: Phá hủy Humanoid
+        pcall(function()
+            humanoidDich:Destroy()
+        end)
+
+        print("[KILL] Da tieu diet:", mucTieu.Name)
+        return true
+    end
     return false
 end
 
 -- ============================
--- BƯỚC 4: HÀM SPAWN PART LÊN SERVER (DÙNG REMOTE ĐÃ TÌM THẤY)
+-- PHƯƠNG PHÁP 3: HITBOX MỞ RỘNG - ĐÁNH TRÚNG TẤT CẢ TRONG PHẠM VI
 -- ============================
-local function SpawnPartQuaServer(viTri)
-    if not remoteTimThay or not cacThamSoServer then
-        warn("[LOI] Chua tim thay RemoteEvent hoac tham so.")
-        return false
-    end
+local function TimTatCaMucTieuTrongPhamVi()
+    local danhSachMucTieu = {}
 
-    -- Sửa đổi tham số để thay đổi vị trí spawn (nếu có thể)
-    local thamSoMoi = {}
-    for i, ts in ipairs(cacThamSoServer) do
-        if typeof(ts) == "Vector3" then
-            -- Thay đổi vị trí spawn xung quanh người chơi
-            local offsetX = math.random(-10, 10)
-            local offsetZ = math.random(-10, 10)
-            table.insert(thamSoMoi, rootPart.Position + Vector3.new(offsetX, 0, offsetZ))
-        else
-            table.insert(thamSoMoi, ts)
-        end
-    end
-
-    local thanhCong, loi = pcall(function()
-        remoteTimThay:FireServer(unpack(thamSoMoi))
-    end)
-
-    if thanhCong then
-        return true
-    else
-        warn("[LOI] FireServer that bai:", loi)
-        return false
-    end
-end
-
--- ============================
--- BƯỚC 5: HÀM TỰ ĐỘNG THU THẬP PART (AUTO FARM)
--- ============================
-local function TuDongThuThap()
-    -- Tìm part "DinhHaiThanhCham" trong Workspace
+    -- Tìm tất cả NPC/Enemy trong Workspace
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name == "DinhHaiThanhCham" and obj:IsA("BasePart") and obj.Parent == Workspace then
-            -- Dịch chuyển đến part
-            rootPart.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
-            task.wait(0.05)
+        if obj:IsA("Model") and obj ~= character then
+            local humanoidDich = obj:FindFirstChild("Humanoid")
+            local rootDich = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
 
-            -- Kích hoạt TouchInterest
-            local touchInterest = obj:FindFirstChild("TouchInterest")
-            if touchInterest then
-                firetouchinterest(obj, rootPart, 0)
-                task.wait(0.05)
-                firetouchinterest(obj, rootPart, 1)
-            end
+            if humanoidDich and humanoidDich.Health > 0 and rootDich then
+                -- Kiểm tra xem có phải người chơi không
+                local laNguoiChoi = Players:GetPlayerFromCharacter(obj) ~= nil
 
-            -- Kích hoạt ProximityPrompt
-            local proximityPrompt = obj:FindFirstChildOfClass("ProximityPrompt")
-            if proximityPrompt then
-                proximityPrompt:InputHoldBegin()
-                task.wait(0.1)
-                proximityPrompt:InputHoldEnd()
-            end
+                -- Nếu bật an toàn và là người chơi thì bỏ qua
+                if AN_TOAN_NGUOI_CHOI and laNguoiChoi then
+                    continue
+                end
 
-            -- Nhặt Tool
-            if obj:IsA("Tool") then
-                local backpack = player:FindFirstChild("Backpack")
-                if backpack then
-                    obj.Parent = backpack
-                    print("[NHAT] Da nhat Tool:", obj.Name)
+                -- Tính khoảng cách
+                local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
+                if khoangCach <= KHOANG_CACH_PAT_HIEN then
+                    table.insert(danhSachMucTieu, obj)
                 end
             end
         end
     end
+
+    return danhSachMucTieu
 end
 
 -- ============================
--- BƯỚC 6: KHỞI TẠO - TÌM REMOTE VÀ THỬ SPAWN
--- ============================
-print("===========================================")
-print("[KHOI TAO] Bat dau phan tich game...")
-print("[GAME]", game.Name)
-print("[PLACE]", game.PlaceId)
-print("===========================================")
-
--- Tìm RemoteEvent spawn
-remoteTimThay = PhanTichRemoteEvent()
-
--- Nếu không tìm thấy tự động, thử tất cả cách
-if not remoteTimThay then
-    print("[CHUYEN SANG] Thu tat ca cac cach spawn...")
-    ThuTatCaCachSpawn()
-end
-
-if remoteTimThay then
-    print("===========================================")
-    print("[THANH CONG] Da tim thay cach spawn Part len Server!")
-    print("[REMOTE]", remoteTimThay:GetFullName())
-    print("[THAM SO]", cacThamSoServer and table.concat(cacThamSoServer, ", ") or "Khong xac dinh")
-    print("===========================================")
-else
-    warn("===========================================")
-    warn("[CANH BAO] KHONG THE SPAWN PART LEN SERVER!")
-    warn("[LY DO] Game nay co the khong cho phep Client spawn Part.")
-    warn("[GIAI PHAP] Thu spawn item thu cong 1 lan, sau do chay lai script.")
-    warn("===========================================")
-end
-
--- ============================
--- BƯỚC 7: LUỒNG SPAWN CHÍNH
+-- PHƯƠNG PHÁP 4: AUTO ATTACK + ONE SHOT
 -- ============================
 task.spawn(function()
     while true do
-        if spawnDangChay and remoteTimThay then
-            dotHienTai = dotHienTai + 1
-            print("===========================================")
-            print("[DOT " .. dotHienTai .. "] Spawn " .. SO_LAN_SPAWN_MOI_DOT .. " Part len Server...")
+        if AUTO_ATTACK then
+            local cacMucTieu = TimTatCaMucTieuTrongPhamVi()
 
-            for i = 1, SO_LAN_SPAWN_MOI_DOT do
-                local thanhCong = SpawnPartQuaServer(i)
-                if thanhCong then
-                    print("  [" .. i .. "/" .. SO_LAN_SPAWN_MOI_DOT .. "] OK")
-                else
-                    print("  [" .. i .. "/" .. SO_LAN_SPAWN_MOI_DOT .. "] LOI")
+            if #cacMucTieu > 0 then
+                -- Sắp xếp theo khoảng cách gần nhất
+                table.sort(cacMucTieu, function(a, b)
+                    local rootA = a:FindFirstChild("HumanoidRootPart") or a:FindFirstChild("Head")
+                    local rootB = b:FindFirstChild("HumanoidRootPart") or b:FindFirstChild("Head")
+                    if rootA and rootB then
+                        return (rootPart.Position - rootA.Position).Magnitude < (rootPart.Position - rootB.Position).Magnitude
+                    end
+                    return false
+                end)
+
+                -- Tiêu diệt từng mục tiêu một
+                for _, mucTieu in ipairs(cacMucTieu) do
+                    if mucTieu and mucTieu.Parent then
+                        local rootDich = mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")
+                        if rootDich then
+                            -- Dịch chuyển đến mục tiêu (tùy chọn, có thể tắt)
+                            -- rootPart.CFrame = rootDich.CFrame * CFrame.new(0, 2, 0)
+
+                            -- Set Health về 0
+                            SetHealthDichVe0(mucTieu)
+
+                            -- Đợi một chút trước khi đánh mục tiêu tiếp theo
+                            task.wait(0.1)
+                        end
+                    end
                 end
-                task.wait(0.1)
-            end
-
-            print("[DOT " .. dotHienTai .. "] Hoan thanh!")
-            print("===========================================")
-
-            -- Auto Farm sau khi spawn xong
-            if autoFarmBat then
-                task.wait(0.5)
-                print("[AUTO FARM] Dang thu nhat part...")
-                TuDongThuThap()
             end
         end
-        task.wait(THOI_GIAN_GIUA_CAC_DOT)
+        task.wait(0.5) -- Thời gian giữa các lần quét
     end
 end)
 
 -- ============================
--- BƯỚC 8: AUTO HEAL (GIỮ NGUYÊN)
+-- PHƯƠNG PHÁP 5: KILL AURA - KẺ ĐỊCH ĐẾN GẦN LÀ CHẾT
 -- ============================
 task.spawn(function()
-    while task.wait(0.3) do
-        if not autoHealBat then continue end
-        local char = player.Character
-        if not char then continue end
-        local hum = char:FindFirstChild("Humanoid")
-        if not hum then continue end
-        if hum.Health >= HEAL_THRESHOLD then continue end
+    local KILL_AURA_BAN_KINH = 20 -- Bán kính kill aura
 
-        local currentTool = char:FindFirstChildOfClass("Tool")
-        local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
-        if bandage then
-            if bandage.Parent ~= char then
-                hum:EquipTool(bandage)
-            end
-            bandage:Activate()
-            task.wait(0.3)
-            if currentTool and currentTool.Parent ~= char then
-                hum:EquipTool(currentTool)
+    while true do
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj ~= character then
+                local humanoidDich = obj:FindFirstChild("Humanoid")
+                local rootDich = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+
+                if humanoidDich and humanoidDich.Health > 0 and rootDich then
+                    local laNguoiChoi = Players:GetPlayerFromCharacter(obj) ~= nil
+                    if AN_TOAN_NGUOI_CHOI and laNguoiChoi then continue end
+
+                    local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
+                    if khoangCach <= KILL_AURA_BAN_KINH then
+                        SetHealthDichVe0(obj)
+                    end
+                end
             end
         end
+        task.wait(0.3)
     end
 end)
 
 -- ============================
--- GUI ĐƠN GIẢN
+-- PHƯƠNG PHÁP 6: CLICK TP KILL - CLICK VÀO ĐỊCH ĐỂ GIẾT
+-- ============================
+local function ClickTPKill()
+    local mouse = player:GetMouse()
+
+    mouse.Button1Down:Connect(function()
+        local mucTieu = mouse.Target
+        if mucTieu then
+            -- Tìm model cha chứa Humanoid
+            local modelCha = mucTieu
+            while modelCha and not modelCha:IsA("Model") do
+                modelCha = modelCha.Parent
+            end
+
+            if modelCha and modelCha ~= character then
+                local humanoidDich = modelCha:FindFirstChild("Humanoid")
+                if humanoidDich and humanoidDich.Health > 0 then
+                    -- Dịch chuyển đến mục tiêu
+                    rootPart.CFrame = mucTieu.CFrame * CFrame.new(0, 2, 0)
+                    task.wait(0.1)
+
+                    -- Tiêu diệt
+                    SetHealthDichVe0(modelCha)
+                    print("[CLICK KILL] Da tieu diet:", modelCha.Name)
+                end
+            end
+        end
+    end)
+end
+
+-- Kích hoạt Click TP Kill
+ClickTPKill()
+
+-- ============================
+-- KÍCH HOẠT TẤT CẢ PHƯƠNG PHÁP
+-- ============================
+TangSatThuongVuKhi()
+
+-- ============================
+-- GUI ĐIỀU KHIỂN
 -- ============================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HackPanel"
-ScreenGui.Parent = CoreGui
+ScreenGui.Name = "OneShotKillGUI"
+ScreenGui.Parent = game:GetService("CoreGui")
 ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 250, 0, 250)
-MainFrame.Position = UDim2.new(0, 10, 0.5, -125)
+MainFrame.Size = UDim2.new(0, 240, 0, 220)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -110)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-MainFrame.BackgroundTransparency = 0.3
+MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Position = UDim2.new(0, 0, 0, 5)
-Title.Text = "SERVER SPAWN - ALL SEE"
-Title.TextColor3 = Color3.fromRGB(0, 255, 100)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.SourceSansBold
+Title.Size = UDim2.new(1, -10, 0, 30)
+Title.Position = UDim2.new(0, 5, 0, 5)
+Title.Text = "⚔ ONE SHOT KILL ⚔"
+Title.TextColor3 = Color3.fromRGB(255, 50, 50)
 Title.TextScaled = true
+Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- Nút bật/tắt Spawn
-local nutSpawn = Instance.new("TextButton")
-nutSpawn.Size = UDim2.new(1, -20, 0, 40)
-nutSpawn.Position = UDim2.new(0, 10, 0, 45)
-nutSpawn.Text = "[ON] SERVER SPAWN x15"
-nutSpawn.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
-nutSpawn.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutSpawn.Parent = MainFrame
+-- Nút bật/tắt Auto Attack
+local autoAtkBat = true
+local nutAutoAtk = Instance.new("TextButton")
+nutAutoAtk.Size = UDim2.new(1, -20, 0, 35)
+nutAutoAtk.Position = UDim2.new(0, 10, 0, 45)
+nutAutoAtk.Text = "[ON] AUTO KILL"
+nutAutoAtk.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutAutoAtk.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+nutAutoAtk.Parent = MainFrame
 
-nutSpawn.Activated:Connect(function()
-    spawnDangChay = not spawnDangChay
-    nutSpawn.Text = spawnDangChay and "[ON] SERVER SPAWN x15" or "[OFF] SERVER SPAWN x15"
-    nutSpawn.BackgroundColor3 = spawnDangChay and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+nutAutoAtk.Activated:Connect(function()
+    AUTO_ATTACK = not AUTO_ATTACK
+    nutAutoAtk.Text = AUTO_ATTACK and "[ON] AUTO KILL" or "[OFF] AUTO KILL"
+    nutAutoAtk.BackgroundColor3 = AUTO_ATTACK and Color3.fromRGB(200, 30, 30) or Color3.fromRGB(80, 80, 80)
 end)
 
--- Nút Auto Farm
-local nutFarm = Instance.new("TextButton")
-nutFarm.Size = UDim2.new(1, -20, 0, 40)
-nutFarm.Position = UDim2.new(0, 10, 0, 95)
-nutFarm.Text = "[ON] AUTO FARM"
-nutFarm.BackgroundColor3 = Color3.fromRGB(50, 180, 50)
-nutFarm.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutFarm.Parent = MainFrame
+-- Nút bật/tắt Kill Aura
+local killAuraBat = true
+local nutKillAura = Instance.new("TextButton")
+nutKillAura.Size = UDim2.new(1, -20, 0, 35)
+nutKillAura.Position = UDim2.new(0, 10, 0, 85)
+nutKillAura.Text = "[ON] KILL AURA"
+nutKillAura.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutKillAura.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+nutKillAura.Parent = MainFrame
 
-nutFarm.Activated:Connect(function()
-    autoFarmBat = not autoFarmBat
-    nutFarm.Text = autoFarmBat and "[ON] AUTO FARM" or "[OFF] AUTO FARM"
-    nutFarm.BackgroundColor3 = autoFarmBat and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+nutKillAura.Activated:Connect(function()
+    killAuraBat = not killAuraBat
+    nutKillAura.Text = killAuraBat and "[ON] KILL AURA" or "[OFF] KILL AURA"
+    nutKillAura.BackgroundColor3 = killAuraBat and Color3.fromRGB(200, 30, 30) or Color3.fromRGB(80, 80, 80)
 end)
 
--- Nút Spawn Ngay
-local nutSpawnNgay = Instance.new("TextButton")
-nutSpawnNgay.Size = UDim2.new(1, -20, 0, 40)
-nutSpawnNgay.Position = UDim2.new(0, 10, 0, 145)
-nutSpawnNgay.Text = "SPAWN NGAY"
-nutSpawnNgay.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-nutSpawnNgay.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutSpawnNgay.Parent = MainFrame
+-- Nút bật/tắt Click TP Kill
+local clickKillBat = true
+local nutClickKill = Instance.new("TextButton")
+nutClickKill.Size = UDim2.new(1, -20, 0, 35)
+nutClickKill.Position = UDim2.new(0, 10, 0, 125)
+nutClickKill.Text = "[ON] CLICK TP KILL"
+nutClickKill.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutClickKill.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+nutClickKill.Parent = MainFrame
 
-nutSpawnNgay.Activated:Connect(function()
-    dotHienTai = dotHienTai + 1
-    for i = 1, SO_LAN_SPAWN_MOI_DOT do
-        SpawnPartQuaServer(i)
-        task.wait(0.1)
-    end
-    if autoFarmBat then
-        task.wait(0.5)
-        TuDongThuThap()
-    end
+nutClickKill.Activated:Connect(function()
+    clickKillBat = not clickKillBat
+    nutClickKill.Text = clickKillBat and "[ON] CLICK TP KILL" or "[OFF] CLICK TP KILL"
+    nutClickKill.BackgroundColor3 = clickKillBat and Color3.fromRGB(200, 30, 30) or Color3.fromRGB(80, 80, 80)
 end)
 
 -- Trạng thái
 local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -20, 0, 25)
-Status.Position = UDim2.new(0, 10, 0, 195)
-Status.Text = "San sang..."
-Status.TextColor3 = Color3.fromRGB(200, 200, 200)
+Status.Size = UDim2.new(1, -20, 0, 20)
+Status.Position = UDim2.new(0, 10, 0, 170)
+Status.Text = "✅ San sang!"
+Status.TextColor3 = Color3.fromRGB(0, 255, 0)
 Status.BackgroundTransparency = 1
 Status.TextScaled = true
 Status.Parent = MainFrame
 
+-- Nút Thoát
+local nutThoat = Instance.new("TextButton")
+nutThoat.Size = UDim2.new(1, -20, 0, 25)
+nutThoat.Position = UDim2.new(0, 10, 0, 195)
+nutThoat.Text = "THOAT"
+nutThoat.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThoat.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+nutThoat.Parent = MainFrame
+
+nutThoat.Activated:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Cập nhật trạng thái
 task.spawn(function()
     while task.wait(1) do
         if not ScreenGui or not ScreenGui.Parent then break end
-        Status.Text = remoteTimThay and "REMOTE: OK | Dot: " .. dotHienTai or "REMOTE: CHUA TIM THAY!"
+        local cacMucTieu = TimTatCaMucTieuTrongPhamVi()
+        Status.Text = "🎯 Muc tieu: " .. #cacMucTieu .. " | Auto: " .. (AUTO_ATTACK and "ON" or "OFF")
+    end
+end)
+
+print("===========================================")
+print(" ⚔ ONE SHOT KILL - DA SAN SANG!")
+print(" [AUTO KILL] Tu dong tim va tieu diet ke dich")
+print(" [KILL AURA] Ke dich den gan la chet")
+print(" [CLICK KILL] Click vao dich de giet")
+print(" [AN TOAN] Khong danh nguoi choi khac")
+print(" [F9] Nhan F9 de an/hien GUI")
+print("===========================================")
+
+-- Toggle GUI với phím F9
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F9 then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+        print("[GUI]", ScreenGui.Enabled and "HIEN" or "AN")
     end
 end)
