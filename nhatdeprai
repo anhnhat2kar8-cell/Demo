@@ -8,235 +8,381 @@ local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
+local backpack = player:FindFirstChild("Backpack")
 
 -- ============================
 -- CẤU HÌNH
 -- ============================
-local killAuraBat = true
-local BAN_KINH_KILL = 30
-local BO_QUA_NGUOI_CHOI = true
-local BO_QUA_DONG_DOI = true
-local THOI_GIAN_QUET = 0.2
+local TEN_TOOL = "Hắc Long Katana" -- Tên chính xác của Tool
+local DAMAGE_MULTIPLIER = 999999 -- Hệ số nhân sát thương
+local AUTO_EQUIP = true -- Tự động cầm Tool khi spawn
+local AUTO_ATTACK = true -- Tự động đánh kẻ địch gần nhất
+local BAN_KINH_ATTACK = 20 -- Bán kính tự động đánh
+local HIEN_THI_THONG_BAO = true -- Hiện thông báo khi kill
+
+-- ============================
+-- BIẾN TOÀN CỤC
+-- ============================
+local hackTool = nil -- Tool mục tiêu
+local remoteCuaTool = nil -- Remote mà Tool dùng để gây damage
+local dangKichHoat = false
 local SO_LAN_KILL = 0
-local DANG_DEBUG = true
-local HIEN_THI_VONG_TRON = true
-local KHOANG_CACH_BAY = 3 -- Tự động bay đến mục tiêu (0 = tắt)
 
 -- ============================
--- DANH SÁCH REMOTE
+-- BƯỚC 1: TÌM TOOL "HẮC LONG KATANA"
 -- ============================
-local remoteDamage = nil
-local cacRemoteKhaNghi = {}
+local function TimHacLongKatana()
+    -- Tìm trong Backpack trước
+    local tool = backpack and backpack:FindFirstChild(TEN_TOOL)
+    if tool and tool:IsA("Tool") then
+        print("[TIM THAY] Hắc Long Katana trong Backpack!")
+        return tool
+    end
 
--- ============================
--- DÒ TÌM REMOTE EVENT GÂY SÁT THƯƠNG
--- ============================
-local function DoTimRemoteDamage()
-    cacRemoteKhaNghi = {}
-    remoteDamage = nil
+    -- Tìm trong người (đang cầm)
+    tool = character and character:FindFirstChild(TEN_TOOL)
+    if tool and tool:IsA("Tool") then
+        print("[TIM THAY] Hắc Long Katana dang cam tren tay!")
+        return tool
+    end
 
+    -- Tìm trong Workspace (rơi trên đất)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj.Name == TEN_TOOL and obj:IsA("Tool") then
+            print("[TIM THAY] Hắc Long Katana trong Workspace!")
+            return obj
+        end
+    end
+
+    -- Tìm trong các thư mục khác
     for _, obj in ipairs(game:GetDescendants()) do
+        if obj.Name == TEN_TOOL and obj:IsA("Tool") then
+            print("[TIM THAY] Hắc Long Katana tai:", obj:GetFullName())
+            return obj
+        end
+    end
+
+    return nil
+end
+
+-- ============================
+-- BƯỚC 2: PHÂN TÍCH TOOL - TÌM REMOTE EVENT GÂY DAMAGE
+-- ============================
+local function PhanTichTool(tool)
+    if not tool then return nil end
+
+    print("[PHAN TICH] Dang phan tich Hắc Long Katana...")
+
+    -- Tìm tất cả RemoteEvent trong Tool
+    local cacRemote = {}
+    for _, obj in ipairs(tool:GetDescendants()) do
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            table.insert(cacRemote, obj)
+            print("  [REMOTE TRONG TOOL]", obj:GetFullName())
+        end
+    end
+
+    -- Nếu Tool có RemoteEvent riêng, ưu tiên dùng
+    if #cacRemote > 0 then
+        print("[OK] Tool co", #cacRemote, "RemoteEvent rieng.")
+        return cacRemote[1] -- Lấy Remote đầu tiên
+    end
+
+    -- Tìm RemoteEvent trong game mà Tool có thể dùng
+    -- Thường là các Remote có tên liên quan đến Tool
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
             local ten = obj.Name:lower()
-            local tenCha = obj.Parent and obj.Parent.Name:lower() or ""
+            local tenTool = TEN_TOOL:lower():gsub(" ", "")
 
-            local tuKhoaDamage = {
-                "damage", "hit", "attack", "deal", "hurt",
-                "slash", "punch", "shoot", "stab", "kill",
-                "combat", "fight", "weapon", "swing", "fire",
-                "takendamage", "applydamage", "dealdamage",
-                "melee", "ranged", "bullet", "projectile"
-            }
-
-            local khaNghi = false
-            for _, tk in ipairs(tuKhoaDamage) do
-                if ten:find(tk) or tenCha:find(tk) then
-                    khaNghi = true
-                    break
-                end
-            end
-
-            if khaNghi then
-                table.insert(cacRemoteKhaNghi, obj)
-                if ten == "damage" or ten == "deal" or ten == "hit" then
-                    remoteDamage = obj
-                end
+            -- Tìm Remote có tên liên quan đến Hắc Long Katana
+            if ten:find("haclong") or ten:find("katana") or ten:find("sword") or
+               ten:find("melee") or ten:find("weapon") or ten:find("damage") then
+                print("  [REMOTE KHA NGHI]", obj:GetFullName())
+                table.insert(cacRemote, obj)
             end
         end
     end
 
-    return #cacRemoteKhaNghi > 0
+    if #cacRemote > 0 then
+        return cacRemote[1]
+    end
+
+    -- Nếu không tìm thấy, dùng tất cả RemoteEvent trong game
+    warn("[CANH BAO] Khong tim thay Remote cua Tool, se thu tat ca Remote.")
+    return nil
 end
 
 -- ============================
--- THỬ GÂY SÁT THƯƠNG QUA REMOTE
+-- BƯỚC 3: HOOK REMOTE ĐỂ TĂNG DAMAGE
 -- ============================
-local function ThuGaySatThuong(mucTieu)
-    if not mucTieu or not mucTieu.Parent then return false end
+local function HookRemoteTangDamage()
+    print("[HOOK] Dang cai dat hook tang damage...")
 
-    local humanoidDich = mucTieu:FindFirstChild("Humanoid")
-    if not humanoidDich or humanoidDich.Health <= 0 then return false end
+    -- Hook metamethod __namecall để bắt FireServer
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
 
-    local rootDich = mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")
-    if not rootDich then return false end
+        -- Bắt tất cả FireServer từ RemoteEvent
+        if method == "FireServer" and self:IsA("RemoteEvent") then
+            -- Kiểm tra xem có phải Remote của Tool không
+            local laRemoteCuaTool = false
 
-    -- Bay đến mục tiêu nếu bật
-    if KHOANG_CACH_BAY > 0 then
-        local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
-        if khoangCach > KHOANG_CACH_BAY then
-            rootPart.CFrame = rootDich.CFrame * CFrame.new(0, 2, 0)
-            task.wait(0.05)
+            if remoteCuaTool and self == remoteCuaTool then
+                laRemoteCuaTool = true
+            end
+
+            -- Hoặc kiểm tra Tool đang được cầm
+            if hackTool and hackTool.Parent == character then
+                -- Nếu Remote nằm trong Tool hoặc có liên quan
+                if self:IsDescendantOf(hackTool) then
+                    laRemoteCuaTool = true
+                end
+            end
+
+            -- Nếu là Remote của Tool, tăng damage
+            if laRemoteCuaTool then
+                -- Duyệt qua các tham số, tìm và thay đổi giá trị damage
+                for i, arg in ipairs(args) do
+                    if type(arg) == "number" and arg > 0 and arg < 10000 then
+                        -- Đây có thể là damage, nhân lên
+                        local damageCu = arg
+                        args[i] = arg * DAMAGE_MULTIPLIER
+                        if HIEN_THI_THONG_BAO then
+                            print("[DAMAGE] Da tang:", damageCu, "->", args[i])
+                        end
+                        break
+                    end
+                end
+
+                -- Nếu không tìm thấy damage trong args, thêm damage vào
+                local coDamage = false
+                for _, arg in ipairs(args) do
+                    if type(arg) == "number" and arg > 1000 then
+                        coDamage = true
+                        break
+                    end
+                end
+
+                if not coDamage then
+                    -- Thêm damage vào cuối
+                    table.insert(args, DAMAGE_MULTIPLIER)
+                    print("[DAMAGE] Da them damage:", DAMAGE_MULTIPLIER)
+                end
+
+                return oldNamecall(self, unpack(args))
+            end
         end
-    end
 
-    -- Format tham số thử nghiệm
-    local cacFormat = {
-        {mucTieu, 999999},
-        {humanoidDich, 999999},
-        {mucTieu, 999999, character},
-        {mucTieu, 999999, rootPart},
-        {character, mucTieu, 999999},
-        {rootPart, mucTieu, 999999},
-        {999999, mucTieu},
-        {mucTieu},
-        {humanoidDich},
-        {mucTieu, "Damage", 999999},
-        {rootDich.Position, 999999, mucTieu},
-    }
-
-    for _, remote in ipairs(cacRemoteKhaNghi) do
-        for i, thamSo in ipairs(cacFormat) do
-            local thanhCong, loi = pcall(function()
-                remote:FireServer(unpack(thamSo))
-            end)
-            if thanhCong then
-                task.wait(0.05)
-                if not humanoidDich.Parent or humanoidDich.Health <= 0 then
-                    remoteDamage = remote
-                    SO_LAN_KILL = SO_LAN_KILL + 1
-                    return true
+        -- Bắt TakeDamage trên Humanoid (phương pháp dự phòng)
+        if method == "TakeDamage" and tostring(self) == "Humanoid" then
+            local nhanVat = self.Parent
+            -- Nếu không phải người chơi, tăng damage
+            if nhanVat and not Players:GetPlayerFromCharacter(nhanVat) then
+                if hackTool and hackTool.Parent == character then
+                    args[1] = (args[1] or 10) * DAMAGE_MULTIPLIER
+                    return oldNamecall(self, unpack(args))
                 end
             end
         end
-    end
 
-    return false
+        return oldNamecall(self, ...)
+    end)
+
+    print("[HOOK] Da cai dat thanh cong!")
 end
 
 -- ============================
--- TÌM VÀ KILL TẤT CẢ MỤC TIÊU
+-- BƯỚC 4: KÍCH HOẠT TOOL LIÊN TỤC (AUTO ATTACK)
 -- ============================
-local function TimVaKillTatCaMucTieu()
-    if not killAuraBat then return 0 end
-    if not character or not character.Parent then return 0 end
+local function AutoAttack()
+    if not hackTool or hackTool.Parent ~= character then return end
 
-    local danhSachMucTieu = {}
+    -- Tìm kẻ địch gần nhất
+    local dichGanNhat = nil
+    local khoangCachNhoNhat = BAN_KINH_ATTACK
 
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if not obj:IsA("Model") then continue end
-        if obj == character then continue end
+        if obj:IsA("Model") and obj ~= character then
+            local humanoidDich = obj:FindFirstChild("Humanoid")
+            local rootDich = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
 
-        local humanoidDich = obj:FindFirstChild("Humanoid")
-        if not humanoidDich or humanoidDich.Health <= 0 then continue end
+            if humanoidDich and humanoidDich.Health > 0 and rootDich then
+                -- Bỏ qua người chơi
+                if Players:GetPlayerFromCharacter(obj) then continue end
 
-        local rootDich = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-        if not rootDich then continue end
-
-        -- Bỏ qua người chơi
-        local laNguoiChoi = Players:GetPlayerFromCharacter(obj) ~= nil
-        if BO_QUA_NGUOI_CHOI and laNguoiChoi then continue end
-
-        -- Bỏ qua đồng đội
-        if BO_QUA_DONG_DOI and laNguoiChoi then
-            local nguoiChoiDich = Players:GetPlayerFromCharacter(obj)
-            if nguoiChoiDich and player.Team and nguoiChoiDich.Team == player.Team then
-                continue
+                local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
+                if khoangCach < khoangCachNhoNhat then
+                    khoangCachNhoNhat = khoangCach
+                    dichGanNhat = obj
+                end
             end
         end
-
-        local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
-        if khoangCach <= BAN_KINH_KILL then
-            table.insert(danhSachMucTieu, obj)
-        end
     end
 
-    for _, mucTieu in ipairs(danhSachMucTieu) do
-        if mucTieu and mucTieu.Parent then
-            ThuGaySatThuong(mucTieu)
+    if dichGanNhat then
+        local rootDich = dichGanNhat:FindFirstChild("HumanoidRootPart") or dichGanNhat:FindFirstChild("Head")
+        if rootDich then
+            -- Bay đến kẻ địch
+            local viTriCu = rootPart.CFrame
+            rootPart.CFrame = rootDich.CFrame * CFrame.new(0, 2, 0)
+            task.wait(0.05)
+
+            -- Kích hoạt Tool
+            pcall(function()
+                hackTool:Activate()
+            end)
+
+            task.wait(0.1)
+            rootPart.CFrame = viTriCu
+
+            -- Kiểm tra xem đã kill chưa
+            local humanoidDich = dichGanNhat:FindFirstChild("Humanoid")
+            if humanoidDich and humanoidDich.Health <= 0 then
+                SO_LAN_KILL = SO_LAN_KILL + 1
+                print("[KILL] Da tieu diet:", dichGanNhat.Name, "| Tong kill:", SO_LAN_KILL)
+            end
         end
     end
-
-    return #danhSachMucTieu
 end
 
 -- ============================
--- VÒNG TRÒN KILL AURA
+-- BƯỚC 5: TỰ ĐỘNG EQUIP TOOL
 -- ============================
-local vongTronKill = nil
-local function TaoVongTronKillAura()
-    if not HIEN_THI_VONG_TRON then
-        if vongTronKill then vongTronKill:Destroy(); vongTronKill = nil end
-        return
+local function AutoEquipTool()
+    if not hackTool then return end
+
+    -- Nếu Tool đang ở Backpack, cầm lên
+    if hackTool.Parent == backpack then
+        humanoid:EquipTool(hackTool)
+        print("[EQUIP] Da cam Hắc Long Katana!")
     end
 
-    if vongTronKill and vongTronKill.Parent then vongTronKill:Destroy() end
+    -- Nếu Tool đang rơi trên đất, nhặt lên
+    if hackTool.Parent == Workspace then
+        -- Dịch chuyển đến Tool
+        rootPart.CFrame = hackTool:GetPivot()
+        task.wait(0.2)
 
-    vongTronKill = Instance.new("Part")
-    vongTronKill.Name = "KillAuraRing"
-    vongTronKill.Shape = Enum.PartType.Cylinder
-    vongTronKill.Size = Vector3.new(BAN_KINH_KILL * 2, 0.3, BAN_KINH_KILL * 2)
-    vongTronKill.Anchored = true
-    vongTronKill.CanCollide = false
-    vongTronKill.Transparency = 0.75
-    vongTronKill.Color = Color3.fromRGB(255, 0, 0)
-    vongTronKill.Material = Enum.Material.Neon
-    vongTronKill.Parent = character
+        -- Nhặt Tool
+        local touchInterest = hackTool:FindFirstChild("TouchInterest")
+        if touchInterest then
+            firetouchinterest(hackTool, rootPart, 0)
+            task.wait(0.1)
+            firetouchinterest(hackTool, rootPart, 1)
+        end
+
+        -- Nếu Tool có ProximityPrompt
+        local prompt = hackTool:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            prompt:InputHoldBegin()
+            task.wait(0.1)
+            prompt:InputHoldEnd()
+        end
+
+        task.wait(0.3)
+
+        -- Kiểm tra lại xem đã nhặt được chưa
+        if hackTool.Parent == backpack then
+            humanoid:EquipTool(hackTool)
+            print("[EQUIP] Da nhat va cam Hắc Long Katana!")
+        end
+    end
 end
 
 -- ============================
--- LUỒNG CHÍNH
+-- BƯỚC 6: TÌM TOOL KHI VÀO GAME
 -- ============================
-DoTimRemoteDamage()
+local function KhoiTaoHack()
+    print("===========================================")
+    print("[KHOI TAO] Dang tim Hắc Long Katana...")
 
+    hackTool = TimHacLongKatana()
+
+    if hackTool then
+        print("[OK] Da tim thay Hắc Long Katana!")
+
+        -- Phân tích Tool để tìm Remote
+        remoteCuaTool = PhanTichTool(hackTool)
+
+        -- Tự động cầm Tool
+        if AUTO_EQUIP then
+            AutoEquipTool()
+        end
+
+        print("[SAN SANG] Hack da kich hoat!")
+        print("[TOOL]", hackTool:GetFullName())
+        print("[DAMAGE] x", DAMAGE_MULTIPLIER)
+    else
+        warn("[CHUA TIM THAY] Hắc Long Katana khong co trong game.")
+        warn("[GOI Y] Hay dam bao Tool co ten CHINH XAC: 'Hắc Long Katana'")
+        warn("[GOI Y] Script se tu dong tim lai moi 3 giay...")
+    end
+
+    print("===========================================")
+end
+
+-- ============================
+-- BƯỚC 7: LUỒNG CHÍNH
+-- ============================
+-- Khởi tạo
+KhoiTaoHack()
+
+-- Cài đặt hook damage
+HookRemoteTangDamage()
+
+-- Vòng lặp chính: Auto Attack
 task.spawn(function()
     while true do
-        if killAuraBat then
-            TimVaKillTatCaMucTieu()
+        if AUTO_ATTACK and hackTool and hackTool.Parent == character then
+            AutoAttack()
         end
-        task.wait(THOI_GIAN_QUET)
+        task.wait(0.15)
     end
 end)
 
--- Cập nhật vòng tròn
+-- Vòng lặp: Tự động tìm Tool nếu chưa có
 task.spawn(function()
     while true do
-        if vongTronKill and vongTronKill.Parent and character and character.Parent then
-            vongTronKill.Position = rootPart.Position
-            vongTronKill.Size = Vector3.new(BAN_KINH_KILL * 2, 0.3, BAN_KINH_KILL * 2)
+        if not hackTool or not hackTool.Parent then
+            hackTool = TimHacLongKatana()
+            if hackTool and AUTO_EQUIP then
+                AutoEquipTool()
+            end
         end
-        task.wait(0.1)
+        task.wait(3)
     end
 end)
 
-TaoVongTronKillAura()
+-- Vòng lặp: Giữ Tool trên tay (tránh bị văng ra)
+task.spawn(function()
+    while true do
+        if hackTool and hackTool.Parent == backpack and AUTO_EQUIP then
+            humanoid:EquipTool(hackTool)
+        end
+        task.wait(1)
+    end
+end)
 
 -- ============================
--- GUI MOBILE (TƯƠNG THÍCH TOUCH)
+-- BƯỚC 8: GUI MOBILE
 -- ============================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KillAuraMobileGUI"
+ScreenGui.Name = "HacLongKatanaGUI"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 260, 0, 410)
-MainFrame.Position = UDim2.new(0, 10, 0.5, -205)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Size = UDim2.new(0, 250, 0, 330)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -165)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(255, 30, 30)
+MainFrame.BorderColor3 = Color3.fromRGB(200, 50, 200)
 MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -247,26 +393,24 @@ local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(1, -10, 0, 30)
 Title.Position = UDim2.new(0, 5, 0, 5)
-Title.Text = "☠ KILL AURA MOBILE ☠"
-Title.TextColor3 = Color3.fromRGB(255, 40, 40)
+Title.Text = "⚔ HẮC LONG KATANA ⚔"
+Title.TextColor3 = Color3.fromRGB(200, 50, 200)
 Title.TextScaled = true
 Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- ============================
--- HÀM TẠO NÚT BẬT/TẮT CHUẨN MOBILE
--- ============================
-local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, mauBat, mauTat, callback)
+-- Hàm tạo nút bật/tắt
+local function TaoNut(ten, viTriY, batDauBat, moTaBat, moTaTat, mauBat, mauTat, callback)
     local nut = Instance.new("TextButton")
     nut.Name = ten .. "Button"
-    nut.Size = UDim2.new(1, -20, 0, 42)
+    nut.Size = UDim2.new(1, -20, 0, 38)
     nut.Position = UDim2.new(0, 10, 0, viTriY)
     nut.Text = batDauBat and moTaBat or moTaTat
     nut.TextColor3 = Color3.fromRGB(255, 255, 255)
     nut.TextScaled = true
     nut.Font = Enum.Font.SourceSansBold
-    nut.BackgroundColor3 = batDauBat and (mauBat or Color3.fromRGB(50, 180, 50)) or (mauTat or Color3.fromRGB(180, 50, 50))
+    nut.BackgroundColor3 = batDauBat and mauBat or mauTat
     nut.BorderSizePixel = 1
     nut.BorderColor3 = Color3.fromRGB(80, 80, 80)
     nut.AutoButtonColor = false
@@ -276,164 +420,102 @@ local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, mauBat, ma
     nut.Activated:Connect(function()
         trangThai = not trangThai
         nut.Text = trangThai and moTaBat or moTaTat
-        nut.BackgroundColor3 = trangThai and (mauBat or Color3.fromRGB(50, 180, 50)) or (mauTat or Color3.fromRGB(180, 50, 50))
+        nut.BackgroundColor3 = trangThai and mauBat or mauTat
         if callback then callback(trangThai) end
     end)
-
     return nut
 end
 
--- Nút 1: Bật/Tắt Kill Aura
-TaoNutBatTat(
-    "KillAura",
-    40,
-    killAuraBat,
-    "[ON] KILL AURA",
-    "[OFF] KILL AURA",
-    Color3.fromRGB(200, 0, 0),
-    Color3.fromRGB(80, 80, 80),
-    function(tt) killAuraBat = tt end
+-- Nút 1: Auto Equip
+TaoNut("AutoEquip", 40, AUTO_EQUIP,
+    "[ON] AUTO EQUIP TOOL",
+    "[OFF] AUTO EQUIP TOOL",
+    Color3.fromRGB(150, 50, 200), Color3.fromRGB(80, 80, 80),
+    function(tt) AUTO_EQUIP = tt end
 )
 
--- Nút 2: Bật/Tắt Bỏ qua người chơi
-TaoNutBatTat(
-    "BoQuaNguoiChoi",
-    87,
-    BO_QUA_NGUOI_CHOI,
-    "[ON] BO QUA NGUOI CHOI",
-    "[OFF] BO QUA NGUOI CHOI",
-    Color3.fromRGB(0, 140, 200),
-    Color3.fromRGB(80, 80, 80),
-    function(tt) BO_QUA_NGUOI_CHOI = tt end
+-- Nút 2: Auto Attack
+TaoNut("AutoAttack", 83, AUTO_ATTACK,
+    "[ON] AUTO ATTACK",
+    "[OFF] AUTO ATTACK",
+    Color3.fromRGB(200, 30, 30), Color3.fromRGB(80, 80, 80),
+    function(tt) AUTO_ATTACK = tt end
 )
 
--- Nút 3: Bật/Tắt Bỏ qua đồng đội
-TaoNutBatTat(
-    "BoQuaDongDoi",
-    134,
-    BO_QUA_DONG_DOI,
-    "[ON] BO QUA DONG DOI",
-    "[OFF] BO QUA DONG DOI",
-    Color3.fromRGB(0, 140, 200),
-    Color3.fromRGB(80, 80, 80),
-    function(tt) BO_QUA_DONG_DOI = tt end
+-- Nút 3: Hiện thông báo
+TaoNut("ThongBao", 126, HIEN_THI_THONG_BAO,
+    "[ON] THONG BAO KILL",
+    "[OFF] THONG BAO KILL",
+    Color3.fromRGB(0, 150, 200), Color3.fromRGB(80, 80, 80),
+    function(tt) HIEN_THI_THONG_BAO = tt end
 )
 
--- Nút 4: Bật/Tắt Vòng tròn kill
-TaoNutBatTat(
-    "VongTron",
-    181,
-    HIEN_THI_VONG_TRON,
-    "[ON] VONG TRON KILL",
-    "[OFF] VONG TRON KILL",
-    Color3.fromRGB(200, 150, 0),
-    Color3.fromRGB(80, 80, 80),
-    function(tt)
-        HIEN_THI_VONG_TRON = tt
-        if tt then
-            TaoVongTronKillAura()
-        else
-            if vongTronKill then vongTronKill:Destroy(); vongTronKill = nil end
-        end
+-- Nút 4: Tìm lại Tool
+local nutTimTool = Instance.new("TextButton")
+nutTimTool.Name = "TimToolButton"
+nutTimTool.Size = UDim2.new(1, -20, 0, 38)
+nutTimTool.Position = UDim2.new(0, 10, 0, 169)
+nutTimTool.Text = "🔍 TÌM LẠI TOOL"
+nutTimTool.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutTimTool.TextScaled = true
+nutTimTool.Font = Enum.Font.SourceSansBold
+nutTimTool.BackgroundColor3 = Color3.fromRGB(200, 140, 0)
+nutTimTool.Parent = MainFrame
+
+nutTimTool.Activated:Connect(function()
+    print("[GUI] Dang tim lai Hắc Long Katana...")
+    hackTool = TimHacLongKatana()
+    if hackTool then
+        remoteCuaTool = PhanTichTool(hackTool)
+        if AUTO_EQUIP then AutoEquipTool() end
+        print("[GUI] Da tim thay Tool!")
+    else
+        print("[GUI] Khong tim thay Tool!")
     end
-)
-
--- Nút 5: Bật/Tắt Debug
-TaoNutBatTat(
-    "Debug",
-    228,
-    DANG_DEBUG,
-    "[ON] DEBUG MODE",
-    "[OFF] DEBUG MODE",
-    Color3.fromRGB(0, 180, 180),
-    Color3.fromRGB(80, 80, 80),
-    function(tt) DANG_DEBUG = tt end
-)
-
--- Nút 6 + 7: Tăng/Giảm bán kính
-local nutTangBK = Instance.new("TextButton")
-nutTangBK.Name = "TangBKButton"
-nutTangBK.Size = UDim2.new(0.45, -5, 0, 42)
-nutTangBK.Position = UDim2.new(0, 10, 0, 275)
-nutTangBK.Text = "🔺 + BÁN KÍNH"
-nutTangBK.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutTangBK.TextScaled = true
-nutTangBK.Font = Enum.Font.SourceSansBold
-nutTangBK.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-nutTangBK.BorderSizePixel = 1
-nutTangBK.AutoButtonColor = false
-nutTangBK.Parent = MainFrame
-
-nutTangBK.Activated:Connect(function()
-    BAN_KINH_KILL = math.min(BAN_KINH_KILL + 5, 100)
-    print("[GUI] Ban kinh:", BAN_KINH_KILL)
 end)
 
-local nutGiamBK = Instance.new("TextButton")
-nutGiamBK.Name = "GiamBKButton"
-nutGiamBK.Size = UDim2.new(0.45, -5, 0, 42)
-nutGiamBK.Position = UDim2.new(0.55, -5, 0, 275)
-nutGiamBK.Text = "🔻 - BÁN KÍNH"
-nutGiamBK.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutGiamBK.TextScaled = true
-nutGiamBK.Font = Enum.Font.SourceSansBold
-nutGiamBK.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-nutGiamBK.BorderSizePixel = 1
-nutGiamBK.AutoButtonColor = false
-nutGiamBK.Parent = MainFrame
+-- Nút 5: Equip ngay
+local nutEquip = Instance.new("TextButton")
+nutEquip.Name = "EquipButton"
+nutEquip.Size = UDim2.new(1, -20, 0, 38)
+nutEquip.Position = UDim2.new(0, 10, 0, 212)
+nutEquip.Text = "✋ CẦM TOOL NGAY"
+nutEquip.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutEquip.TextScaled = true
+nutEquip.Font = Enum.Font.SourceSansBold
+nutEquip.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+nutEquip.Parent = MainFrame
 
-nutGiamBK.Activated:Connect(function()
-    BAN_KINH_KILL = math.max(BAN_KINH_KILL - 5, 5)
-    print("[GUI] Ban kinh:", BAN_KINH_KILL)
-end)
-
--- Nút 8: Dò lại Remote
-local nutDoRemote = Instance.new("TextButton")
-nutDoRemote.Name = "DoRemoteButton"
-nutDoRemote.Size = UDim2.new(1, -20, 0, 42)
-nutDoRemote.Position = UDim2.new(0, 10, 0, 322)
-nutDoRemote.Text = "🔄 DÒ LẠI REMOTE"
-nutDoRemote.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutDoRemote.TextScaled = true
-nutDoRemote.Font = Enum.Font.SourceSansBold
-nutDoRemote.BackgroundColor3 = Color3.fromRGB(200, 140, 0)
-nutDoRemote.BorderSizePixel = 1
-nutDoRemote.AutoButtonColor = false
-nutDoRemote.Parent = MainFrame
-
-nutDoRemote.Activated:Connect(function()
-    DoTimRemoteDamage()
-    print("[GUI] Da do lai. Tim thay:", #cacRemoteKhaNghi, "Remote")
+nutEquip.Activated:Connect(function()
+    if hackTool then
+        AutoEquipTool()
+    else
+        print("[GUI] Chua tim thay Tool!")
+    end
 end)
 
 -- Trạng thái
 local Status = Instance.new("TextLabel")
-Status.Name = "StatusLabel"
-Status.Size = UDim2.new(1, -20, 0, 22)
-Status.Position = UDim2.new(0, 10, 0, 368)
-Status.Text = "BK: " .. BAN_KINH_KILL .. " | Kill: " .. SO_LAN_KILL
+Status.Name = "Status"
+Status.Size = UDim2.new(1, -20, 0, 30)
+Status.Position = UDim2.new(0, 10, 0, 255)
+Status.Text = "Kill: " .. SO_LAN_KILL .. " | Tool: Dang tim..."
 Status.TextColor3 = Color3.fromRGB(200, 200, 200)
 Status.TextScaled = true
 Status.Font = Enum.Font.SourceSans
 Status.BackgroundTransparency = 1
 Status.Parent = MainFrame
 
--- Nút thu nhỏ (cho mobile)
+-- Nút thu nhỏ
 local daThuNho = false
 local kichThuocGoc = MainFrame.Size
-local viTriGoc = MainFrame.Position
-
 local nutThuNho = Instance.new("TextButton")
-nutThuNho.Name = "ThuNhoButton"
-nutThuNho.Size = UDim2.new(0, 30, 0, 30)
-nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+nutThuNho.Size = UDim2.new(0, 28, 0, 28)
+nutThuNho.Position = UDim2.new(1, -33, 0, 0)
 nutThuNho.Text = "─"
 nutThuNho.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutThuNho.TextScaled = true
-nutThuNho.Font = Enum.Font.SourceSansBold
 nutThuNho.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 nutThuNho.BorderSizePixel = 0
-nutThuNho.AutoButtonColor = false
 nutThuNho.ZIndex = 10
 nutThuNho.Parent = MainFrame
 
@@ -441,32 +523,31 @@ nutThuNho.Activated:Connect(function()
     daThuNho = not daThuNho
     if daThuNho then
         for _, child in ipairs(MainFrame:GetChildren()) do
-            if child ~= nutThuNho then
-                child.Visible = false
-            end
+            if child ~= nutThuNho then child.Visible = false end
         end
-        MainFrame.Size = UDim2.new(0, 40, 0, 40)
-        nutThuNho.Text = "☠"
+        MainFrame.Size = UDim2.new(0, 38, 0, 38)
+        nutThuNho.Text = "⚔"
         nutThuNho.Size = UDim2.new(1, 0, 1, 0)
         nutThuNho.Position = UDim2.new(0, 0, 0, 0)
-        nutThuNho.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        nutThuNho.BackgroundColor3 = Color3.fromRGB(200, 50, 200)
     else
         for _, child in ipairs(MainFrame:GetChildren()) do
             child.Visible = true
         end
         MainFrame.Size = kichThuocGoc
         nutThuNho.Text = "─"
-        nutThuNho.Size = UDim2.new(0, 30, 0, 30)
-        nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+        nutThuNho.Size = UDim2.new(0, 28, 0, 28)
+        nutThuNho.Position = UDim2.new(1, -33, 0, 0)
         nutThuNho.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     end
 end)
 
--- Cập nhật trạng thái liên tục
+-- Cập nhật trạng thái
 task.spawn(function()
     while task.wait(0.5) do
         if not ScreenGui or not ScreenGui.Parent then break end
-        Status.Text = "BK: " .. BAN_KINH_KILL .. " | Kill: " .. SO_LAN_KILL .. " | R: " .. #cacRemoteKhaNghi
+        local trangThaiTool = hackTool and hackTool.Parent and hackTool.Parent.Name or "KHONG CO"
+        Status.Text = "Kill: " .. SO_LAN_KILL .. " | Tool: " .. trangThaiTool
     end
 end)
 
@@ -477,21 +558,43 @@ player.CharacterAdded:Connect(function(char)
     character = char
     humanoid = char:WaitForChild("Humanoid")
     rootPart = char:WaitForChild("HumanoidRootPart")
-    task.wait(0.5)
-    TaoVongTronKillAura()
+    backpack = player:FindFirstChild("Backpack")
+    task.wait(1)
+    hackTool = TimHacLongKatana()
+    if hackTool and AUTO_EQUIP then
+        AutoEquipTool()
+    end
 end)
 
 -- ============================
--- IN THÔNG TIN KHỞI ĐỘNG
+-- CẬP NHẬT KHI TOOL ĐƯỢC THÊM VÀO BACKPACK
 -- ============================
+if backpack then
+    backpack.ChildAdded:Connect(function(child)
+        if child.Name == TEN_TOOL and child:IsA("Tool") then
+            print("[BACKPACK] Hắc Long Katana vua duoc them vao Backpack!")
+            hackTool = child
+            remoteCuaTool = PhanTichTool(child)
+            task.wait(0.3)
+            if AUTO_EQUIP then
+                humanoid:EquipTool(child)
+            end
+        end
+    end)
+end
+
+-- Kiểm tra Tool khi character thay đổi con cái
+character.ChildAdded:Connect(function(child)
+    if child.Name == TEN_TOOL and child:IsA("Tool") then
+        print("[CHARACTER] Hắc Long Katana vua duoc cam len tay!")
+        hackTool = child
+        remoteCuaTool = PhanTichTool(child)
+    end
+end)
+
 print("===========================================")
-print(" ☠ KILL AURA MOBILE - DA SAN SANG!")
-print(" [KILL AURA] Ban kinh:", BAN_KINH_KILL, "studs")
-print(" [BO QUA] Nguoi choi:", BO_QUA_NGUOI_CHOI and "CO" or "KHONG")
-print(" [BO QUA] Dong doi:", BO_QUA_DONG_DOI and "CO" or "KHONG")
-print(" [VONG TRON]", HIEN_THI_VONG_TRON and "HIEN" or "AN")
-print(" [REMOTE] Tim thay:", #cacRemoteKhaNghi, "Remote kha nghi")
-print(" [GUI] Keo tha de di chuyen")
-print(" [THU NHO] Bam nut '-' goc tren phai")
-print(" [MOBILE] Tuong thich Touch, bam nut de bat/tat")
-print("===========================================")
+print(" ⚔ HẮC LONG KATANA - ONE SHOT KILL!")
+print(" [TOOL] Ten: Hắc Long Katana")
+print(" [DAMAGE] He so nhan: x" .. DAMAGE_MULTIPLIER)
+print(" [AUTO EQUIP] " .. (AUTO_EQUIP and "BAT" or "TAT"))
+print(" [AUTO ATTACK] " .. (AUTO_ATTACK and "BAT" or "TAT
