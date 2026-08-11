@@ -1,3 +1,10 @@
+--[[
+  [ Script: KILL AURA - Mobile GUI đầy đủ nút bật/tắt ]
+  [ Tác giả: palofsc ]
+  [ Cơ chế: Tự động dò RemoteEvent gây sát thương + FireServer ]
+  [ GUI: Tương thích Mobile (Touch), có nút thu nhỏ, kéo thả ]
+--]]
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,30 +22,31 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local killAuraBat = true
 local BAN_KINH_KILL = 30
 local BO_QUA_NGUOI_CHOI = true
-local THOI_GIAN_QUET = 0.3
+local BO_QUA_DONG_DOI = true
+local THOI_GIAN_QUET = 0.2
 local SO_LAN_KILL = 0
-local DANG_DEBUG = true -- Bật debug để xem đang gửi gì lên Server
+local DANG_DEBUG = true
+local HIEN_THI_VONG_TRON = true
+local KHOANG_CACH_BAY = 3 -- Tự động bay đến mục tiêu (0 = tắt)
 
 -- ============================
--- DANH SÁCH CÁC REMOTE EVENT TÌM THẤY
+-- DANH SÁCH REMOTE
 -- ============================
-local remoteDamage = nil -- Remote gây sát thương chính
-local remoteHit = nil -- Remote đánh trúng
-local cacRemoteKhaNghi = {} -- Danh sách remote nghi ngờ
+local remoteDamage = nil
+local cacRemoteKhaNghi = {}
 
 -- ============================
--- BƯỚC 1: TỰ ĐỘNG DÒ TÌM REMOTE EVENT GÂY SÁT THƯƠNG
+-- DÒ TÌM REMOTE EVENT GÂY SÁT THƯƠNG
 -- ============================
 local function DoTimRemoteDamage()
-    print("===========================================")
-    print("[DO TIM] Dang phan tich RemoteEvent trong game...")
+    cacRemoteKhaNghi = {}
+    remoteDamage = nil
 
     for _, obj in ipairs(game:GetDescendants()) do
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
             local ten = obj.Name:lower()
             local tenCha = obj.Parent and obj.Parent.Name:lower() or ""
 
-            -- Các từ khóa liên quan đến gây sát thương
             local tuKhoaDamage = {
                 "damage", "hit", "attack", "deal", "hurt",
                 "slash", "punch", "shoot", "stab", "kill",
@@ -57,92 +65,20 @@ local function DoTimRemoteDamage()
 
             if khaNghi then
                 table.insert(cacRemoteKhaNghi, obj)
-                print("  [KHA NGHI]", obj:GetFullName(), "| Loai:", obj.ClassName)
-
-                -- Ưu tiên Remote có tên trực tiếp là "Damage" hoặc "Hit"
                 if ten == "damage" or ten == "deal" or ten == "hit" then
                     remoteDamage = obj
-                    print("  [★★★] Remote uu tien:", obj:GetFullName())
                 end
             end
         end
     end
 
-    print("[KET QUA] Tim thay", #cacRemoteKhaNghi, "Remote kha nghi.")
     return #cacRemoteKhaNghi > 0
 end
 
 -- ============================
--- BƯỚC 2: THỬ GÂY SÁT THƯƠNG QUA TỪNG REMOTE
+-- THỬ GÂY SÁT THƯƠNG QUA REMOTE
 -- ============================
 local function ThuGaySatThuong(mucTieu)
-    if not mucTieu or not mucTieu.Parent then return false end
-
-    local humanoidDich = mucTieu:FindFirstChild("Humanoid")
-    if not humanoidDich or humanoidDich.Health <= 0 then return false end
-
-    -- Lấy thông tin mục tiêu
-    local rootDich = mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")
-    local tenDich = mucTieu.Name
-
-    -- Thử TẤT CẢ các Remote kha nghi với nhiều format tham số
-    for _, remote in ipairs(cacRemoteKhaNghi) do
-        -- Danh sách các format tham số có thể có
-        local cacFormat = {
-            -- Format 1: (mucTieu, damage)
-            {mucTieu, 999999},
-            {humanoidDich, 999999},
-            {rootDich, 999999},
-
-            -- Format 2: (mucTieu, damage, ...)
-            {mucTieu, 999999, rootPart},
-            {humanoidDich, 999999, rootPart},
-
-            -- Format 3: (nguoiTranCong, mucTieu, damage)
-            {character, mucTieu, 999999},
-            {rootPart, mucTieu, 999999},
-
-            -- Format 4: (damage, mucTieu)
-            {999999, mucTieu},
-            {999999, humanoidDich},
-
-            -- Format 5: Chi gửi mục tiêu (game tự tính damage)
-            {mucTieu},
-            {humanoidDich},
-
-            -- Format 6: (mucTieu, "Damage", 999999)
-            {mucTieu, "Damage", 999999},
-
-            -- Format 7: Vector3 hit position + damage
-            {rootDich.Position, 999999, mucTieu},
-        }
-
-        for i, thamSo in ipairs(cacFormat) do
-            local thanhCong, loi = pcall(function()
-                remote:FireServer(unpack(thamSo))
-            end)
-
-            if thanhCong then
-                -- Kiểm tra xem mục tiêu đã chết chưa
-                task.wait(0.1)
-                if not humanoidDich.Parent or humanoidDich.Health <= 0 then
-                    remoteDamage = remote
-                    print("[★★★ THANH CONG] Remote:", remote:GetFullName(), "| Format:", i)
-                    SO_LAN_KILL = SO_LAN_KILL + 1
-                    return true
-                end
-            end
-        end
-    end
-
-    -- Nếu không kill được bằng Remote, thử dùng Tool có sẵn
-    return ThuKillBangTool(mucTieu)
-end
-
--- ============================
--- BƯỚC 3: THỬ KILL BẰNG TOOL (VU KHÍ)
--- ============================
-local function ThuKillBangTool(mucTieu)
     if not mucTieu or not mucTieu.Parent then return false end
 
     local humanoidDich = mucTieu:FindFirstChild("Humanoid")
@@ -151,65 +87,58 @@ local function ThuKillBangTool(mucTieu)
     local rootDich = mucTieu:FindFirstChild("HumanoidRootPart") or mucTieu:FindFirstChild("Head")
     if not rootDich then return false end
 
-    -- Tìm tool/vũ khí trong Backpack hoặc đang cầm
-    local tools = {}
-    for _, obj in ipairs(player.Backpack:GetChildren()) do
-        if obj:IsA("Tool") then table.insert(tools, obj) end
-    end
-    local currentTool = character:FindFirstChildOfClass("Tool")
-    if currentTool then table.insert(tools, currentTool) end
-
-    for _, tool in ipairs(tools) do
-        -- Cầm tool lên
-        if tool.Parent ~= character then
-            humanoid:EquipTool(tool)
-            task.wait(0.1)
-        end
-
-        -- Dịch chuyển đến mục tiêu
-        local viTriCu = rootPart.CFrame
-        rootPart.CFrame = rootDich.CFrame * CFrame.new(0, 2, 0)
-        task.wait(0.1)
-
-        -- Kích hoạt tool (đánh)
-        pcall(function()
-            tool:Activate()
-        end)
-
-        -- Kích hoạt sự kiện chạm
-        local touchInterest = rootDich:FindFirstChild("TouchInterest")
-        if touchInterest then
-            firetouchinterest(rootDich, rootPart, 0)
+    -- Bay đến mục tiêu nếu bật
+    if KHOANG_CACH_BAY > 0 then
+        local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
+        if khoangCach > KHOANG_CACH_BAY then
+            rootPart.CFrame = rootDich.CFrame * CFrame.new(0, 2, 0)
             task.wait(0.05)
-            firetouchinterest(rootDich, rootPart, 1)
         end
+    end
 
-        task.wait(0.2)
+    -- Format tham số thử nghiệm
+    local cacFormat = {
+        {mucTieu, 999999},
+        {humanoidDich, 999999},
+        {mucTieu, 999999, character},
+        {mucTieu, 999999, rootPart},
+        {character, mucTieu, 999999},
+        {rootPart, mucTieu, 999999},
+        {999999, mucTieu},
+        {mucTieu},
+        {humanoidDich},
+        {mucTieu, "Damage", 999999},
+        {rootDich.Position, 999999, mucTieu},
+    }
 
-        -- Kiểm tra xem đã kill chưa
-        if not humanoidDich.Parent or humanoidDich.Health <= 0 then
-            print("[★★★ KILL BANG TOOL]", tool.Name, "->", mucTieu.Name)
-            SO_LAN_KILL = SO_LAN_KILL + 1
-            rootPart.CFrame = viTriCu
-            return true
+    for _, remote in ipairs(cacRemoteKhaNghi) do
+        for i, thamSo in ipairs(cacFormat) do
+            local thanhCong, loi = pcall(function()
+                remote:FireServer(unpack(thamSo))
+            end)
+            if thanhCong then
+                task.wait(0.05)
+                if not humanoidDich.Parent or humanoidDich.Health <= 0 then
+                    remoteDamage = remote
+                    SO_LAN_KILL = SO_LAN_KILL + 1
+                    return true
+                end
+            end
         end
-
-        rootPart.CFrame = viTriCu
     end
 
     return false
 end
 
 -- ============================
--- BƯỚC 4: TÌM VÀ KILL TẤT CẢ MỤC TIÊU TRONG PHẠM VI
+-- TÌM VÀ KILL TẤT CẢ MỤC TIÊU
 -- ============================
 local function TimVaKillTatCaMucTieu()
-    if not killAuraBat then return end
-    if not character or not character.Parent then return end
+    if not killAuraBat then return 0 end
+    if not character or not character.Parent then return 0 end
 
     local danhSachMucTieu = {}
 
-    -- Tìm tất cả Model có Humanoid trong Workspace
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if not obj:IsA("Model") then continue end
         if obj == character then continue end
@@ -221,27 +150,26 @@ local function TimVaKillTatCaMucTieu()
         if not rootDich then continue end
 
         -- Bỏ qua người chơi
-        if BO_QUA_NGUOI_CHOI and Players:GetPlayerFromCharacter(obj) then continue end
+        local laNguoiChoi = Players:GetPlayerFromCharacter(obj) ~= nil
+        if BO_QUA_NGUOI_CHOI and laNguoiChoi then continue end
 
-        -- Tính khoảng cách
+        -- Bỏ qua đồng đội
+        if BO_QUA_DONG_DOI and laNguoiChoi then
+            local nguoiChoiDich = Players:GetPlayerFromCharacter(obj)
+            if nguoiChoiDich and player.Team and nguoiChoiDich.Team == player.Team then
+                continue
+            end
+        end
+
         local khoangCach = (rootPart.Position - rootDich.Position).Magnitude
         if khoangCach <= BAN_KINH_KILL then
             table.insert(danhSachMucTieu, obj)
         end
     end
 
-    -- Kill từng mục tiêu
     for _, mucTieu in ipairs(danhSachMucTieu) do
         if mucTieu and mucTieu.Parent then
-            local daKill = ThuGaySatThuong(mucTieu)
-
-            if DANG_DEBUG then
-                if daKill then
-                    print("[KILL]", mucTieu.Name, "✅")
-                else
-                    print("[THAT BAI]", mucTieu.Name, "❌ - Khong tim thay cach kill")
-                end
-            end
+            ThuGaySatThuong(mucTieu)
         end
     end
 
@@ -249,173 +177,328 @@ local function TimVaKillTatCaMucTieu()
 end
 
 -- ============================
--- BƯỚC 5: HƯỚNG DẪN THỦ CÔNG - BẮT REMOTE BẰNG REMOTESPY
+-- VÒNG TRÒN KILL AURA
 -- ============================
-local function HuongDanThuCong()
-    print("===========================================")
-    print("[HUONG DAN] Neu script khong kill duoc, lam theo cac buoc sau:")
-    print("1. Mo RemoteSpy trong Executor cua ban")
-    print("2. Dung vu khi/thu cong danh 1 con quai")
-    print("3. Xem RemoteSpy hien thi RemoteEvent nao duoc goi")
-    print("4. Ghi lai TEN REMOTE va CAC THAM SO")
-    print("5. Thay doi dong 'cacFormat' trong script")
-    print("")
-    print("Vi du: Neu RemoteSpy hien:")
-    print("  Remote: 'WeaponSystem.Damage'")
-    print("  Args: mucTieu, damage, nguoiTanCong")
-    print("  => Format: {mucTieu, 999999, character}")
-    print("===========================================")
+local vongTronKill = nil
+local function TaoVongTronKillAura()
+    if not HIEN_THI_VONG_TRON then
+        if vongTronKill then vongTronKill:Destroy(); vongTronKill = nil end
+        return
+    end
+
+    if vongTronKill and vongTronKill.Parent then vongTronKill:Destroy() end
+
+    vongTronKill = Instance.new("Part")
+    vongTronKill.Name = "KillAuraRing"
+    vongTronKill.Shape = Enum.PartType.Cylinder
+    vongTronKill.Size = Vector3.new(BAN_KINH_KILL * 2, 0.3, BAN_KINH_KILL * 2)
+    vongTronKill.Anchored = true
+    vongTronKill.CanCollide = false
+    vongTronKill.Transparency = 0.75
+    vongTronKill.Color = Color3.fromRGB(255, 0, 0)
+    vongTronKill.Material = Enum.Material.Neon
+    vongTronKill.Parent = character
 end
 
 -- ============================
--- BƯỚC 6: LUỒNG CHÍNH
+-- LUỒNG CHÍNH
 -- ============================
-print("===========================================")
-print(" ☠ KILL AURA FIX - STARTING...")
-print(" [GAME]", game.Name)
-print(" [PLACE ID]", game.PlaceId)
-print("===========================================")
+DoTimRemoteDamage()
 
--- Dò tìm RemoteEvent
-local coRemote = DoTimRemoteDamage()
-
-if not coRemote then
-    print("[CANH BAO] Khong tim thay RemoteEvent kha nghi!")
-    HuongDanThuCong()
-else
-    print("[OK] Da tim thay", #cacRemoteKhaNghi, "Remote kha nghi de thu.")
-end
-
--- Vòng lặp Kill Aura chính
 task.spawn(function()
     while true do
         if killAuraBat then
-            local soMucTieu = TimVaKillTatCaMucTieu()
-            if soMucTieu > 0 and DANG_DEBUG then
-                -- print("[QUET] Tim thay", soMucTieu, "muc tieu trong pham vi")
-            end
+            TimVaKillTatCaMucTieu()
         end
         task.wait(THOI_GIAN_QUET)
     end
 end)
 
+-- Cập nhật vòng tròn
+task.spawn(function()
+    while true do
+        if vongTronKill and vongTronKill.Parent and character and character.Parent then
+            vongTronKill.Position = rootPart.Position
+            vongTronKill.Size = Vector3.new(BAN_KINH_KILL * 2, 0.3, BAN_KINH_KILL * 2)
+        end
+        task.wait(0.1)
+    end
+end)
+
+TaoVongTronKillAura()
+
 -- ============================
--- GUI ĐIỀU KHIỂN
+-- GUI MOBILE (TƯƠNG THÍCH TOUCH)
 -- ============================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KillAuraGUI"
+ScreenGui.Name = "KillAuraMobileGUI"
 ScreenGui.Parent = CoreGui
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 230, 0, 220)
-MainFrame.Position = UDim2.new(1, -240, 0.5, -110)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 410)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -205)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BackgroundTransparency = 0.2
 MainFrame.BorderSizePixel = 1
-MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 30, 30)
+MainFrame.ClipsDescendants = true
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
+-- Tiêu đề
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -10, 0, 25)
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -10, 0, 30)
 Title.Position = UDim2.new(0, 5, 0, 5)
-Title.Text = "☠ KILL AURA FIX"
-Title.TextColor3 = Color3.fromRGB(255, 50, 50)
+Title.Text = "☠ KILL AURA MOBILE ☠"
+Title.TextColor3 = Color3.fromRGB(255, 40, 40)
 Title.TextScaled = true
 Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- Nút bật/tắt
-local nutKillAura = Instance.new("TextButton")
-nutKillAura.Size = UDim2.new(1, -20, 0, 35)
-nutKillAura.Position = UDim2.new(0, 10, 0, 38)
-nutKillAura.Text = "[ON] KILL AURA"
-nutKillAura.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutKillAura.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-nutKillAura.Parent = MainFrame
+-- ============================
+-- HÀM TẠO NÚT BẬT/TẮT CHUẨN MOBILE
+-- ============================
+local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, mauBat, mauTat, callback)
+    local nut = Instance.new("TextButton")
+    nut.Name = ten .. "Button"
+    nut.Size = UDim2.new(1, -20, 0, 42)
+    nut.Position = UDim2.new(0, 10, 0, viTriY)
+    nut.Text = batDauBat and moTaBat or moTaTat
+    nut.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nut.TextScaled = true
+    nut.Font = Enum.Font.SourceSansBold
+    nut.BackgroundColor3 = batDauBat and (mauBat or Color3.fromRGB(50, 180, 50)) or (mauTat or Color3.fromRGB(180, 50, 50))
+    nut.BorderSizePixel = 1
+    nut.BorderColor3 = Color3.fromRGB(80, 80, 80)
+    nut.AutoButtonColor = false
+    nut.Parent = MainFrame
 
-nutKillAura.Activated:Connect(function()
-    killAuraBat = not killAuraBat
-    nutKillAura.Text = killAuraBat and "[ON] KILL AURA" or "[OFF] KILL AURA"
-    nutKillAura.BackgroundColor3 = killAuraBat and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(80, 80, 80)
+    local trangThai = batDauBat
+    nut.Activated:Connect(function()
+        trangThai = not trangThai
+        nut.Text = trangThai and moTaBat or moTaTat
+        nut.BackgroundColor3 = trangThai and (mauBat or Color3.fromRGB(50, 180, 50)) or (mauTat or Color3.fromRGB(180, 50, 50))
+        if callback then callback(trangThai) end
+    end)
+
+    return nut
+end
+
+-- Nút 1: Bật/Tắt Kill Aura
+TaoNutBatTat(
+    "KillAura",
+    40,
+    killAuraBat,
+    "[ON] KILL AURA",
+    "[OFF] KILL AURA",
+    Color3.fromRGB(200, 0, 0),
+    Color3.fromRGB(80, 80, 80),
+    function(tt) killAuraBat = tt end
+)
+
+-- Nút 2: Bật/Tắt Bỏ qua người chơi
+TaoNutBatTat(
+    "BoQuaNguoiChoi",
+    87,
+    BO_QUA_NGUOI_CHOI,
+    "[ON] BO QUA NGUOI CHOI",
+    "[OFF] BO QUA NGUOI CHOI",
+    Color3.fromRGB(0, 140, 200),
+    Color3.fromRGB(80, 80, 80),
+    function(tt) BO_QUA_NGUOI_CHOI = tt end
+)
+
+-- Nút 3: Bật/Tắt Bỏ qua đồng đội
+TaoNutBatTat(
+    "BoQuaDongDoi",
+    134,
+    BO_QUA_DONG_DOI,
+    "[ON] BO QUA DONG DOI",
+    "[OFF] BO QUA DONG DOI",
+    Color3.fromRGB(0, 140, 200),
+    Color3.fromRGB(80, 80, 80),
+    function(tt) BO_QUA_DONG_DOI = tt end
+)
+
+-- Nút 4: Bật/Tắt Vòng tròn kill
+TaoNutBatTat(
+    "VongTron",
+    181,
+    HIEN_THI_VONG_TRON,
+    "[ON] VONG TRON KILL",
+    "[OFF] VONG TRON KILL",
+    Color3.fromRGB(200, 150, 0),
+    Color3.fromRGB(80, 80, 80),
+    function(tt)
+        HIEN_THI_VONG_TRON = tt
+        if tt then
+            TaoVongTronKillAura()
+        else
+            if vongTronKill then vongTronKill:Destroy(); vongTronKill = nil end
+        end
+    end
+)
+
+-- Nút 5: Bật/Tắt Debug
+TaoNutBatTat(
+    "Debug",
+    228,
+    DANG_DEBUG,
+    "[ON] DEBUG MODE",
+    "[OFF] DEBUG MODE",
+    Color3.fromRGB(0, 180, 180),
+    Color3.fromRGB(80, 80, 80),
+    function(tt) DANG_DEBUG = tt end
+)
+
+-- Nút 6 + 7: Tăng/Giảm bán kính
+local nutTangBK = Instance.new("TextButton")
+nutTangBK.Name = "TangBKButton"
+nutTangBK.Size = UDim2.new(0.45, -5, 0, 42)
+nutTangBK.Position = UDim2.new(0, 10, 0, 275)
+nutTangBK.Text = "🔺 + BÁN KÍNH"
+nutTangBK.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutTangBK.TextScaled = true
+nutTangBK.Font = Enum.Font.SourceSansBold
+nutTangBK.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+nutTangBK.BorderSizePixel = 1
+nutTangBK.AutoButtonColor = false
+nutTangBK.Parent = MainFrame
+
+nutTangBK.Activated:Connect(function()
+    BAN_KINH_KILL = math.min(BAN_KINH_KILL + 5, 100)
+    print("[GUI] Ban kinh:", BAN_KINH_KILL)
 end)
 
--- Nút bật/tắt Debug
-local nutDebug = Instance.new("TextButton")
-nutDebug.Size = UDim2.new(1, -20, 0, 35)
-nutDebug.Position = UDim2.new(0, 10, 0, 80)
-nutDebug.Text = "[ON] DEBUG MODE"
-nutDebug.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutDebug.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-nutDebug.Parent = MainFrame
+local nutGiamBK = Instance.new("TextButton")
+nutGiamBK.Name = "GiamBKButton"
+nutGiamBK.Size = UDim2.new(0.45, -5, 0, 42)
+nutGiamBK.Position = UDim2.new(0.55, -5, 0, 275)
+nutGiamBK.Text = "🔻 - BÁN KÍNH"
+nutGiamBK.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutGiamBK.TextScaled = true
+nutGiamBK.Font = Enum.Font.SourceSansBold
+nutGiamBK.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+nutGiamBK.BorderSizePixel = 1
+nutGiamBK.AutoButtonColor = false
+nutGiamBK.Parent = MainFrame
 
-nutDebug.Activated:Connect(function()
-    DANG_DEBUG = not DANG_DEBUG
-    nutDebug.Text = DANG_DEBUG and "[ON] DEBUG MODE" or "[OFF] DEBUG MODE"
-    nutDebug.BackgroundColor3 = DANG_DEBUG and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(80, 80, 80)
+nutGiamBK.Activated:Connect(function()
+    BAN_KINH_KILL = math.max(BAN_KINH_KILL - 5, 5)
+    print("[GUI] Ban kinh:", BAN_KINH_KILL)
 end)
 
--- Nút dò lại Remote
+-- Nút 8: Dò lại Remote
 local nutDoRemote = Instance.new("TextButton")
-nutDoRemote.Size = UDim2.new(1, -20, 0, 35)
-nutDoRemote.Position = UDim2.new(0, 10, 0, 122)
+nutDoRemote.Name = "DoRemoteButton"
+nutDoRemote.Size = UDim2.new(1, -20, 0, 42)
+nutDoRemote.Position = UDim2.new(0, 10, 0, 322)
 nutDoRemote.Text = "🔄 DÒ LẠI REMOTE"
 nutDoRemote.TextColor3 = Color3.fromRGB(255, 255, 255)
-nutDoRemote.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+nutDoRemote.TextScaled = true
+nutDoRemote.Font = Enum.Font.SourceSansBold
+nutDoRemote.BackgroundColor3 = Color3.fromRGB(200, 140, 0)
+nutDoRemote.BorderSizePixel = 1
+nutDoRemote.AutoButtonColor = false
 nutDoRemote.Parent = MainFrame
 
 nutDoRemote.Activated:Connect(function()
-    print("[GUI] Dang do lai RemoteEvent...")
-    cacRemoteKhaNghi = {}
-    remoteDamage = nil
     DoTimRemoteDamage()
-    if #cacRemoteKhaNghi == 0 then
-        HuongDanThuCong()
-    end
+    print("[GUI] Da do lai. Tim thay:", #cacRemoteKhaNghi, "Remote")
 end)
 
 -- Trạng thái
 local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -20, 0, 30)
-Status.Position = UDim2.new(0, 10, 0, 165)
-Status.Text = "Kills: " .. SO_LAN_KILL .. " | Remote: " .. (#cacRemoteKhaNghi)
+Status.Name = "StatusLabel"
+Status.Size = UDim2.new(1, -20, 0, 22)
+Status.Position = UDim2.new(0, 10, 0, 368)
+Status.Text = "BK: " .. BAN_KINH_KILL .. " | Kill: " .. SO_LAN_KILL
 Status.TextColor3 = Color3.fromRGB(200, 200, 200)
 Status.TextScaled = true
-Status.BackgroundTransparency = 1
 Status.Font = Enum.Font.SourceSans
+Status.BackgroundTransparency = 1
 Status.Parent = MainFrame
 
--- Cập nhật trạng thái
+-- Nút thu nhỏ (cho mobile)
+local daThuNho = false
+local kichThuocGoc = MainFrame.Size
+local viTriGoc = MainFrame.Position
+
+local nutThuNho = Instance.new("TextButton")
+nutThuNho.Name = "ThuNhoButton"
+nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+nutThuNho.Text = "─"
+nutThuNho.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThuNho.TextScaled = true
+nutThuNho.Font = Enum.Font.SourceSansBold
+nutThuNho.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+nutThuNho.BorderSizePixel = 0
+nutThuNho.AutoButtonColor = false
+nutThuNho.ZIndex = 10
+nutThuNho.Parent = MainFrame
+
+nutThuNho.Activated:Connect(function()
+    daThuNho = not daThuNho
+    if daThuNho then
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            if child ~= nutThuNho then
+                child.Visible = false
+            end
+        end
+        MainFrame.Size = UDim2.new(0, 40, 0, 40)
+        nutThuNho.Text = "☠"
+        nutThuNho.Size = UDim2.new(1, 0, 1, 0)
+        nutThuNho.Position = UDim2.new(0, 0, 0, 0)
+        nutThuNho.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    else
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            child.Visible = true
+        end
+        MainFrame.Size = kichThuocGoc
+        nutThuNho.Text = "─"
+        nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+        nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+        nutThuNho.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end
+end)
+
+-- Cập nhật trạng thái liên tục
 task.spawn(function()
     while task.wait(0.5) do
         if not ScreenGui or not ScreenGui.Parent then break end
-        Status.Text = "Kills: " .. SO_LAN_KILL .. " | Remote: " .. (#cacRemoteKhaNghi)
+        Status.Text = "BK: " .. BAN_KINH_KILL .. " | Kill: " .. SO_LAN_KILL .. " | R: " .. #cacRemoteKhaNghi
     end
 end)
 
--- Toggle GUI
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F9 then
-        ScreenGui.Enabled = not ScreenGui.Enabled
-    end
-end)
-
--- Cập nhật khi respawn
+-- ============================
+-- CẬP NHẬT KHI RESPAWN
+-- ============================
 player.CharacterAdded:Connect(function(char)
     character = char
     humanoid = char:WaitForChild("Humanoid")
     rootPart = char:WaitForChild("HumanoidRootPart")
+    task.wait(0.5)
+    TaoVongTronKillAura()
 end)
 
+-- ============================
+-- IN THÔNG TIN KHỞI ĐỘNG
+-- ============================
 print("===========================================")
-print(" [SAN SANG] Kill Aura Fix da chay!")
-print(" [F9] An/hien GUI")
-print(" [DEBUG] Bat debug de xem chi tiet")
-print(" [DO LAI] Bam nut Do Lai Remote neu khong kill duoc")
-print(" [THU CONG] Dung RemoteSpy de bat Remote neu can")
+print(" ☠ KILL AURA MOBILE - DA SAN SANG!")
+print(" [KILL AURA] Ban kinh:", BAN_KINH_KILL, "studs")
+print(" [BO QUA] Nguoi choi:", BO_QUA_NGUOI_CHOI and "CO" or "KHONG")
+print(" [BO QUA] Dong doi:", BO_QUA_DONG_DOI and "CO" or "KHONG")
+print(" [VONG TRON]", HIEN_THI_VONG_TRON and "HIEN" or "AN")
+print(" [REMOTE] Tim thay:", #cacRemoteKhaNghi, "Remote kha nghi")
+print(" [GUI] Keo tha de di chuyen")
+print(" [THU NHO] Bam nut '-' goc tren phai")
+print(" [MOBILE] Tuong thich Touch, bam nut de bat/tat")
 print("===========================================")
-```
