@@ -1,10 +1,3 @@
---[[
-  [ Script: KILL AURA - Mobile GUI đầy đủ nút bật/tắt ]
-  [ Tác giả: palofsc ]
-  [ Cơ chế: Tự động dò RemoteEvent gây sát thương + FireServer ]
-  [ GUI: Tương thích Mobile (Touch), có nút thu nhỏ, kéo thả ]
---]]
-
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
