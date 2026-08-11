@@ -592,9 +592,3 @@ character.ChildAdded:Connect(function(child)
     end
 end)
 
-print("===========================================")
-print(" ⚔ HẮC LONG KATANA - ONE SHOT KILL!")
-print(" [TOOL] Ten: Hắc Long Katana")
-print(" [DAMAGE] He so nhan: x" .. DAMAGE_MULTIPLIER)
-print(" [AUTO EQUIP] " .. (AUTO_EQUIP and "BAT" or "TAT"))
-print(" [AUTO ATTACK] " .. (AUTO_ATTACK and "BAT" or "TAT
