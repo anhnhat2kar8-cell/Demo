@@ -1,273 +1,415 @@
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
 
 -- ============================
--- PHƯƠNG PHÁP 1: DÙNG REMOTEEVENT CÓ SẴN TRONG GAME (PHỔ BIẾN NHẤT)
+-- BIẾN TRẠNG THÁI
 -- ============================
--- Nhiều game có RemoteEvent dùng để spawn item, bạn cần tìm đúng RemoteEvent đó.
--- Ví dụ: game.ReplicatedStorage.SpawnItem, game.ReplicatedStorage.Remotes.SpawnPart, v.v.
-
-local function SpawnPartQuaRemoteEvent(partGoc)
-    -- Tìm tất cả RemoteEvent trong game
-    local tatCaRemote = {}
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            table.insert(tatCaRemote, obj)
-        end
-    end
-
-    -- Thử từng RemoteEvent để spawn part
-    for _, remote in ipairs(tatCaRemote) do
-        local thanhCong = pcall(function()
-            -- Thử gửi với nhiều format tham số khác nhau
-            remote:FireServer(partGoc)                    -- Truyền trực tiếp part
-            remote:FireServer(partGoc.Name)               -- Truyền tên part
-            remote:FireServer("Spawn", partGoc.Name)      -- Format: lệnh + tên
-            remote:FireServer(partGoc.Name, rootPart.Position) -- Tên + vị trí
-        end)
-        if thanhCong then
-            print("[TIM THAY] RemoteEvent hoat dong:", remote:GetFullName())
-            return true
-        end
-    end
-
-    warn("[LOI] Khong tim thay RemoteEvent phu hop.")
-    return false
-end
+local spawnDangChay = true
+local autoHealBat = true
+local autoFarmBat = true -- Bật lại Auto Farm vì part giờ nằm trong Workspace
+local HEAL_THRESHOLD = 80
+local soLanSpawn = 0
+local danhSachPart = {} -- Lưu trữ các part để quản lý và dọn dẹp
 
 -- ============================
--- PHƯƠNG PHÁP 2: DÙNG FIRETOUCHINTEREST ĐỂ GIẢ LẬP CHẠM PAD SPAWN
--- ============================
--- Một số game có pad spawn (part đặc biệt), khi chạm vào sẽ spawn ra item.
--- Ta có thể giả lập sự kiện chạm (TouchInterest) lên pad đó từ xa.
-
-local function TimPadSpawn()
-    -- Tìm part có chứa script spawn hoặc có tên liên quan đến spawn
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            local tenThuong = obj.Name:lower()
-            if tenThuong:find("spawn") or tenThuong:find("pad") or tenThuong:find("button") then
-                -- Kiểm tra xem part này có TouchInterest không
-                if obj:FindFirstChild("TouchInterest") then
-                    return obj
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local function SpawnPartQuaTouchInterest(partGoc)
-    local padSpawn = TimPadSpawn()
-    if not padSpawn then
-        warn("[LOI] Khong tim thay pad spawn.")
-        return false
-    end
-
-    print("[PAD] Tim thay pad spawn:", padSpawn:GetFullName())
-
-    -- Dịch chuyển character đến pad spawn
-    local viTriCu = rootPart.CFrame
-    rootPart.CFrame = padSpawn.CFrame * CFrame.new(0, 3, 0)
-    task.wait(0.2)
-
-    -- Kích hoạt TouchInterest
-    local touchInterest = padSpawn:FindFirstChild("TouchInterest")
-    if touchInterest then
-        firetouchinterest(padSpawn, rootPart, 0) -- Touch
-        task.wait(0.1)
-        firetouchinterest(padSpawn, rootPart, 1) -- Untouch
-    end
-
-    -- Quay lại vị trí cũ
-    task.wait(0.2)
-    rootPart.CFrame = viTriCu
-    return true
-end
-
--- ============================
--- PHƯƠNG PHÁP 3: GỬI YÊU CẦU QUA PROXIMITYPROMPT
--- ============================
-local function TimProximityPromptSpawn()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") then
-            local tenThuong = obj.Parent and obj.Parent.Name:lower() or ""
-            if tenThuong:find("spawn") or tenThuong:find("item") or tenThuong:find("gacha") then
-                return obj
-            end
-        end
-    end
-    return nil
-end
-
-local function SpawnPartQuaProximityPrompt()
-    local prompt = TimProximityPromptSpawn()
-    if not prompt then
-        warn("[LOI] Khong tim thay ProximityPrompt spawn.")
-        return false
-    end
-
-    print("[PROMPT] Tim thay ProximityPrompt:", prompt:GetFullName())
-
-    -- Dịch chuyển đến gần prompt
-    local viTriCu = rootPart.CFrame
-    local partCha = prompt.Parent
-    if partCha and partCha:IsA("BasePart") then
-        rootPart.CFrame = partCha.CFrame * CFrame.new(0, 2, 0)
-    end
-    task.wait(0.3)
-
-    -- Kích hoạt prompt
-    prompt:InputHoldBegin()
-    task.wait(0.2)
-    prompt:InputHoldEnd()
-
-    -- Quay lại vị trí cũ
-    task.wait(0.3)
-    rootPart.CFrame = viTriCu
-    return true
-end
-
--- ============================
--- PHƯƠNG PHÁP 4: CAN THIỆP VÀO LUỒNG SỰ KIỆN CỦA GAME (ADVANCED)
--- ============================
--- Một số executor mạnh (Synapse X, Script-Ware) cho phép hook vào Metatable của Roblox
--- để bắt và sửa đổi sự kiện trước khi gửi lên Server.
-
-local function SpawnPartQuaHook(partGoc)
-    -- Phương pháp này yêu cầu executor hỗ trợ hookfunction hoặc newcclosure
-    -- Kiểm tra xem executor có hỗ trợ không
-    if not hookfunction or not newcclosure then
-        warn("[LOI] Executor khong ho tro hookfunction.")
-        return false
-    end
-
-    -- Hook vào FireServer của tất cả RemoteEvent
-    local oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, function(self, ...)
-        local args = {...}
-        -- Nếu phát hiện có part "DinhHaiThanhCham" trong tham số, cho phép gửi
-        for _, arg in ipairs(args) do
-            if typeof(arg) == "Instance" and arg.Name == "DinhHaiThanhCham" then
-                print("[HOOK] Cho phep gui part len Server:", arg.Name)
-                return oldFireServer(self, ...)
-            end
-        end
-        -- Các trường hợp khác giữ nguyên
-        return oldFireServer(self, ...)
-    end)
-
-    -- Thử gửi part qua bất kỳ RemoteEvent nào
-    for _, remote in ipairs(game:GetDescendants()) do
-        if remote:IsA("RemoteEvent") then
-            pcall(function()
-                remote:FireServer(partGoc)
-            end)
-        end
-    end
-
-    return true
-end
-
--- ============================
--- PHƯƠNG PHÁP 5: DÙNG SCRIPT ĐỂ GỌI TRỰC TIẾP HÀM SERVER (RẤT HIẾM)
--- ============================
--- Một số game để lộ ModuleScript chứa hàm spawn, ta có thể require và gọi trực tiếp
-
-local function SpawnPartQuaModuleScript(partGoc)
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj:IsA("ModuleScript") then
-            local tenThuong = obj.Name:lower()
-            if tenThuong:find("spawn") or tenThuong:find("item") or tenThuong:find("factory") then
-                local thanhCong, module = pcall(require, obj)
-                if thanhCong and type(module) == "table" then
-                    -- Tìm hàm spawn trong module
-                    for tenHam, ham in pairs(module) do
-                        if type(ham) == "function" then
-                            local ketQua, loi = pcall(ham, partGoc.Name, rootPart.Position)
-                            if ketQua then
-                                print("[MODULE] Goi ham spawn thanh cong:", obj:GetFullName(), "->", tenHam)
-                                return true
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
--- ============================
--- HÀM CHÍNH: THỬ TẤT CẢ CÁC PHƯƠNG PHÁP
--- ============================
-local function SpawnPartServerSide(partGoc)
-    if not partGoc then
-        warn("[LOI] Part goc khong ton tai.")
-        return false
-    end
-
-    print("===========================================")
-    print("[DANG THU] Phuong phap 1: RemoteEvent...")
-    if SpawnPartQuaRemoteEvent(partGoc) then
-        print("[THANH CONG] Phuong phap 1: RemoteEvent")
-        return true
-    end
-
-    print("[DANG THU] Phuong phap 2: TouchInterest...")
-    if SpawnPartQuaTouchInterest(partGoc) then
-        print("[THANH CONG] Phuong phap 2: TouchInterest")
-        return true
-    end
-
-    print("[DANG THU] Phuong phap 3: ProximityPrompt...")
-    if SpawnPartQuaProximityPrompt() then
-        print("[THANH CONG] Phuong phap 3: ProximityPrompt")
-        return true
-    end
-
-    print("[DANG THU] Phuong phap 4: ModuleScript...")
-    if SpawnPartQuaModuleScript(partGoc) then
-        print("[THANH CONG] Phuong phap 4: ModuleScript")
-        return true
-    end
-
-    print("[DANG THU] Phuong phap 5: Hook FireServer...")
-    if SpawnPartQuaHook(partGoc) then
-        print("[THANH CONG] Phuong phap 5: Hook FireServer")
-        return true
-    end
-
-    warn("===========================================")
-    warn("[THAT BAI] Khong the spawn part server-side.")
-    warn("[GOI Y] Game nay co the khong cho phep spawn part tu Client.")
-    warn("[GOI Y] Thu tim hieu co che spawn cua game nay.")
-    warn("===========================================")
-    return false
-end
-
--- ============================
--- TÌM PART GỐC VÀ BẮT ĐẦU SPAWN
+-- TÌM PART GỐC
 -- ============================
 local function TimPartGoc()
-    for _, obj in ipairs(game:GetDescendants()) do
-        if obj.Name == "DinhHaiThanhCham" and obj:IsA("BasePart") then
-            return obj
+    local partGoc = ReplicatedStorage:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
+    partGoc = Workspace:FindFirstChild("DinhHaiThanhCham", true)
+    if partGoc and partGoc:IsA("BasePart") then return partGoc end
+    for _, descendant in ipairs(game:GetDescendants()) do
+        if descendant.Name == "DinhHaiThanhCham" and descendant:IsA("BasePart") then
+            return descendant
         end
     end
+    warn("[LOI] Khong tim thay Part 'DinhHaiThanhCham'.")
     return nil
 end
 
 local partGoc = TimPartGoc()
 if partGoc then
-    print("[OK] Tim thay part goc:", partGoc:GetFullName())
-    SpawnPartServerSide(partGoc)
+    print("[OK] Da tim thay Part goc:", partGoc:GetFullName())
 else
-    warn("[LOI] Khong tim thay part 'DinhHaiThanhCham' trong game.")
-    warn("[GOI Y] Hay dam bao part co ten CHINH XAC nhu tren.")
+    print("[CANH BAO] Part 'DinhHaiThanhCham' khong ton tai.")
 end
+
+-- ============================
+-- HÀM NHÂN BẢN PART VÀO WORKSPACE (SERVER-SIDE, MỌI NGƯỜI ĐỀU THẤY)
+-- ============================
+local function NhanBanPartServer(part)
+    if not part or not part:IsA("BasePart") then return nil end
+
+    local clone = part:Clone()
+
+    -- Đặt vị trí ngẫu nhiên quanh người chơi
+    local offsetX = math.random(-10, 10)
+    local offsetY = math.random(0, 5)
+    local offsetZ = math.random(-10, 10)
+
+    clone.CFrame = rootPart.CFrame * CFrame.new(offsetX, offsetY, offsetZ)
+    clone.Anchored = false -- Không neo, để part có thể rơi tự nhiên
+    clone.CanCollide = true -- Bật va chạm để người khác có thể tương tác
+    clone.Parent = Workspace -- <<< THAY ĐỔI CHÍNH: Đặt vào Workspace, Server quản lý
+
+    -- Thêm Highlight để dễ nhận biết (mọi người đều thấy)
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255, 255, 0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = clone
+
+    return clone
+end
+
+-- ============================
+-- HÀM TỰ ĐỘNG THU THẬP PART (AUTO FARM)
+-- ============================
+local function TuDongThuThap(part)
+    if not part or not part.Parent then return end
+
+    -- Dịch chuyển người chơi đến vị trí part
+    rootPart.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+
+    -- Kích hoạt TouchInterest nếu có
+    local touchInterest = part:FindFirstChild("TouchInterest")
+    if touchInterest then
+        firetouchinterest(part, rootPart, 0) -- Touch
+        task.wait(0.05)
+        firetouchinterest(part, rootPart, 1) -- Untouch
+    end
+
+    -- Kích hoạt ProximityPrompt nếu có
+    local proximityPrompt = part:FindFirstChildOfClass("ProximityPrompt")
+    if proximityPrompt then
+        proximityPrompt:InputHoldBegin()
+        task.wait(0.1)
+        proximityPrompt:InputHoldEnd()
+    end
+
+    -- Nếu part là Tool, tự động nhặt vào Backpack
+    if part:IsA("Tool") and part.Parent == Workspace then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            part.Parent = backpack
+            print("[NHAT] Da nhat Tool:", part.Name)
+        end
+    end
+end
+
+-- ============================
+-- HÀM DỌN DẸP PART CŨ (TRÁNH LAG SERVER)
+-- ============================
+local function DonDepPart()
+    -- Giới hạn tối đa 100 part trong Workspace cùng lúc
+    while #danhSachPart > 100 do
+        local partCu = table.remove(danhSachPart, 1)
+        if partCu and partCu.Parent then
+            partCu:Destroy()
+        end
+    end
+end
+
+-- ============================
+-- LUỒNG SPAWN PART SERVER-SIDE (MỌI NGƯỜI ĐỀU THẤY)
+-- ============================
+task.spawn(function()
+    while true do
+        task.wait(0.15) -- Tốc độ spawn (có thể điều chỉnh)
+        if spawnDangChay and partGoc then
+            local clone = NhanBanPartServer(partGoc)
+            if clone then
+                soLanSpawn = soLanSpawn + 1
+                table.insert(danhSachPart, clone)
+                DonDepPart()
+                print("[SPAWN SERVER] Da tao ban sao thu:", soLanSpawn, "| Part trong Workspace - MOI NGUOI DEU THAY")
+
+                -- Tự động thu thập nếu Auto Farm đang bật
+                if autoFarmBat then
+                    task.wait(0.05)
+                    TuDongThuThap(clone)
+                end
+            end
+        end
+    end
+end)
+
+-- ============================
+-- HÀM XÓA TOÀN BỘ PART
+-- ============================
+local function XoaTatCaPart()
+    for _, part in ipairs(danhSachPart) do
+        if part and part.Parent then
+            part:Destroy()
+        end
+    end
+    danhSachPart = {}
+    soLanSpawn = 0
+    print("[DON DEP] Da xoa tat ca part trong Workspace.")
+end
+
+-- ============================
+-- LUỒNG AUTO HEAL
+-- ============================
+task.spawn(function()
+    while task.wait(0.3) do
+        if not autoHealBat then continue end
+        local char = player.Character
+        if not char then continue end
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then continue end
+        if hum.Health >= HEAL_THRESHOLD then continue end
+
+        local currentTool = char:FindFirstChildOfClass("Tool")
+        local bandage = char:FindFirstChild("băng gạc") or player.Backpack:FindFirstChild("băng gạc")
+        if bandage then
+            if bandage.Parent ~= char then
+                hum:EquipTool(bandage)
+            end
+            bandage:Activate()
+            task.wait(0.3)
+            if currentTool and currentTool.Parent ~= char then
+                hum:EquipTool(currentTool)
+            end
+        end
+    end
+end)
+
+-- ============================
+-- GUI MOBILE
+-- ============================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HackPanelMobile"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 420)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundTransparency = 0.2
+MainFrame.BorderSizePixel = 1
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+MainFrame.ClipsDescendants = true
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -10, 0, 35)
+Title.Position = UDim2.new(0, 5, 0, 5)
+Title.Text = "SERVER SPAWN (ALL SEE)"
+Title.TextColor3 = Color3.fromRGB(0, 255, 100)
+Title.TextScaled = true
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+-- Hàm tạo nút bật/tắt
+local function TaoNutBatTat(ten, viTriY, batDauBat, moTaBat, moTaTat, callback)
+    local nut = Instance.new("TextButton")
+    nut.Name = ten .. "Button"
+    nut.Size = UDim2.new(1, -20, 0, 45)
+    nut.Position = UDim2.new(0, 10, 0, viTriY)
+    nut.Text = batDauBat and moTaBat or moTaTat
+    nut.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nut.TextScaled = true
+    nut.Font = Enum.Font.SourceSansBold
+    nut.BackgroundColor3 = batDauBat and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+    nut.BorderSizePixel = 1
+    nut.BorderColor3 = Color3.fromRGB(80, 80, 80)
+    nut.AutoButtonColor = false
+    nut.Parent = MainFrame
+
+    local trangThai = batDauBat
+    nut.Activated:Connect(function()
+        trangThai = not trangThai
+        nut.Text = trangThai and moTaBat or moTaTat
+        nut.BackgroundColor3 = trangThai and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(180, 50, 50)
+        if callback then
+            callback(trangThai)
+        end
+    end)
+
+    return nut
+end
+
+-- Nút 1: Bật/Tắt Spawn Part Server
+TaoNutBatTat(
+    "SpawnServer",
+    50,
+    true,
+    "[ON] SPAWN PART (ALL SEE)",
+    "[OFF] SPAWN PART (ALL SEE)",
+    function(trangThai)
+        spawnDangChay = trangThai
+        print("[GUI] Spawn Part Server:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 2: Bật/Tắt Auto Heal
+TaoNutBatTat(
+    "AutoHeal",
+    105,
+    true,
+    "[ON] AUTO HEAL (80%)",
+    "[OFF] AUTO HEAL",
+    function(trangThai)
+        autoHealBat = trangThai
+        print("[GUI] Auto Heal:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 3: Bật/Tắt Auto Farm (Thu thập part)
+TaoNutBatTat(
+    "AutoFarm",
+    160,
+    true,
+    "[ON] AUTO FARM (NHẶT)",
+    "[OFF] AUTO FARM (NHẶT)",
+    function(trangThai)
+        autoFarmBat = trangThai
+        print("[GUI] Auto Farm:", trangThai and "BAT" or "TAT")
+    end
+)
+
+-- Nút 4: Xóa toàn bộ part
+local nutXoaPart = Instance.new("TextButton")
+nutXoaPart.Name = "XoaPartButton"
+nutXoaPart.Size = UDim2.new(1, -20, 0, 45)
+nutXoaPart.Position = UDim2.new(0, 10, 0, 215)
+nutXoaPart.Text = "XOA HET PART"
+nutXoaPart.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutXoaPart.TextScaled = true
+nutXoaPart.Font = Enum.Font.SourceSansBold
+nutXoaPart.BackgroundColor3 = Color3.fromRGB(180, 100, 0)
+nutXoaPart.BorderSizePixel = 1
+nutXoaPart.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutXoaPart.AutoButtonColor = false
+nutXoaPart.Parent = MainFrame
+
+nutXoaPart.Activated:Connect(function()
+    XoaTatCaPart()
+    print("[GUI] Da xoa tat ca part trong Workspace.")
+end)
+
+-- Nút 5: Dừng tất cả
+local nutDungTatCa = Instance.new("TextButton")
+nutDungTatCa.Name = "DungTatCaButton"
+nutDungTatCa.Size = UDim2.new(1, -20, 0, 45)
+nutDungTatCa.Position = UDim2.new(0, 10, 0, 270)
+nutDungTatCa.Text = "DUNG TAT CA"
+nutDungTatCa.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutDungTatCa.TextScaled = true
+nutDungTatCa.Font = Enum.Font.SourceSansBold
+nutDungTatCa.BackgroundColor3 = Color3.fromRGB(200, 120, 0)
+nutDungTatCa.BorderSizePixel = 1
+nutDungTatCa.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutDungTatCa.AutoButtonColor = false
+nutDungTatCa.Parent = MainFrame
+
+nutDungTatCa.Activated:Connect(function()
+    spawnDangChay = false
+    autoHealBat = false
+    autoFarmBat = false
+    XoaTatCaPart()
+    print("[GUI] Da DUNG TAT CA cac chuc nang.")
+    for _, child in ipairs(MainFrame:GetChildren()) do
+        if child.Name == "SpawnServerButton" then
+            child.Text = "[OFF] SPAWN PART (ALL SEE)"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoHealButton" then
+            child.Text = "[OFF] AUTO HEAL"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        elseif child.Name == "AutoFarmButton" then
+            child.Text = "[OFF] AUTO FARM (NHẶT)"
+            child.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        end
+    end
+end)
+
+-- Nút 6: Thoát GUI
+local nutThoat = Instance.new("TextButton")
+nutThoat.Name = "ThoatButton"
+nutThoat.Size = UDim2.new(1, -20, 0, 45)
+nutThoat.Position = UDim2.new(0, 10, 0, 325)
+nutThoat.Text = "THOAT GUI"
+nutThoat.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThoat.TextScaled = true
+nutThoat.Font = Enum.Font.SourceSansBold
+nutThoat.BackgroundColor3 = Color3.fromRGB(150, 20, 20)
+nutThoat.BorderSizePixel = 1
+nutThoat.BorderColor3 = Color3.fromRGB(80, 80, 80)
+nutThoat.AutoButtonColor = false
+nutThoat.Parent = MainFrame
+
+nutThoat.Activated:Connect(function()
+    XoaTatCaPart()
+    ScreenGui:Destroy()
+    print("[GUI] GUI da bi huy.")
+end)
+
+-- Nút thu nhỏ
+local daThuNho = false
+local kichThuocGoc = MainFrame.Size
+local nutThuNho = Instance.new("TextButton")
+nutThuNho.Name = "ThuNhoButton"
+nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+nutThuNho.Text = "─"
+nutThuNho.TextColor3 = Color3.fromRGB(255, 255, 255)
+nutThuNho.TextScaled = true
+nutThuNho.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+nutThuNho.BorderSizePixel = 0
+nutThuNho.AutoButtonColor = false
+nutThuNho.ZIndex = 10
+nutThuNho.Parent = MainFrame
+
+nutThuNho.Activated:Connect(function()
+    daThuNho = not daThuNho
+    if daThuNho then
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            if child ~= nutThuNho then
+                child.Visible = false
+            end
+        end
+        MainFrame.Size = UDim2.new(0, 40, 0, 40)
+        nutThuNho.Text = "+"
+        nutThuNho.Size = UDim2.new(1, 0, 1, 0)
+        nutThuNho.Position = UDim2.new(0, 0, 0, 0)
+    else
+        for _, child in ipairs(MainFrame:GetChildren()) do
+            child.Visible = true
+        end
+        MainFrame.Size = kichThuocGoc
+        nutThuNho.Text = "─"
+        nutThuNho.Size = UDim2.new(0, 30, 0, 30)
+        nutThuNho.Position = UDim2.new(1, -35, 0, 0)
+    end
+end)
+
+-- Cập nhật Title liên tục
+task.spawn(function()
+    while task.wait(1) do
+        if not ScreenGui or not ScreenGui.Parent then break end
+        Title.Text = string.format("SERVER | Spawn: %d | Heal: %s | Farm: %s",
+            soLanSpawn,
+            autoHealBat and "ON" or "OFF",
+            autoFarmBat and "ON" or "OFF"
+        )
+    end
+end)
 
